@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Application
+    x:Class="Komik.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Komik"
+    xmlns:helpers="using:Komik.Helpers">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <helpers:BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
+            <helpers:BooleanToVisibilityConverter x:Key="InvertedBoolToVisConverter" IsInverted="True" />
+            <helpers:InverseBooleanConverter x:Key="InvertedBoolConverter" />
+            <helpers:ViewModeTextConverter x:Key="ViewModeTextConverter" />
+            <helpers:StringToImageSourceConverter x:Key="StringToImageSourceConverter" />
+
+            <Style x:Key="InfoButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="4" />
+                <Setter Property="MinHeight" Value="24" />
+                <Setter Property="MinWidth" Value="24" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="helpers:InstantToolTipHelper.IsInstant" Value="True" />
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

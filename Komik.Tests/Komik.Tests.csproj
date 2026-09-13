@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Platforms>x64</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Docnet.Core" Version="2.6.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="SharpCompress" Version="0.50.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Models\*.cs" Link="Models\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\IComicLoader.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\FolderComicLoader.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\ZipComicLoader.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\RarComicLoader.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\SevenZipComicLoader.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\PdfComicLoader.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\ComicLoaderService.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\ILibraryRepository.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\LibraryRepository.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\ThumbnailService.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\ILibraryScannerService.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\LibraryScannerService.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\FormatConversionService.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Helpers\NaturalSortComparer.cs" Link="Helpers\%(Filename)%(Extension)" />
+    <Compile Include="..\Helpers\ColorCorrectionHelper.cs" Link="Helpers\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

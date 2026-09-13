@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Komik (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Komik (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
