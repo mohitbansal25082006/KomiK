@@ -279,6 +279,53 @@ shipping\Komik-Setup.exe
 
 ---
 
+## Website (`komik-website`)
+
+A fast, static/hybrid marketing and download landing page for Komik is included directly in this repository under the [`komik-website/`](komik-website/) subfolder. It presents Komik's feature set and directs visitors straight to the latest Windows installer on GitHub Releases.
+
+- **Design System & Motion Plan**: Fully documented in [`komik-website/DESIGN.md`](komik-website/DESIGN.md).
+- **Tech Stack**: Next.js 15 (App Router), TypeScript, Tailwind CSS, Framer Motion, and Lucide React.
+- **Visual Style**: "The Nocturnal Graphic Novel" — dark-theme-first, authentic comic panel gutters, screen-tone halftones, and an interactive WinUI 3 reading canvas simulator.
+
+### Running the Website Locally
+```powershell
+cd komik-website
+npm install
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Building for Production
+```powershell
+cd komik-website
+npm run build
+```
+
+### Download Link Configuration
+All download buttons point directly to the GitHub Releases latest asset URL. The repository coordinates and asset paths are centralized in a single configuration file:
+```text
+komik-website/lib/config.ts
+```
+Download targets:
+- **Direct Installer Download**: `https://github.com/mohitbansal25082006/KomiK/releases/latest/download/Komik-Setup.exe`
+- **Releases & Changelog Page**: `https://github.com/mohitbansal25082006/KomiK/releases`
+
+### Social Preview (Open Graph) Image
+The Open Graph social share image is stored at:
+```text
+komik-website/public/og-image.png
+```
+To swap in a live application screenshot or new artwork, replace this file with any standard `1200×630` PNG image.
+
+### Deploying to Vercel
+The website is ready for immediate deployment on [Vercel](https://vercel.com) from this monorepo:
+1. Import the `KomiK` repository into your Vercel account.
+2. In the project setup screen, expand **Root Directory**, click **Edit**, and select **`komik-website`**.
+3. Leave the **Framework Preset** as `Next.js` and keep all build and output settings at their defaults (`npm run build`).
+4. Click **Deploy**. Vercel will build and serve the subfolder automatically.
+
+---
+
 ## Known Limitations
 
 - **Windows Explorer In-Folder Thumbnail Provider**:

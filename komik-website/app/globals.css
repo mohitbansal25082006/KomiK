@@ -1,0 +1,190 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-ink: #08080A;
+  --color-panel: #121215;
+  --color-gutter: #000000;
+  --color-paper: #F5EFEB;
+  --color-newsprint: #F4EFEA;
+  --color-muted: #949BA6;
+  --color-cyan: #00A3E0;
+  --color-magenta: #E60050;
+  --color-yellow: #FFD700;
+}
+
+html,
+body {
+  background-color: #08080A;
+  color: #F4EFEA;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+  font-family: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+}
+
+::selection {
+  background-color: #FFD700;
+  color: #08080A;
+}
+
+/* Ben Day Halftone Screen-Tone Matrix */
+.bg-halftone {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1.5px, transparent 1.5px);
+  background-size: 16px 16px;
+}
+
+.bg-halftone-paper {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.08) 1.5px, transparent 1.5px);
+  background-size: 14px 14px;
+}
+
+.bg-halftone-cyan {
+  background-image: radial-gradient(rgba(0, 163, 224, 0.15) 1.5px, transparent 1.5px);
+  background-size: 12px 12px;
+}
+
+.bg-halftone-yellow {
+  background-image: radial-gradient(rgba(255, 215, 0, 0.18) 1.5px, transparent 1.5px);
+  background-size: 12px 12px;
+}
+
+/* Authentic Comic Panel Frames & Gutters */
+.comic-panel-dark {
+  background-color: #121215;
+  border: 3px solid #000000;
+  box-shadow: 6px 6px 0px #000000;
+}
+
+.comic-panel-paper {
+  background-color: #F5EFEB;
+  color: #08080A;
+  border: 3px solid #000000;
+  box-shadow: 6px 6px 0px #000000;
+}
+
+/* Comic Button Mechanical Impact */
+.btn-comic-primary {
+  background-color: #FFD700;
+  color: #08080A;
+  border: 3px solid #000000;
+  box-shadow: 5px 5px 0px #000000;
+  font-weight: 800;
+  transition: transform 0.1s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.1s cubic-bezier(0.2, 0, 0, 1), background-color 0.1s ease;
+}
+
+.btn-comic-primary:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 8px 8px 0px #000000;
+  background-color: #FFE233;
+}
+
+.btn-comic-primary:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px #000000;
+}
+
+.btn-comic-cyan {
+  background-color: #00A3E0;
+  color: #08080A;
+  border: 3px solid #000000;
+  box-shadow: 5px 5px 0px #000000;
+  font-weight: 800;
+  transition: transform 0.1s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.1s cubic-bezier(0.2, 0, 0, 1), background-color 0.1s ease;
+}
+
+.btn-comic-cyan:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 8px 8px 0px #000000;
+  background-color: #33B8FC;
+}
+
+.btn-comic-cyan:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px #000000;
+}
+
+.btn-comic-secondary {
+  background-color: #18181D;
+  color: #F4EFEA;
+  border: 3px solid #000000;
+  box-shadow: 5px 5px 0px #000000;
+  font-weight: 700;
+  transition: transform 0.1s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.1s cubic-bezier(0.2, 0, 0, 1), border-color 0.1s ease;
+}
+
+.btn-comic-secondary:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0px #000000;
+  border-color: #00A3E0;
+  color: #FFFFFF;
+}
+
+.btn-comic-secondary:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px #000000;
+}
+
+/* Diegetic Caption Box */
+.caption-box {
+  background-color: #FFD700;
+  color: #08080A;
+  border: 2px solid #000000;
+  box-shadow: 3px 3px 0px #000000;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.caption-box-magenta {
+  background-color: #E60050;
+  color: #FFFFFF;
+  border: 2px solid #000000;
+  box-shadow: 3px 3px 0px #000000;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.caption-box-cyan {
+  background-color: #00A3E0;
+  color: #08080A;
+  border: 2px solid #000000;
+  box-shadow: 3px 3px 0px #000000;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Custom Sleek Ink Scrollbar */
+::-webkit-scrollbar {
+  width: 9px;
+}
+
+::-webkit-scrollbar-track {
+  background: #08080A;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #27272A;
+  border: 2px solid #08080A;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FFD700;
+}
+
+/* Reduced Motion Override */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+    transform: none !important;
+  }
+}

@@ -96,6 +96,35 @@ This document records the complete manifest of files created for Version 1.0 of 
 - `Komik.Tests\Komik.Tests.csproj`
 - `Komik.Tests\Program.cs`
 
+### Marketing & Download Website (`komik-website/`)
+- `komik-website\.gitignore`
+- `komik-website\DESIGN.md`
+- `komik-website\next.config.mjs`
+- `komik-website\package.json`
+- `komik-website\package-lock.json`
+- `komik-website\postcss.config.mjs`
+- `komik-website\tailwind.config.ts`
+- `komik-website\tsconfig.json`
+- `komik-website\app\globals.css`
+- `komik-website\app\layout.tsx`
+- `komik-website\app\page.tsx`
+- `komik-website\components\DownloadSection.tsx`
+- `komik-website\components\FeaturePanels.tsx`
+- `komik-website\components\Footer.tsx`
+- `komik-website\components\FormatShowcase.tsx`
+- `komik-website\components\Hero.tsx`
+- `komik-website\components\KeyboardSection.tsx`
+- `komik-website\components\KomikLogo.tsx`
+- `komik-website\components\ManifestoSection.tsx`
+- `komik-website\components\MobileNotice.tsx`
+- `komik-website\components\MockComicPages.tsx`
+- `komik-website\components\Navbar.tsx`
+- `komik-website\lib\config.ts`
+- `komik-website\lib\utils.ts`
+- `komik-website\public\app-icon.png`
+- `komik-website\public\favicon.ico`
+- `komik-website\public\og-image.png`
+
 ---
 
 ## 2. Features Added in Version 1.0 (Summary)
@@ -151,3 +180,20 @@ This document records the complete manifest of files created for Version 1.0 of 
    - Direct command-line launch support (`Komik.exe "<path-to-file>"`).
    - Standalone Inno Setup installer (`Komik-Setup.exe`) with embedded application icon, Start Menu shortcut, optional Desktop shortcut, and clean uninstaller.
    - 100% offline, privacy-first architecture with zero telemetry or network calls.
+
+9. **Official Marketing & Download Website (`komik-website`)**:
+   - Built with Next.js 15 (App Router), TypeScript, Tailwind CSS, and Framer Motion.
+   - Distinctive "Nocturnal Graphic Novel" visual aesthetic: authentic ink panel borders, custom halftone screentone patterns, editorial typography, and high-contrast comic color palette.
+   - Interactive WinUI 3 Fluent reader canvas mockup:
+     - Faithfully recreates the real desktop application with native-style Mica backdrop, custom title bar, and floating acrylic toolbar.
+     - Live interactive controls for Fit Width (`W`), Fit Height (`H`), Single Page vs. Two-Page Spread (`D`) with realistic Page 1 cover isolation, Manga Right-to-Left reading direction (`Ctrl + R`), and warm Night Mode LUT color shader.
+     - Interactive page scrubber slider with live page preview thumbnails and dual-page indicators.
+     - Original illustrated vector comic artwork across all sample pages.
+   - Custom high-contrast brand mark (`KomikLogo`) featuring an open comic book crest with amber/gold cover, deep ink spine, and story panels with dynamic shadow effects.
+   - Interactive Format Showcase detailing all 8 supported archive and document types (.cbz, .cbr, .cb7, .zip, .rar, .7z, .pdf, image folders) and an interactive Lossless Archive Converter visualizer.
+   - Four editorial Feature Panels (Local-First Architecture, Zero-Lag Pure .NET Engine, Smart Spread Pairing, Hardware LUT Night Mode).
+   - Offline Manifesto section celebrating local-first software, zero telemetry, and user privacy.
+   - Keyboard Shortcut Reference cheat sheet.
+   - Responsive design with intelligent mobile preview notice advising visitors of the Windows desktop application focus.
+   - Centralized configuration (`lib/config.ts`) linking directly to the latest GitHub Releases installer (`Komik-Setup.exe`) and changelog.
+
