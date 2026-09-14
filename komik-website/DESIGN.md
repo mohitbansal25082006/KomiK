@@ -44,15 +44,27 @@ All fonts load through `next/font/google` (self-hosted at build time, so no runt
 | Library | Role |
 | :--- | :--- |
 | **GSAP 3.15 + ScrollTrigger + SplitText** | Character-by-character heading pops, the pinned horizontal "Reading Engine" strip, stamp slams, underline drawing |
-| **Lenis** | Smooth scrolling driven by GSAP's ticker, so ScrollTrigger stays in sync |
+| **Lenis** | Desktop wheel smoothing (`lerp: 0.1`) driven by GSAP's ticker, so ScrollTrigger stays in sync. Touch devices keep native momentum scrolling |
 | **Framer Motion 12** | React UI motion: reader flyouts, page turns, 3D tilt cards, layout animations, counters, drag stickers |
 | **Pure CSS** | Intro splash (never blocks hydration), marquees, sunbursts, wobble/float loops |
 
 Motion rules:
 - Springy, snappy and physical (`back.out`, `elastic.out`, stiff springs). Nothing floaty.
-- `prefers-reduced-motion` disables Lenis, the intro splash, SplitText, GSAP pins and click bursts. Content is always visible without animation.
+- `prefers-reduced-motion` disables Lenis, the intro splash, SplitText, GSAP pins and click bursts, and `MotionConfig reducedMotion="user"` covers every Framer animation. Content is always visible without animation.
 - The intro splash plays once per browser session (`sessionStorage`).
-- Scroll-linked effects never block reading. Scroll-locking only happens in reader full-screen mode and the mobile menu (via the `komik:scroll-lock` event).
+- Scroll-linked effects never block reading. Scroll-locking only happens in reader full-screen mode and the mobile menu (via the `komik:scroll-lock` event). `scrollbar-gutter: stable` stops the page shifting sideways when the lock toggles.
+
+### In-page navigation (`components/fx/SmoothScroll.tsx`)
+Every `href="#…"` link (navbar, mobile menu tiles, hero and download CTAs) goes through one handler instead of the browser's jump:
+- **Eased, time-based glide.** `easeInOutCubic`, with duration scaled by distance (0.7s–1.6s): Lenis `scrollTo` on desktop, a rAF tween on touch devices.
+- **Exact landing.** It offsets for the 72px navbar (plus room for the reader's speech balloon on `#reader`) and makes a short corrective glide if content animated in mid-flight.
+- **Menu-safe.** It waits ~90ms so the mobile menu can close and release its scroll lock before measuring.
+- **Interruptible.** Any wheel or touch cancels an in-flight glide.
+
+### Performance rules
+- **Offscreen pausing.** An `IntersectionObserver` adds `.anim-paused` to offscreen sections, pausing CSS loops (sunbursts, marquees, wobbles). Framer and interval-driven demo loops only run while `useInView` reports them near the viewport.
+- **Cheap paint.** No large CSS `blur()` layers: glows are radial gradients. The rotating sunbursts are GPU layers (`will-change: transform`) sized ≤ 170vmax. The navbar has no backdrop blur.
+- **Memoized pages.** `ComicPage` is memoized, so reader/demo state changes (toasts, counters, chrome visibility) never re-render the heavy SVG pages.
 
 ---
 
@@ -72,11 +84,18 @@ A faithful recreation of Komik's WinUI 3 `MainPage` that really works:
 | Offline OCR search (Ctrl+F) | Searches the comic's real script, jumps to pages, selectable text overlay with Copy | Search sheet |
 | Resume | "Resumed at page X" toast on return | Same |
 | Scrubber | Live page-thumbnail preview on hover/drag | Drag to scrub |
-| Window chrome | Minimize/close collapse to a restore card, maximize = full screen | Same |
-| Full screen (F / F11 / double-click) | Fullscreen API + fixed overlay, auto-hiding chrome, Esc to exit | Fullscreen overlay, tap center to toggle chrome |
+| Window chrome | Minimize shrinks the window away and close fades it out, with a restore card crossfading in. The reader stays mounted, so page and settings survive | Same |
+| Full screen (F / F11 / double-click / maximize) | In-page overlay that **grows out of the reader's own rectangle** with a `clip-path` animation (520ms, no content distortion) over a dimming backdrop, then shrinks back on Esc. The toolbar and scrubber slide away with transforms while you read | Same overlay; tap the page center to toggle the chrome |
 | Theme | Dark / light reader chrome | ⋯ sheet |
 
 The reader measures its own container (not the viewport), so it switches to the compact mobile layout whenever it is narrower than 640px.
+
+Loading & scrolling behavior:
+- **No layout jump on load.** Pages fade in (0.5s) only after the reader has measured itself and restored saved state. The reader card glides up once when it first scrolls into view (no scroll-linked 3D tilt).
+- **Page turns.** A 360ms slide with a light rotate and fade (`[0.22, 1, 0.36, 1]`).
+- **Scroll hand-off.** The canvas only captures wheel and touch scrolling when it genuinely has something to scroll: webtoon mode, zoom, or horizontal overflow. Otherwise gestures pass to the page (`data-lenis-prevent` and `overscroll-behavior: contain` are applied conditionally).
+- **Phone sizing.** On phones the in-page canvas is sized to exactly one fit-width page, so vertical swipes scroll the site while horizontal swipes turn pages.
+- **Full-screen spacing.** In full screen, page layout reserves room for the floating toolbar (top) and scrubber (bottom).
 
 ---
 
@@ -95,9 +114,9 @@ Because pages are vector SVG, they stay razor sharp at any zoom and in full scre
 ## 7. Page Architecture
 
 1. **Intro splash**: yellow/magenta split panel with a "KOMIK!" burst (CSS only, once per session).
-2. **Navbar**: Bangers wordmark, active-section pill (`layoutId`), CMYK scroll-progress ink bar, comic-tile mobile menu.
-3. **Hero**: SplitText headline "Your comics. Your PC. Zero cloud.", draggable stickers, rotating speed lines, the reader mockup landing in 3D as you scroll, crossing marquee tapes.
-4. **By the numbers**: count-up stat panels (zeros count *down* from 99).
+2. **Navbar**: Bangers wordmark, active-section pill (`layoutId`), CMYK scroll-progress ink bar, and a comic-tile mobile menu whose tiles close the menu and then glide to their section (Esc also closes it).
+3. **Hero**: SplitText headline "Your comics. Your PC. Zero cloud.", draggable stickers, rotating speed lines, the reader mockup gliding in once, crossing marquee tapes.
+4. **By the numbers**: count-up stat panels (zeros count *down* from 99): 8 formats, 6 decoders, 6 LUT presets, 0 network calls, 0 accounts, 27 automated test suites.
 5. **Chapter 02 · Archive vault**: 8 collectible format cards (3D tilt, holographic sheen, flip for engine details) + the animated "CBZ-O-Matic 3000" converter.
 6. **Chapter 03 · Reading engine**: a pinned horizontal comic strip on desktop (stacked on mobile) with five live demos: spread pairing, the 6-worker webtoon decoder, a before/after LUT slider, a self-typing library search, and resume/bookmarks.
 7. **Special edition · New in 1.1.0**: a paper bento page covering Series & Volumes, Stats & Komik Wrapped, the Duplicate Manager, offline OCR, `.komikbackup` backups, and the responsive library with window memory.
@@ -114,3 +133,14 @@ Because pages are vector SVG, they stay razor sharp at any zoom and in full scre
 - All interactive demos are buttons or ranges with labels. The reader root is focusable with a descriptive `aria-label`.
 - Decorative layers are `aria-hidden` and `pointer-events-none`.
 - The site stays offline-friendly: no analytics, no third-party runtime requests, and fonts are bundled at build time.
+
+---
+
+## 9. README Artwork (`public/readme/`)
+
+The repository README reuses this design language, with no external services needed:
+
+- **Animated SVGs** (pure SVG + CSS keyframes, which render animated on GitHub and respect `prefers-reduced-motion`): `banner.svg` (rotating speed lines, popping "KOMIK!" lettering, crossing marquee tapes, floating Byte), ten `section-*.svg` chapter headers with a shine sweep, `stats.svg` drop-in stat cards, the CMYK `divider.svg`, and `the-end.svg`.
+- **Desktop app screenshots** (`app-*.jpg`): captured from the real Komik 1.1.0 app reading the demo comic packed into `.cbz` files. They cover the Library, reader (two-page spread), Webtoon mode, Series & Volumes and Reading Insights.
+- **Website screenshots** (`screenshot-*.jpg`): hero, full-screen reader, format cards, reading engine strip, New in 1.1.0, and mobile views.
+- SVG lettering uses Impact with Anton / Arial Black fallbacks, because web fonts can't load inside `<img>`-embedded SVGs.

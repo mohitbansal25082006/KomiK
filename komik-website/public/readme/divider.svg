@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 22" width="1280" height="22" role="img" aria-label="divider">
+  <defs>
+    <pattern id="stripe" width="84" height="22" patternUnits="userSpaceOnUse">
+      <rect width="28" height="22" fill="#FFD700"/><rect x="28" width="28" height="22" fill="#00C2FF"/><rect x="56" width="28" height="22" fill="#FF1F6D"/>
+    </pattern>
+    <clipPath id="c"><rect width="1280" height="22" rx="11"/></clipPath>
+  </defs>
+  <style>.move { animation: move 3s linear infinite; } @keyframes move { to { transform: translateX(-84px); } } @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }</style>
+  <g clip-path="url(#c)"><rect class="move" x="0" width="1448" height="22" fill="url(#stripe)" transform="skewX(-25)"/></g>
+  <rect x="1.5" y="1.5" width="1277" height="19" rx="10" fill="none" stroke="#000" stroke-width="3"/>
+</svg>

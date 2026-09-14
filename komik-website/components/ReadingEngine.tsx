@@ -384,7 +384,7 @@ export default function ReadingEngine() {
             start: "top top",
             end: () => `+=${distance()}`,
             pin: true,
-            scrub: 0.8,
+            scrub: 0.45,
             invalidateOnRefresh: true,
             anticipatePin: 1,
             onUpdate: (self) => {

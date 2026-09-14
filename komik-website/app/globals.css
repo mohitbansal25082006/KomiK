@@ -24,9 +24,8 @@ body {
   font-family: var(--font-jakarta), system-ui, -apple-system, sans-serif;
 }
 
-/* native smooth anchor jumps where Lenis is not running (touch devices) */
-html:not(.lenis) {
-  scroll-behavior: smooth;
+html {
+  scrollbar-gutter: stable;
 }
 
 html.lenis,

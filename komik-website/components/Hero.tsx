@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { motion, useScroll, useSpring, useTransform } from "framer-motion";
+import { useRef } from "react";
+import { motion } from "framer-motion";
 import { ArrowDown, Download, Github, Hand, Keyboard, Maximize2, Monitor } from "lucide-react";
 import { APP_CONFIG } from "@/lib/config";
 import { gsap, SplitText, useGSAP, prefersReducedMotion } from "@/lib/gsap";
@@ -14,21 +14,6 @@ export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
   const headRef = useRef<HTMLHeadingElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  // a transformed ancestor would trap the reader's `position: fixed` full-screen mode
-  const [readerFullscreen, setReaderFullscreen] = useState(false);
-  useEffect(() => {
-    const onLock = (e: Event) => setReaderFullscreen((e as CustomEvent<boolean>).detail);
-    document.addEventListener("komik:scroll-lock", onLock);
-    return () => document.removeEventListener("komik:scroll-lock", onLock);
-  }, []);
-
-  /* 3D "window lands on the desk" as the reader scrolls into view */
-  const { scrollYProgress } = useScroll({ target: stageRef, offset: ["start end", "start 0.6"] });
-  const eased = useSpring(scrollYProgress, { stiffness: 120, damping: 28, mass: 0.4 });
-  const rotateX = useTransform(eased, [0, 1], [22, 0]);
-  const scale = useTransform(eased, [0, 1], [0.9, 1]);
-  const y = useTransform(eased, [0, 1], [60, 0]);
-
   useGSAP(
     () => {
       if (prefersReducedMotion() || !headRef.current) return;
@@ -61,7 +46,7 @@ export default function Hero() {
     <section ref={sectionRef} id="top" className="relative overflow-hidden border-b-[3px] border-black bg-ink">
       {/* ---------- animated backdrop ---------- */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute left-1/2 top-[22%] h-[260vmax] w-[260vmax] -translate-x-1/2 -translate-y-1/2">
+        <div className="absolute left-1/2 top-[22%] h-[170vmax] w-[170vmax] -translate-x-1/2 -translate-y-1/2">
           <div className="bg-speedlines animate-spin-slow h-full w-full" />
         </div>
         <div className="absolute -left-60 -top-20 h-[760px] w-[760px] bg-[radial-gradient(circle,rgba(255,31,109,0.22),transparent_65%)]" />
@@ -152,7 +137,7 @@ export default function Hero() {
         </div>
 
         {/* ---------- the interactive reader ---------- */}
-        <div id="reader" ref={stageRef} className="relative mx-auto mt-16 max-w-6xl scroll-mt-24 sm:mt-28" style={{ perspective: readerFullscreen ? undefined : 1800 }}>
+        <div id="reader" ref={stageRef} className="relative mx-auto mt-16 max-w-6xl scroll-mt-24 sm:mt-28">
           <div className="pointer-events-none absolute -top-[4.5rem] left-2 z-10 hidden sm:block">
             <div className="balloon -rotate-3 px-5 py-2 text-sm">Psst! This reader actually works. Go on, read the whole comic!</div>
           </div>
@@ -160,7 +145,13 @@ export default function Hero() {
             <div className="caption-box-magenta px-3 py-1 text-xs">12-page original comic inside</div>
           </div>
 
-          <motion.div style={readerFullscreen ? undefined : { rotateX, scale, y, transformOrigin: "50% 0%" }} data-no-burst>
+          <motion.div
+            data-no-burst
+            initial={{ opacity: 0, y: 48, scale: 0.97 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, amount: 0.05 }}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          >
             <ReaderMockup />
           </motion.div>
 

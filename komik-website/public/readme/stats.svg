@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 230" width="1280" height="230" role="img" aria-label="8 formats, 6 parallel decoders, 6 LUT presets, 0 network calls, 0 accounts, 27 automated test suites">
+  <defs>
+    <pattern id="dotsW" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="1.6" fill="#fff" opacity="0.12"/></pattern>
+    <pattern id="dotsK" width="12" height="12" patternUnits="userSpaceOnUse"><circle cx="6" cy="6" r="2" fill="#000" opacity="0.16"/></pattern>
+    <pattern id="dotsM" width="13" height="13" patternUnits="userSpaceOnUse"><circle cx="6.5" cy="6.5" r="2" fill="#FF1F6D" opacity="0.35"/></pattern>
+    <pattern id="dotsC" width="13" height="13" patternUnits="userSpaceOnUse"><circle cx="6.5" cy="6.5" r="2" fill="#00C2FF" opacity="0.3"/></pattern>
+</defs>
+  <style>
+    .card { transform-box: fill-box; transform-origin: center; animation: drop .8s cubic-bezier(.34,1.56,.64,1) both; }
+    .bob { animation: bob 4s ease-in-out 1.2s infinite; }
+    @keyframes drop { from { transform: translateY(-60px) rotate(12deg) scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+    @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  </style>
+  <g transform="translate(110 115) rotate(-2)"><g class="card" style="animation-delay:0.10s"><g class="bob" style="animation-delay:0.0s">
+      <rect x="-88.0" y="-78" width="190" height="170" fill="#000"/>
+      <rect x="-95.0" y="-85" width="190" height="170" fill="#FFD700" stroke="#000" stroke-width="4"/>
+      <rect x="-95.0" y="-85" width="190" height="170" fill="url(#dotsK)"/>
+      <text x="-79.0" y="10" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="92" fill="#000">8</text>
+      <text x="-79.0" y="46" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="22" letter-spacing="1" fill="#000">FORMATS</text>
+      <text x="-79.0" y="70" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="22" letter-spacing="1" fill="#000">ZERO CODECS</text>
+    </g></g></g><g transform="translate(322 115) rotate(1.5)"><g class="card" style="animation-delay:0.22s"><g class="bob" style="animation-delay:0.4s">
+      <rect x="-88.0" y="-78" width="190" height="170" fill="#000"/>
+      <rect x="-95.0" y="-85" width="190" height="170" fill="#00C2FF" stroke="#000" stroke-width="4"/>
+      <rect x="-95.0" y="-85" width="190" height="170" fill="url(#dotsK)"/>
+      <text x="-79.0" y="10" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="92" fill="#000">6</text>
+      <text x="-79.0" y="46" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="22" letter-spacing="1" fill="#000">PARALLEL</text>
+      <text x="-79.0" y="70" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="22" letter-spacing="1" fill="#000">DECODERS</text>
+    </g></g></g><g transform="translate(534 115) rotate(-1)"><g class="card" style="animation-delay:0.34s"><g class="bob" style="animation-delay:0.8s">
+      <rect x="-88.0" y="-78" width="190" height="170" fill="#000"/>
+      <rect x="-95.0" y="-85" width="190" height="170" fill="#FF1F6D" stroke="#000" stroke-width="4"/>
+      <rect x="-95.0" y="-85" width="190" height="170" fill="url(#dotsK)"/>
+      <text x="-79.0" y="10" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="92" fill="#fff">6</text>
+      <text x="-79.0" y="46" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="22" letter-spacing="1" fill="#fff">LUT COLOR</text>
+      <text x="-79.0" y="70" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="22" letter-spacing="1" fill="#fff">PRESETS</text>
+    </g></g></g><g transform="translate(746 115) rotate(2)"><g class="card" style="animation-delay:0.46s"><g class="bob" style="animation-delay:1.2s">
+      <rect x="-88.0" y="-78" width="190" height="170" fill="#000"/>
+      <rect x="-95.0" y="-85" width="190" height="170" fill="#F5EFE3" stroke="#000" stroke-width="4"/>
+      <rect x="-95.0" y="-85" width="190" height="170" fill="url(#dotsK)"/>
+      <text x="-79.0" y="10" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="92" fill="#000">0</text>
+      <text x="-79.0" y="46" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="22" letter-spacing="1" fill="#000">NETWORK</text>
+      <text x="-79.0" y="70" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="22" letter-spacing="1" fill="#000">CALLS. EVER.</text>
+    </g></g></g><g transform="translate(958 115) rotate(-1.5)"><g class="card" style="animation-delay:0.58s"><g class="bob" style="animation-delay:1.6s">
+      <rect x="-88.0" y="-78" width="190" height="170" fill="#000"/>
+      <rect x="-95.0" y="-85" width="190" height="170" fill="#FFD700" stroke="#000" stroke-width="4"/>
+      <rect x="-95.0" y="-85" width="190" height="170" fill="url(#dotsK)"/>
+      <text x="-79.0" y="10" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="92" fill="#000">0</text>
+      <text x="-79.0" y="46" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="22" letter-spacing="1" fill="#000">ACCOUNTS</text>
+      <text x="-79.0" y="70" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="22" letter-spacing="1" fill="#000">REQUIRED</text>
+    </g></g></g><g transform="translate(1170 115) rotate(1)"><g class="card" style="animation-delay:0.70s"><g class="bob" style="animation-delay:2.0s">
+      <rect x="-88.0" y="-78" width="190" height="170" fill="#000"/>
+      <rect x="-95.0" y="-85" width="190" height="170" fill="#00C2FF" stroke="#000" stroke-width="4"/>
+      <rect x="-95.0" y="-85" width="190" height="170" fill="url(#dotsK)"/>
+      <text x="-79.0" y="10" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="92" fill="#000">27</text>
+      <text x="-79.0" y="46" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="22" letter-spacing="1" fill="#000">AUTOMATED</text>
+      <text x="-79.0" y="70" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="22" letter-spacing="1" fill="#000">TEST SUITES</text>
+    </g></g></g>
+</svg>

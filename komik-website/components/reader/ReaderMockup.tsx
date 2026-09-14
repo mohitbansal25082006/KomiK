@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowLeftRight,
@@ -76,6 +76,8 @@ export default function ReaderMockup() {
   const [toast, setToast] = useState<{ id: number; msg: string } | null>(null);
   const [windowState, setWindowState] = useState<WindowState>("open");
   const [hydrated, setHydrated] = useState(false);
+  // pages fade in only once the reader has measured itself, so there is no size jump on load
+  const [ready, setReady] = useState(false);
 
   const setZoom = useCallback((z: number) => setZoomState(clamp(Math.round(z * 100) / 100, 0.5, 3)), []);
   const setFit = useCallback((f: FitMode) => {
@@ -136,6 +138,19 @@ export default function ReaderMockup() {
 
   useEffect(() => {
     if (!hydrated) return;
+    let a = 0;
+    let b = 0;
+    a = requestAnimationFrame(() => {
+      b = requestAnimationFrame(() => setReady(true));
+    });
+    return () => {
+      cancelAnimationFrame(a);
+      cancelAnimationFrame(b);
+    };
+  }, [hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({ page, bookmarks, theme }));
     } catch {
@@ -147,7 +162,10 @@ export default function ReaderMockup() {
 
   const pad = fullscreen ? (compact ? 8 : 16) : compact ? 10 : 18;
   const availW = Math.max(120, viewport.w - pad * 2);
-  const availH = Math.max(120, viewport.h - pad * 2);
+  // in full screen the chrome floats over the canvas, so keep pages clear of it
+  const padTop = fullscreen ? (compact ? 92 : 94) : pad;
+  const padBottom = fullscreen ? 58 : pad;
+  const availH = Math.max(120, viewport.h - padTop - padBottom);
   const isSpread = spread && view === "paged";
   const widthSlots = isSpread ? 2 : 1;
   const baseScale =
@@ -166,7 +184,7 @@ export default function ReaderMockup() {
   const spreadKey = shown.join("-");
   const contentW = view === "paged" ? slots.length * pw + (slots.length - 1) * GAP + pad * 2 : pw + pad * 2;
   const hOverflow = contentW > viewport.w + 1;
-  const contentH = view === "paged" ? ph + pad * 2 : Infinity;
+  const contentH = view === "paged" ? ph + padTop + padBottom : Infinity;
   const vOverflow = contentH > viewport.h + 1;
   // only capture wheel/swipe when the canvas genuinely has something to scroll
   const canvasScrollable = view === "webtoon" || hOverflow || vOverflow;
@@ -179,9 +197,9 @@ export default function ReaderMockup() {
     (p: number, smooth: boolean) => {
       const el = canvasRef.current;
       if (!el) return;
-      el.scrollTo({ top: pad + (p - 1) * (ph + GAP), behavior: smooth && !reduceMotion ? "smooth" : "auto" });
+      el.scrollTo({ top: (p - 1) * (ph + GAP), behavior: smooth && !reduceMotion ? "smooth" : "auto" });
     },
-    [pad, ph, reduceMotion],
+    [ph, reduceMotion],
   );
 
   const goTo = useCallback(
@@ -234,7 +252,7 @@ export default function ReaderMockup() {
     if (view !== "webtoon") return;
     const el = canvasRef.current;
     if (!el) return;
-    const idx = Math.floor((el.scrollTop + el.clientHeight * 0.35 - pad) / (ph + GAP)) + 1;
+    const idx = Math.floor((el.scrollTop + el.clientHeight * 0.35 - padTop) / (ph + GAP)) + 1;
     const p = clamp(idx, 1, TOTAL_PAGES);
     if (p !== page) setPage(p);
   };
@@ -279,39 +297,92 @@ export default function ReaderMockup() {
   }, [showToast]);
 
   /* --------------------------- fullscreen --------------------------- */
+  // Full screen is an in-page overlay that grows out of (and shrinks back into) the
+  // reader's own rectangle with a clip-path animation, so the content never distorts.
+
+  const slotRef = useRef<HTMLDivElement>(null);
+  const [slotH, setSlotH] = useState<number | null>(null);
+  const [fsExiting, setFsExiting] = useState(false);
+  const fromRect = useRef<DOMRect | null>(null);
+  const fsAnimating = useRef(false);
+  const exitAnim = useRef<Animation | null>(null);
+  const fullscreenRef = useRef(false);
+  fullscreenRef.current = fullscreen;
+
+  const insetFor = (r: DOMRect) =>
+    `inset(${Math.max(0, r.top)}px ${Math.max(0, window.innerWidth - r.right)}px ${Math.max(0, window.innerHeight - r.bottom)}px ${Math.max(0, r.left)}px round 12px)`;
 
   const enterFullscreen = useCallback(() => {
+    const root = rootRef.current;
+    if (!root || fsAnimating.current || fullscreenRef.current) return;
+    const rect = root.getBoundingClientRect();
+    fromRect.current = rect;
+    setSlotH(rect.height);
+    setChromeVisible(true);
+    setFsExiting(false);
     setFullscreen(true);
-    setChromeVisible(true);
-    const el = rootRef.current;
-    if (el && document.fullscreenEnabled && !document.fullscreenElement) {
-      el.requestFullscreen?.().catch(() => undefined);
+  }, []);
+
+  const exitFullscreen = useCallback(
+    (after?: () => void) => {
+      const root = rootRef.current;
+      if (!fullscreenRef.current || !root) {
+        after?.();
+        return;
+      }
+      if (fsAnimating.current) return;
+      const finish = () => {
+        fsAnimating.current = false;
+        setFullscreen(false);
+        setFsExiting(false);
+        setSlotH(null);
+        after?.();
+      };
+      const target = slotRef.current?.getBoundingClientRect();
+      setChromeVisible(true);
+      setFsExiting(true);
+      if (!target || reduceMotion || typeof root.animate !== "function") return finish();
+      fsAnimating.current = true;
+      const anim = root.animate([{ clipPath: "inset(0px 0px 0px 0px round 0px)" }, { clipPath: insetFor(target) }], {
+        duration: 420,
+        easing: "cubic-bezier(0.65, 0, 0.35, 1)",
+        fill: "forwards",
+      });
+      exitAnim.current = anim;
+      anim.onfinish = finish;
+    },
+    [reduceMotion],
+  );
+
+  const toggleFullscreen = useCallback(() => (fullscreenRef.current ? exitFullscreen() : enterFullscreen()), [enterFullscreen, exitFullscreen]);
+
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!fullscreen) {
+      // the reader is back in the page: drop the finished exit clip
+      exitAnim.current?.cancel();
+      exitAnim.current = null;
+      return;
     }
-  }, []);
-
-  const exitFullscreen = useCallback(() => {
-    setFullscreen(false);
-    setChromeVisible(true);
-    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => undefined);
-  }, []);
-
-  const toggleFullscreen = useCallback(() => (fullscreen ? exitFullscreen() : enterFullscreen()), [fullscreen, enterFullscreen, exitFullscreen]);
-
-  useEffect(() => {
-    const onChange = () => {
-      if (!document.fullscreenElement) setFullscreen(false);
+    const r = fromRect.current;
+    fromRect.current = null;
+    if (!root || !r || reduceMotion || typeof root.animate !== "function") return;
+    fsAnimating.current = true;
+    const anim = root.animate([{ clipPath: insetFor(r) }, { clipPath: "inset(0px 0px 0px 0px round 0px)" }], {
+      duration: 520,
+      easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+    });
+    const done = () => {
+      fsAnimating.current = false;
     };
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
+    anim.onfinish = done;
+    anim.oncancel = done;
+  }, [fullscreen, reduceMotion]);
 
   useEffect(() => {
     document.dispatchEvent(new CustomEvent("komik:scroll-lock", { detail: fullscreen }));
-    const prevOverflow = document.body.style.overflow;
-    if (fullscreen) document.body.style.overflow = "hidden";
     if (fullscreen) rootRef.current?.focus({ preventScroll: true });
     return () => {
-      document.body.style.overflow = prevOverflow;
       if (fullscreen) document.dispatchEvent(new CustomEvent("komik:scroll-lock", { detail: false }));
     };
   }, [fullscreen]);
@@ -524,29 +595,11 @@ export default function ReaderMockup() {
   const pageAnim = reduceMotion
     ? { initial: { opacity: 0 }, animate: { opacity: 1 } }
     : {
-        initial: { opacity: 0.2, x: 70 * navDir * (dir === "rtl" ? -1 : 1), rotateY: -12 * navDir * (dir === "rtl" ? -1 : 1) },
+        initial: { opacity: 0.35, x: 44 * navDir * (dir === "rtl" ? -1 : 1), rotateY: -8 * navDir * (dir === "rtl" ? -1 : 1) },
         animate: { opacity: 1, x: 0, rotateY: 0 },
       };
 
   const themeVars = theme === "dark" ? "reader-theme-dark" : "reader-theme-light";
-
-  if (windowState !== "open") {
-    return (
-      <div ref={rootRef} className={`${themeVars} relative flex min-h-[260px] items-center justify-center rounded-xl border-[3px] border-black bg-[#101014] p-6 shadow-[10px_10px_0px_#000]`}>
-        <div className="bg-halftone pointer-events-none absolute inset-0 opacity-20" />
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative w-full max-w-sm rounded-xl border border-white/15 bg-[#1E1E24] p-5 text-center shadow-2xl">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-black/40">
-            <KomikLogo size={36} />
-          </div>
-          <p className="font-semibold text-white">{windowState === "minimized" ? "Komik is minimized" : "Komik closed"}</p>
-          <p className="mt-1 text-sm text-white/60">Your place (page {page}) is saved locally. No cloud required.</p>
-          <button type="button" onClick={() => setWindowState("open")} className="btn-comic-primary mt-4 inline-flex items-center gap-2 px-5 py-2 text-sm uppercase">
-            <BookOpen className="h-4 w-4" /> {windowState === "minimized" ? "Restore window" : "Reopen comic"}
-          </button>
-        </motion.div>
-      </div>
-    );
-  }
 
   const iconBtn = (active = false) =>
     `inline-flex h-8 min-w-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2 text-[12px] font-medium transition-colors ${
@@ -554,7 +607,55 @@ export default function ReaderMockup() {
     }`;
   const sep = <span className="mx-0.5 h-5 w-px shrink-0 bg-[var(--r-border)]" />;
 
+  const windowOpen = windowState === "open";
+  const closeWindow = (state: WindowState) =>
+    exitFullscreen(() => {
+      setPanel(null);
+      setWindowState(state);
+    });
+
   return (
+    <div ref={slotRef} className="relative" style={{ minHeight: slotH ?? undefined }}>
+      {fullscreen && (
+        <motion.div
+          aria-hidden
+          className="fixed inset-0 z-[299] bg-black/85"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: fsExiting ? 0 : 1 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        />
+      )}
+
+      <AnimatePresence>
+        {!windowOpen && (
+          <motion.div
+            key="window-card"
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1], delay: 0.12 }}
+            className="absolute inset-0 z-10 flex items-center justify-center p-4"
+          >
+            <div className="w-full max-w-sm rounded-xl border-[3px] border-black bg-[#1E1E24] p-5 text-center shadow-[8px_8px_0_#000]">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-black/40">
+                <KomikLogo size={36} />
+              </div>
+              <p className="font-semibold text-white">{windowState === "minimized" ? "Komik is minimized" : "Komik closed"}</p>
+              <p className="mt-1 text-sm text-white/60">Your place (page {page}) is saved locally. No cloud required.</p>
+              <button type="button" onClick={() => setWindowState("open")} className="btn-comic-primary mt-4 inline-flex items-center gap-2 px-5 py-2 text-sm uppercase">
+                <BookOpen className="h-4 w-4" /> {windowState === "minimized" ? "Restore window" : "Reopen comic"}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+    <motion.div
+      initial={false}
+      animate={windowOpen ? { opacity: 1, scale: 1, y: 0, visibility: "visible" } : { opacity: 0, scale: windowState === "minimized" ? 0.6 : 0.94, y: windowState === "minimized" ? 160 : 24, transitionEnd: { visibility: "hidden" } }}
+      transition={{ duration: windowOpen ? 0.45 : 0.32, ease: [0.22, 1, 0.36, 1] }}
+      style={{ pointerEvents: windowOpen ? "auto" : "none", transformOrigin: "50% 100%" }}
+    >
     <div
       ref={rootRef}
       tabIndex={0}
@@ -564,8 +665,15 @@ export default function ReaderMockup() {
         fullscreen ? "fixed inset-0 z-[300] h-[100dvh] w-screen bg-[var(--r-window)]" : "relative rounded-xl border-[3px] border-black bg-[var(--r-window)] shadow-[10px_10px_0px_#000]"
       }`}
     >
-      {/* ---------------- Title bar ---------------- */}
-      <div className={`flex h-9 shrink-0 select-none items-center justify-between border-b border-[var(--r-border)] bg-[var(--r-titlebar)] pl-3 transition-all duration-300 ${chromeShown ? "" : fullscreen ? "-mt-9 opacity-0" : ""}`}>
+      {/* ---------------- Top chrome (slides away in full screen) ---------------- */}
+      <div
+        className={
+          fullscreen
+            ? `absolute inset-x-0 top-0 z-[35] transition-transform duration-300 ease-out will-change-transform ${chromeShown ? "translate-y-0" : "pointer-events-none -translate-y-full"}`
+            : "relative z-30 shrink-0"
+        }
+      >
+      <div className="flex h-9 shrink-0 select-none items-center justify-between border-b border-[var(--r-border)] bg-[var(--r-titlebar)] pl-3">
         <div className="flex min-w-0 items-center gap-2">
           <KomikLogo size={16} />
           <span className="truncate text-[12px] text-[var(--r-text)]/90">
@@ -573,24 +681,20 @@ export default function ReaderMockup() {
           </span>
         </div>
         <div className="flex h-full shrink-0 items-center">
-          <button type="button" aria-label="Minimize" title="Minimize" onClick={() => (exitFullscreen(), setWindowState("minimized"))} className="flex h-9 w-11 items-center justify-center text-[var(--r-text)]/70 hover:bg-[var(--r-hover)]">
+          <button type="button" aria-label="Minimize" title="Minimize" onClick={() => closeWindow("minimized")} className="flex h-9 w-11 items-center justify-center text-[var(--r-text)]/70 hover:bg-[var(--r-hover)]">
             <span className="h-px w-2.5 bg-current" />
           </button>
           <button type="button" aria-label={fullscreen ? "Restore" : "Maximize"} title={fullscreen ? "Restore (Esc)" : "Maximize (F11)"} onClick={toggleFullscreen} className="flex h-9 w-11 items-center justify-center text-[var(--r-text)]/70 hover:bg-[var(--r-hover)]">
             {fullscreen ? <Minimize2 className="h-3 w-3" /> : <span className="h-2.5 w-2.5 border border-current" />}
           </button>
-          <button type="button" aria-label="Close" title="Close" onClick={() => (exitFullscreen(), setWindowState("closed"))} className="flex h-9 w-11 items-center justify-center text-[var(--r-text)]/70 hover:bg-[#E81123] hover:text-white">
+          <button type="button" aria-label="Close" title="Close" onClick={() => closeWindow("closed")} className="flex h-9 w-11 items-center justify-center text-[var(--r-text)]/70 hover:bg-[#E81123] hover:text-white">
             <span className="text-[12px]">✕</span>
           </button>
         </div>
       </div>
 
       {/* ---------------- Toolbar ---------------- */}
-      <div
-        className={`relative z-30 shrink-0 border-b border-[var(--r-border)] bg-[var(--r-chrome)] backdrop-blur-xl transition-all duration-300 ${
-          chromeShown ? "" : "pointer-events-none -mt-12 opacity-0"
-        }`}
-      >
+      <div className="relative border-b border-[var(--r-border)] bg-[var(--r-chrome)] backdrop-blur-xl">
         {compact ? (
           <div className="flex h-12 items-center gap-1 px-2">
             <div className="flex min-w-0 flex-1 items-center gap-2 pl-1">
@@ -686,9 +790,11 @@ export default function ReaderMockup() {
         )}
       </div>
 
+      </div>
+
       {/* ---------------- Canvas ---------------- */}
       <div
-        className={`relative min-h-0 ${fullscreen ? "flex-1" : compact ? "" : "h-[clamp(420px,66vh,680px)]"}`}
+        className={`min-h-0 ${fullscreen ? "absolute inset-0" : compact ? "relative" : "relative h-[clamp(420px,66vh,680px)]"}`}
         style={{ background: canvasBg, transition: "background 0.4s ease", height: compact && !fullscreen ? compactCanvasH : undefined }}
       >
         <div className="bg-halftone pointer-events-none absolute inset-0 opacity-[0.07]" />
@@ -705,17 +811,17 @@ export default function ReaderMockup() {
           onDoubleClick={onDoubleClick}
           onWheel={onWheel}
           className={`reader-scroll absolute inset-0 overflow-auto ${fit === "actual" || zoom > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}
-          style={{ touchAction: hOverflow ? "pan-x pan-y" : "pan-y", perspective: 1600 }}
+          style={{ touchAction: hOverflow ? "pan-x pan-y" : "pan-y", perspective: 1600, opacity: ready ? 1 : 0, transition: "opacity 0.5s ease" }}
         >
           {view === "paged" ? (
-            <div className="flex min-h-full min-w-full" style={{ padding: pad }}>
+            <div className="flex min-h-full min-w-full" style={{ paddingLeft: pad, paddingRight: pad, paddingTop: padTop, paddingBottom: padBottom }}>
                 <motion.div
                   key={`${spreadKey}-${dir}-${isSpread}`}
                   initial={pageAnim.initial}
                   animate={pageAnim.animate}
-                  transition={{ duration: 0.28, ease: [0.2, 0, 0, 1] }}
+                  transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
                   className="m-auto flex"
-                  style={{ gap: GAP, filter, transition: "filter 0.35s ease" }}
+                  style={{ gap: GAP, filter, transition: "filter 0.35s ease", willChange: "transform, opacity" }}
                 >
                   {slots.map((n, i) =>
                     n === null ? (
@@ -730,7 +836,7 @@ export default function ReaderMockup() {
                 </motion.div>
             </div>
           ) : (
-            <div className="flex min-w-full flex-col items-center" style={{ padding: pad, gap: GAP, filter, transition: "filter 0.35s ease" }}>
+            <div className="flex min-w-full flex-col items-center" style={{ paddingLeft: pad, paddingRight: pad, paddingTop: padTop, paddingBottom: padBottom, gap: GAP, filter, transition: "filter 0.35s ease" }}>
               {Array.from({ length: TOTAL_PAGES }, (_, i) => i + 1).map((n) => (
                 <div key={n} className="relative shrink-0 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.45)]" style={{ width: pw, height: ph }}>
                   <ComicPage n={n} />
@@ -774,7 +880,7 @@ export default function ReaderMockup() {
         {/* OCR overlay */}
         <AnimatePresence>
           {ocrOpen && (
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute inset-x-0 top-3 z-30 flex justify-center">
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className={`absolute inset-x-0 z-30 flex justify-center ${fullscreen ? "top-[96px]" : "top-3"}`}>
               <OcrOverlay page={page} onClose={() => setOcrOpen(false)} />
             </motion.div>
           )}
@@ -783,7 +889,7 @@ export default function ReaderMockup() {
         {/* Flyouts */}
         <AnimatePresence>
           {panel && compact && (
-            <motion.div key="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-30 bg-black/55" onClick={() => setPanel(null)} />
+            <motion.div key="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-[36] bg-black/55" onClick={() => setPanel(null)} />
           )}
         </AnimatePresence>
         <AnimatePresence>
@@ -798,7 +904,7 @@ export default function ReaderMockup() {
                 className={
                   compact
                     ? "absolute inset-x-0 bottom-0 z-40 max-h-[82%] overflow-auto rounded-t-2xl border-t border-[var(--r-border)] bg-[var(--r-flyout)] p-4 pb-5 shadow-2xl backdrop-blur-xl"
-                    : "absolute right-3 top-3 z-40 max-h-[calc(100%-24px)] w-[320px] overflow-auto rounded-xl border border-[var(--r-border)] bg-[var(--r-flyout)] p-4 shadow-2xl backdrop-blur-xl"
+                    : `absolute right-3 z-40 w-[320px] overflow-auto rounded-xl border border-[var(--r-border)] bg-[var(--r-flyout)] p-4 shadow-2xl backdrop-blur-xl ${fullscreen ? "top-[96px] max-h-[calc(100%-170px)]" : "top-3 max-h-[calc(100%-24px)]"}`
                 }
               >
                 {compact && <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--r-border)]" />}
@@ -882,7 +988,7 @@ export default function ReaderMockup() {
               initial={{ opacity: 0, y: 12, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12 }}
-              className="pointer-events-none absolute inset-x-0 bottom-4 z-50 flex justify-center px-4"
+              className={`pointer-events-none absolute inset-x-0 z-50 flex justify-center px-4 ${fullscreen ? "bottom-16" : "bottom-4"}`}
             >
               <div className="flex items-center gap-2 rounded-full border border-[var(--r-border)] bg-[var(--r-flyout)] px-3.5 py-1.5 text-[12px] font-medium shadow-2xl backdrop-blur-xl">
                 <span className="h-2 w-2 rounded-full bg-amber" />
@@ -894,7 +1000,13 @@ export default function ReaderMockup() {
       </div>
 
       {/* ---------------- Scrubber ---------------- */}
-      <div className={`relative z-30 shrink-0 border-t border-[var(--r-border)] bg-[var(--r-chrome)] backdrop-blur-xl transition-all duration-300 ${chromeShown ? "" : "pointer-events-none -mb-14 opacity-0"}`}>
+      <div
+        className={`border-t border-[var(--r-border)] bg-[var(--r-chrome)] backdrop-blur-xl ${
+          fullscreen
+            ? `absolute inset-x-0 bottom-0 z-[35] transition-transform duration-300 ease-out will-change-transform ${chromeShown ? "translate-y-0" : "pointer-events-none translate-y-full"}`
+            : "relative z-30 shrink-0"
+        }`}
+      >
         <Scrubber
           page={page}
           dir={dir}
@@ -908,6 +1020,8 @@ export default function ReaderMockup() {
           onScrub={(p) => goTo(p, { smooth: false })}
         />
       </div>
+    </div>
+    </motion.div>
     </div>
   );
 }

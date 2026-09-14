@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 150" width="1280" height="150" role="img" aria-label="UNDER THE HOOD">
+  <defs>
+    <pattern id="dotsW" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="1.6" fill="#fff" opacity="0.12"/></pattern>
+    <pattern id="dotsK" width="12" height="12" patternUnits="userSpaceOnUse"><circle cx="6" cy="6" r="2" fill="#000" opacity="0.16"/></pattern>
+    <pattern id="dotsM" width="13" height="13" patternUnits="userSpaceOnUse"><circle cx="6.5" cy="6.5" r="2" fill="#FF1F6D" opacity="0.35"/></pattern>
+    <pattern id="dotsC" width="13" height="13" patternUnits="userSpaceOnUse"><circle cx="6.5" cy="6.5" r="2" fill="#00C2FF" opacity="0.3"/></pattern>
+
+    <linearGradient id="shine" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <clipPath id="c"><rect x="4" y="4" width="1272" height="142" rx="10"/></clipPath>
+  </defs>
+  <style>
+    .cap { transform-box: fill-box; transform-origin: left center; animation: cap .7s cubic-bezier(.34,1.56,.64,1) both; }
+    .title { animation: slide .8s cubic-bezier(.16,1,.3,1) .15s both; }
+    .shine { animation: shine 3.8s ease-in-out 1s infinite; }
+    .burst { transform-box: fill-box; transform-origin: center; animation: pop .8s cubic-bezier(.34,1.56,.64,1) .5s both, spin 14s linear 1.3s infinite; }
+    .lines { transform-origin: 1180px 75px; animation: spin 40s linear infinite; }
+    @keyframes cap { from { transform: scale(0) rotate(-10deg); } to { transform: scale(1) rotate(0); } }
+    @keyframes slide { from { transform: translateX(-60px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes shine { 0% { transform: translateX(-500px); } 60%,100% { transform: translateX(1500px); } }
+    @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  </style>
+  <rect x="10" y="10" width="1272" height="142" rx="10" fill="#000"/>
+  <g clip-path="url(#c)">
+    <rect width="1280" height="150" fill="#101016"/>
+    <g class="lines"><path d="M1180,75 L1880,62 L1880,88 Z M1180,75 L1873,172 L1869,197 Z M1180,75 L1850,279 L1842,303 Z M1180,75 L1809,382 L1798,404 Z M1180,75 L1754,476 L1739,497 Z M1180,75 L1684,561 L1666,579 Z M1180,75 L1602,634 L1581,649 Z M1180,75 L1509,693 L1487,704 Z M1180,75 L1408,737 L1384,745 Z M1180,75 L1302,764 L1277,768 Z M1180,75 L1193,775 L1167,775 Z M1180,75 L1083,768 L1058,764 Z M1180,75 L976,745 L952,737 Z M1180,75 L873,704 L851,693 Z M1180,75 L779,649 L758,634 Z M1180,75 L694,579 L676,561 Z M1180,75 L621,497 L606,476 Z M1180,75 L562,404 L551,382 Z M1180,75 L518,303 L510,279 Z M1180,75 L491,197 L487,172 Z M1180,75 L480,88 L480,62 Z M1180,75 L487,-22 L491,-47 Z M1180,75 L510,-129 L518,-153 Z M1180,75 L551,-232 L562,-254 Z M1180,75 L606,-326 L621,-347 Z M1180,75 L676,-411 L694,-429 Z M1180,75 L758,-484 L779,-499 Z M1180,75 L851,-543 L873,-554 Z M1180,75 L952,-587 L976,-595 Z M1180,75 L1058,-614 L1083,-618 Z M1180,75 L1167,-625 L1193,-625 Z M1180,75 L1277,-618 L1302,-614 Z M1180,75 L1384,-595 L1408,-587 Z M1180,75 L1487,-554 L1509,-543 Z M1180,75 L1581,-499 L1602,-484 Z M1180,75 L1666,-429 L1684,-411 Z M1180,75 L1739,-347 L1754,-326 Z M1180,75 L1798,-254 L1809,-232 Z M1180,75 L1842,-153 L1850,-129 Z M1180,75 L1869,-47 L1873,-22 Z" fill="#FFD700" opacity="0.12"/></g>
+    <rect width="1280" height="150" fill="url(#dotsW)"/>
+    <rect class="shine" x="0" y="0" width="260" height="150" fill="url(#shine)" transform="skewX(-20)"/>
+  </g>
+  <rect x="4" y="4" width="1272" height="142" rx="10" fill="none" stroke="#000" stroke-width="5"/>
+  <g class="cap">
+    <rect x="34" y="22" width="170" height="30" fill="#FFD700" stroke="#000" stroke-width="3" transform="rotate(-1.5 34 37)"/>
+    <text x="119.0" y="44" text-anchor="middle" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="19" letter-spacing="2" fill="#000" transform="rotate(-1.5 34 37)">APPENDIX B</text>
+  </g>
+  <g class="title"><g class="">
+      <text x="34" y="122" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="60" text-anchor="start" letter-spacing="2" stroke="#0A0A0F" stroke-width="6" stroke-linejoin="round" paint-order="stroke" fill="#FFD700" transform="translate(3.6 3.6)">UNDER THE HOOD</text>
+      <text x="34" y="122" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="60" text-anchor="start" letter-spacing="2" stroke="#0A0A0F" stroke-width="6" stroke-linejoin="round" paint-order="stroke" fill="#FFFFFF">UNDER THE HOOD</text>
+    </g></g>
+  <g transform="translate(1180 75)"><g class="burst">
+    <polygon points="0.0,-40.9 8.2,-30.8 21.4,-37.0 23.3,-23.3 35.9,-20.7 28.7,-7.7 43.1,0.0 30.6,8.2 36.0,20.8 22.5,22.5 20.9,36.3 8.3,31.1 0.0,40.9 -7.7,28.6 -21.8,37.8 -21.4,21.4 -35.9,20.7 -31.2,8.4 -42.7,0.0 -28.2,-7.6 -36.7,-21.2 -22.4,-22.4 -20.5,-35.6 -8.2,-30.5" fill="#000" transform="translate(4 4)"/>
+    <polygon points="0.0,-40.9 8.2,-30.8 21.4,-37.0 23.3,-23.3 35.9,-20.7 28.7,-7.7 43.1,0.0 30.6,8.2 36.0,20.8 22.5,22.5 20.9,36.3 8.3,31.1 0.0,40.9 -7.7,28.6 -21.8,37.8 -21.4,21.4 -35.9,20.7 -31.2,8.4 -42.7,0.0 -28.2,-7.6 -36.7,-21.2 -22.4,-22.4 -20.5,-35.6 -8.2,-30.5" fill="#FFD700" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+    <text x="0" y="9" text-anchor="middle" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="24" fill="#000">★</text>
+  </g></g>
+</svg>

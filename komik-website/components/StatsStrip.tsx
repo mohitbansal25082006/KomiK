@@ -9,7 +9,7 @@ const STATS = [
   { value: 6, suffix: "", label: "Hardware LUT color presets", tone: "bg-magenta text-white", rot: -1 },
   { value: 0, suffix: "", label: "Network calls. Ever.", tone: "bg-paper", rot: 2 },
   { value: 0, suffix: "", label: "Accounts to create", tone: "bg-amber", rot: -1.5 },
-  { value: 27, suffix: "", label: "Automated tests passing", tone: "bg-cyan", rot: 1 },
+  { value: 27, suffix: "", label: "Automated test suites", tone: "bg-cyan", rot: 1 },
 ];
 
 function Counter({ to }: { to: number }) {

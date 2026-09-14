@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 380" width="1280" height="380" role="img" aria-label="The End... or is it?">
+  <defs>
+    <pattern id="dotsW" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="1.6" fill="#fff" opacity="0.12"/></pattern>
+    <pattern id="dotsK" width="12" height="12" patternUnits="userSpaceOnUse"><circle cx="6" cy="6" r="2" fill="#000" opacity="0.16"/></pattern>
+    <pattern id="dotsM" width="13" height="13" patternUnits="userSpaceOnUse"><circle cx="6.5" cy="6.5" r="2" fill="#FF1F6D" opacity="0.35"/></pattern>
+    <pattern id="dotsC" width="13" height="13" patternUnits="userSpaceOnUse"><circle cx="6.5" cy="6.5" r="2" fill="#00C2FF" opacity="0.3"/></pattern>
+<clipPath id="c"><rect width="1280" height="380" rx="18"/></clipPath></defs>
+  <style>
+    .spin { transform-origin: 640px 190px; animation: spin 40s linear infinite; }
+    .burst { transform-box: fill-box; transform-origin: center; animation: pop .9s cubic-bezier(.34,1.56,.64,1) both, pulse 2.4s ease-in-out 1s infinite; }
+    .word { transform-box: fill-box; transform-origin: center; animation: pop .9s cubic-bezier(.34,1.56,.64,1) .25s both; }
+    .sub { animation: fade 1s ease .9s both; }
+    .float { animation: float 3s ease-in-out infinite; }
+    .wave { transform-origin: 1060px 250px; animation: wave 1.6s ease-in-out infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pop { from { transform: scale(0) rotate(-20deg); } to { transform: scale(1) rotate(-4deg); } }
+    @keyframes pulse { 0%,100% { transform: scale(1) rotate(-4deg); } 50% { transform: scale(1.04) rotate(-2deg); } }
+    @keyframes fade { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+    @keyframes wave { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  </style>
+  <g clip-path="url(#c)">
+    <rect width="1280" height="380" fill="#FF1F6D"/>
+    <g class="spin"><path d="M640,190 L1640,172 L1640,208 Z M640,190 L1636,277 L1632,312 Z M640,190 L1622,380 L1614,415 Z M640,190 L1596,482 L1585,516 Z M640,190 L1561,580 L1546,613 Z M640,190 L1515,674 L1497,706 Z M640,190 L1459,763 L1438,792 Z M640,190 L1395,846 L1371,872 Z M640,190 L1322,921 L1296,945 Z M640,190 L1242,988 L1213,1009 Z M640,190 L1156,1047 L1124,1065 Z M640,190 L1063,1096 L1030,1111 Z M640,190 L966,1135 L932,1146 Z M640,190 L865,1164 L830,1172 Z M640,190 L762,1182 L727,1186 Z M640,190 L658,1190 L622,1190 Z M640,190 L553,1186 L518,1182 Z M640,190 L450,1172 L415,1164 Z M640,190 L348,1146 L314,1135 Z M640,190 L250,1111 L217,1096 Z M640,190 L156,1065 L124,1047 Z M640,190 L67,1009 L38,988 Z M640,190 L-16,945 L-42,921 Z M640,190 L-91,872 L-115,846 Z M640,190 L-158,792 L-179,763 Z M640,190 L-217,706 L-235,674 Z M640,190 L-266,613 L-281,580 Z M640,190 L-305,516 L-316,482 Z M640,190 L-334,415 L-342,380 Z M640,190 L-352,312 L-356,277 Z M640,190 L-360,208 L-360,172 Z M640,190 L-356,103 L-352,68 Z M640,190 L-342,-0 L-334,-35 Z M640,190 L-316,-102 L-305,-136 Z M640,190 L-281,-200 L-266,-233 Z M640,190 L-235,-294 L-217,-326 Z M640,190 L-179,-383 L-158,-412 Z M640,190 L-115,-466 L-91,-492 Z M640,190 L-42,-541 L-16,-565 Z M640,190 L38,-608 L67,-629 Z M640,190 L124,-667 L156,-685 Z M640,190 L217,-716 L250,-731 Z M640,190 L314,-755 L348,-766 Z M640,190 L415,-784 L450,-792 Z M640,190 L518,-802 L553,-806 Z M640,190 L622,-810 L658,-810 Z M640,190 L727,-806 L762,-802 Z M640,190 L830,-792 L865,-784 Z M640,190 L932,-766 L966,-755 Z M640,190 L1030,-731 L1063,-716 Z M640,190 L1124,-685 L1156,-667 Z M640,190 L1213,-629 L1242,-608 Z M640,190 L1296,-565 L1322,-541 Z M640,190 L1371,-492 L1395,-466 Z M640,190 L1438,-412 L1459,-383 Z M640,190 L1497,-326 L1515,-294 Z M640,190 L1546,-233 L1561,-200 Z M640,190 L1585,-136 L1596,-102 Z M640,190 L1614,-35 L1622,-0 Z M640,190 L1632,68 L1636,103 Z" fill="#FF6FA3" opacity="0.55"/></g>
+    <rect width="1280" height="380" fill="url(#dotsK)"/>
+    <g transform="translate(640 175)"><g class="burst">
+      <polygon points="0.0,-162.6 18.8,-119.0 52.2,-160.7 53.9,-105.8 96.0,-132.1 85.5,-85.5 128.6,-93.4 106.5,-54.3 156.9,-51.0 123.2,-19.5 157.7,0.0 114.3,18.1 149.9,48.7 111.4,56.8 134.2,97.5 78.4,78.4 99.8,137.3 58.1,113.9 51.1,157.2 19.0,120.0 0.0,158.5 -17.3,109.1 -50.6,155.6 -50.5,99.1 -93.5,128.6 -81.0,81.0 -126.9,92.2 -105.7,53.9 -154.4,50.2 -124.1,19.7 -163.5,0.0 -120.4,-19.1 -155.2,-50.4 -109.0,-55.5 -131.6,-95.6 -81.5,-81.5 -99.9,-137.5 -58.3,-114.4 -51.9,-159.6 -19.3,-121.6" fill="#000" transform="translate(8 8)"/>
+      <polygon points="0.0,-162.6 18.8,-119.0 52.2,-160.7 53.9,-105.8 96.0,-132.1 85.5,-85.5 128.6,-93.4 106.5,-54.3 156.9,-51.0 123.2,-19.5 157.7,0.0 114.3,18.1 149.9,48.7 111.4,56.8 134.2,97.5 78.4,78.4 99.8,137.3 58.1,113.9 51.1,157.2 19.0,120.0 0.0,158.5 -17.3,109.1 -50.6,155.6 -50.5,99.1 -93.5,128.6 -81.0,81.0 -126.9,92.2 -105.7,53.9 -154.4,50.2 -124.1,19.7 -163.5,0.0 -120.4,-19.1 -155.2,-50.4 -109.0,-55.5 -131.6,-95.6 -81.5,-81.5 -99.9,-137.5 -58.3,-114.4 -51.9,-159.6 -19.3,-121.6" fill="#FFD700" stroke="#000" stroke-width="5" stroke-linejoin="round"/>
+    </g></g>
+    <g class="word"><g class="">
+      <text x="640" y="215" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="120" text-anchor="middle" letter-spacing="4" stroke="#0A0A0F" stroke-width="9" stroke-linejoin="round" paint-order="stroke" fill="#FF1F6D" transform="translate(7.2 7.2)">THE END</text>
+      <text x="640" y="215" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="120" text-anchor="middle" letter-spacing="4" stroke="#0A0A0F" stroke-width="9" stroke-linejoin="round" paint-order="stroke" fill="#FFFFFF">THE END</text>
+    </g></g>
+    <g class="sub">
+      <rect x="370" y="300" width="540" height="46" fill="#000" transform="translate(5 5)"/>
+      <rect x="370" y="300" width="540" height="46" fill="#00C2FF" stroke="#000" stroke-width="4"/>
+      <text x="640" y="334" text-anchor="middle" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="28" letter-spacing="2" fill="#000">…OR IS IT? NEXT ISSUE ON YOUR PC</text>
+    </g>
+    <g class="float"><g transform="translate(1080 240) scale(1.6)"><g class="">
+      <line x1="0" y1="-30" x2="8" y2="-48" stroke="#0A0A0F" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="8" cy="-50" r="6" fill="#FF1F6D" stroke="#0A0A0F" stroke-width="3"/>
+      <ellipse cx="-30" cy="-6" rx="12" ry="5" fill="#3A3F52" stroke="#0A0A0F" stroke-width="3"/>
+      <ellipse cx="30" cy="-6" rx="12" ry="5" fill="#3A3F52" stroke="#0A0A0F" stroke-width="3"/>
+      <circle cx="0" cy="0" r="30" fill="#E8ECF5" stroke="#0A0A0F" stroke-width="5"/>
+      <path d="M-26,12 Q0,34 26,12 Q10,30 -26,12 Z" fill="#AEB6C8"/>
+      <circle cx="0" cy="-2" r="16" fill="#0A0A0F"/>
+      <circle class="eye" cx="0" cy="-2" r="9" fill="#00C2FF"/>
+      <circle cx="3" cy="-5" r="3" fill="#fff"/>
+    </g></g></g>
+    <g class="float" style="animation-delay:.6s">
+      <rect x="95" y="70" width="290" height="58" rx="29" fill="#fff" stroke="#000" stroke-width="3"/>
+      <path d="M250,126 L276,160 L270,124 Z" fill="#fff" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="246" y="118" width="30" height="10" fill="#fff"/>
+      <text x="235" y="107" text-anchor="middle" font-family="'Comic Sans MS', 'Comic Neue', 'Chalkboard SE', 'Trebuchet MS', sans-serif" font-weight="700" font-size="20" fill="#000">THANKS FOR READING!</text>
+    </g>
+  </g>
+  <rect x="2" y="2" width="1276" height="376" rx="17" fill="none" stroke="#000" stroke-width="4"/>
+</svg>

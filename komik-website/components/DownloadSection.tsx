@@ -15,7 +15,7 @@ export default function DownloadSection() {
   return (
     <section id="download" className="relative scroll-mt-16 overflow-hidden border-b-[3px] border-black bg-magenta py-20 sm:py-28">
       {/* sunburst */}
-      <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[220vmax] w-[220vmax] -translate-x-1/2 -translate-y-1/2">
+      <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[150vmax] w-[150vmax] -translate-x-1/2 -translate-y-1/2">
         <div className="animate-spin-slow h-full w-full [background:repeating-conic-gradient(from_0deg,#FF4D8B_0deg_6deg,#FF1F6D_6deg_12deg)]" />
       </div>
       <div className="bg-halftone-paper pointer-events-none absolute inset-0 opacity-40" />

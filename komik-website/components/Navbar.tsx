@@ -45,6 +45,13 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     document.dispatchEvent(new CustomEvent("komik:scroll-lock", { detail: open }));
   }, [open]);

@@ -229,10 +229,11 @@ Version 1.1.0 represents a major evolutionary leap for **Komik**, delivering dee
 - `Assets\Square150x150Logo.scale-200.png`, `Square44x44Logo.png`, `Square44x44Logo.scale-200.png`, `StoreLogo.png`: Windows App SDK shell package assets.
 
 #### Database Migrations & SQLite Schema Updates
-- `ManualSeries` table (`id INTEGER PRIMARY KEY`, `title TEXT NOT NULL`, `description TEXT`, `created_at TEXT`): Persistent storage for manual comic series.
-- `ManualSeriesComics` table (`series_id INTEGER`, `comic_id INTEGER`, `sort_order INTEGER`, `PRIMARY KEY (series_id, comic_id)`): Many-to-many relationship linking library comics to manual series.
-- `ReadingSessions` table (`id INTEGER PRIMARY KEY`, `comic_id INTEGER`, `start_time TEXT`, `duration_seconds INTEGER`, `pages_read INTEGER`): Real-time tracking of reading sessions and daily streaks.
-- `IgnoredDuplicatePairs` table (`comic_id_a INTEGER`, `comic_id_b INTEGER`): Safe storage for dismissed duplicate sets.
+- `ManualSeries` table (`id INTEGER PRIMARY KEY AUTOINCREMENT`, `name TEXT UNIQUE NOT NULL COLLATE NOCASE`, `date_created TEXT NOT NULL`): Persistent storage for manual comic series.
+- `ManualSeriesComics` table (`series_id INTEGER`, `comic_id INTEGER`, `sort_order INTEGER NOT NULL DEFAULT 0`, `PRIMARY KEY (series_id, comic_id)`, cascading foreign keys): Many-to-many relationship linking library comics to manual series.
+- `ReadingSessions` table (`id`, `comic_id`, `start_time`, `end_time`, `duration_seconds`, `pages_read`, `session_date`): Real-time tracking of reading sessions and daily streaks.
+- `IgnoredDuplicates` table (`id`, `comic_id_1`, `comic_id_2`, `date_ignored`, `UNIQUE(comic_id_1, comic_id_2)`): Safe storage for dismissed ("Keep All") duplicate pairs.
+- Full schema (13 tables including `Collections` / `ComicCollections`, WAL journal, foreign keys, 6 indexes) is documented in `README.md → Under the Hood`, taken directly from `Services/LibraryRepository.cs`. The durable database location is `%USERPROFILE%\.komik\komik_library.db`, with automatic migration from `%LocalAppData%\Komik`.
 
 #### Companion Web Platform (`komik-website/`)
 - Built with **Next.js 15**, **React 19**, **Tailwind CSS**, and **Framer Motion**.
@@ -318,3 +319,101 @@ Version 1.1.0 represents a major evolutionary leap for **Komik**, delivering dee
    - Built with `npm run build` in `komik-website/`:
    - 4/4 static pages generated with 0 errors and full TypeScript type validation.
 
+
+---
+
+## 4. Version 1.1.0: Website "Living Comic Book" Redesign & README Overhaul
+
+The companion website was rebuilt from the ground up as an interactive comic book, with a fully working replica of the Komik reader holding a complete original comic. The repository README was redesigned in the same visual language, with animated artwork and real app screenshots. No application (C#/WinUI) source files were changed in this pass.
+
+---
+
+### 1. File Manifest (Website Redesign)
+
+#### New: Demo Comic Engine (`komik-website/components/comic/`)
+- `kit.tsx`: 600×900 native-SVG page frame, panels, speech/shout/robot/thought balloons, captions, SFX lettering, bursts, speed and motion lines, rain, halftone patterns. Per-instance `useId` scoping lets pages render several times on one screen.
+- `art.tsx`: pose-based character rig (Vex, Agent Stratus, Orrin, citizens), portrait close-ups, Byte the drone, enemy drones, skylines, neon signs, the Nimbus blimp, bookshelves, a retro PC and sync rings.
+- `pages.tsx`: **Cyberpunk Chronicles #01, "The Last Local Archive"**, an original 12-page story (cover, 10 story pages, back cover). All lettering lives in `SCRIPT`, which also powers the reader's dialogue search. `ComicPage` is memoized.
+
+#### New: Interactive Reader Replica (`komik-website/components/reader/`)
+- `ReaderMockup.tsx`: the working WinUI 3 reader replica, covering:
+  - page turns (keys, click zones, swipe), cover-isolated two-page spreads, Manga RTL, webtoon mode, fit width/height/1:1, zoom, pan and pinch
+  - resume toast, bookmarks with notes, a scrubber with thumbnail previews, dark/light chrome, minimize/close/restore
+  - a clip-path animated full-screen overlay with auto-hiding sliding chrome, and compact mobile layout with bottom sheets
+- `ReaderPanels.tsx`: Color Correction (6 presets + brightness/contrast/warmth), Bookmarks, offline OCR dialogue search + selectable text overlay, mobile view menu.
+- `readerModel.ts`: spread pairing, CSS-filter LUT stand-in, script search helpers.
+
+#### New: Motion & Effects (`komik-website/components/fx/`, `komik-website/lib/`)
+- `SmoothScroll.tsx`:
+  - Lenis desktop wheel smoothing synced to GSAP ScrollTrigger (native scrolling on touch)
+  - a site-wide eased, distance-timed in-page link glide with exact landing correction and menu-safe timing
+  - offscreen CSS animation pausing
+- `SectionHeading.tsx`: caption box + SplitText character-pop headings.
+- `ClickBurst.tsx`: POW!/ZAP! bursts on click.
+- `ComicBurst.tsx`: reusable starburst badge.
+- `MotionProvider.tsx`: `MotionConfig reducedMotion="user"`.
+- `lib/gsap.ts`: GSAP + ScrollTrigger + SplitText + `useGSAP` registration.
+
+#### New Sections
+- `StatsStrip.tsx`: "By the numbers" count-up panels (8 formats, 6 decoders, 6 LUT presets, 0 network calls, 0 accounts, 27 test suites).
+- `ReadingEngine.tsx`: GSAP-pinned horizontal comic strip (desktop) with five live demos: spread pairing, 6-worker webtoon decoder, before/after LUT slider, self-typing library search, resume & bookmarks.
+- `NewInV11.tsx`: paper bento "Special Edition" covering Series & Volumes, Stats & Komik Wrapped, Duplicate Manager, offline OCR, `.komikbackup`, and responsive library & window memory.
+
+#### Rewritten
+- `app/layout.tsx`: Bangers + Comic Neue fonts, a CSS-only once-per-session intro splash, updated metadata.
+- `app/page.tsx`: new section order wrapped in `MotionProvider`.
+- `app/globals.css`: comic design tokens, halftone and speed-line utilities, buttons, balloons, marquees, reader theme variables, Lenis rules, `scrollbar-gutter: stable`, reduced-motion overrides.
+- `tailwind.config.ts`: CMYK palette (`#FFD700` / `#00C2FF` / `#FF1F6D`), `font-bangers`, `font-comic`.
+- `components/Hero.tsx`: SplitText headline, draggable stickers, speed-line backdrop, reader entrance, crossing marquee tapes.
+- `components/Navbar.tsx`: active-section pill, CMYK progress bar, comic-tile mobile menu (tiles close the menu then glide to their section; Esc closes).
+- `components/FormatShowcase.tsx`: 8 collectible 3D-tilt, flippable format cards + animated "CBZ-O-Matic 3000" converter.
+- `components/ManifestoSection.tsx`: torn-newsprint editorial with GSAP stamp slams and drawn underline.
+- `components/KeyboardSection.tsx`: press real keys or tap keycaps to trigger SFX + shortcut descriptions.
+- `components/DownloadSection.tsx`: sunburst final panel, burst CTA, spec cards, SmartScreen note.
+- `components/Footer.tsx`: "THE END" footer with a floating Byte.
+- `DESIGN.md`: full design, motion, reader, performance and README-artwork documentation.
+
+#### Removed
+- `components/FeaturePanels.tsx`, `components/MobileNotice.tsx`, `components/MockComicPages.tsx` (replaced by the sections above).
+
+#### New Dependencies (`komik-website/package.json`)
+- `gsap` ^3.15.0, `@gsap/react` ^2.1.2, `lenis` ^1.3.26 (Framer Motion 12 was already present).
+
+#### README Artwork (`komik-website/public/readme/`)
+- Animated SVG (pure SVG + CSS keyframes, reduced-motion aware): `banner.svg`, `stats.svg`, `divider.svg`, `the-end.svg`, and ten chapter headers `section-*.svg`.
+- Desktop app screenshots: `app-reader.jpg`, `app-library.jpg`, `app-webtoon.jpg`, `app-series.jpg`, `app-stats.jpg`. Captured from the installed Komik 1.1.0 build reading the demo comic packed into real `.cbz` files, using a temporary isolated library so the developer's own library was never modified.
+- Website screenshots: `screenshot-hero.jpg`, `screenshot-reader.jpg`, `screenshot-formats.jpg`, `screenshot-engine.jpg`, `screenshot-new.jpg`, `screenshot-mobile-hero.jpg`, `screenshot-mobile-reader.jpg`.
+
+---
+
+### 2. Experience Highlights
+
+1. **Readable demo comic in the hero:** the complete 12-page story reads end to end inside the mockup, with every toolbar feature working and vector pages sharp at any zoom.
+2. **Mobile-ready reader:**
+   - compact toolbar with bottom sheets
+   - swipe to turn, pinch to zoom
+   - one-page fit sizing so vertical swipes still scroll the site
+   - animated full screen
+3. **Smooth motion:**
+   - reader fade-in after measuring (no layout jump) and a one-shot entrance
+   - clip-path grow/shrink full screen with sliding chrome, and minimize/close crossfades without remounting
+4. **Smooth navigation:** eased, distance-timed glides for every navbar link, mobile menu tile and CTA, landing exactly below the header.
+5. **Performance:**
+   - offscreen animation pausing and `useInView`-gated demo loops
+   - memoized SVG pages, gradient glows instead of CSS blur, and GPU-layered sunbursts
+6. **Accessibility:** reduced-motion support across GSAP, Lenis, CSS and Framer Motion; labelled controls; decorative layers hidden from assistive tech.
+
+---
+
+### 3. Verification
+
+- `npx tsc --noEmit`: no type errors.
+- `npm run build` (Next.js 15.5): compiled successfully, and all static pages were generated.
+- Headless Chrome (puppeteer-core) interaction checks:
+  - desktop: keyboard navigation, spreads, RTL, webtoon, zoom, bookmarks, search, color presets, full-screen enter/exit animation, minimize/restore, scrubber drag + hover preview, wheel hand-off between reader and page
+  - mobile (390×844 touch): full-page touch scrolling, horizontal swipe page turns, tap zones, bottom sheets, menu tile navigation
+  - all navbar links and the "finish reading" link land within a few pixels of their targets, with no console errors
+- `README.md`:
+  - rewritten with animated artwork and real app screenshots
+  - corrected SQLite schema (13 tables) and test inventory (27 suites in `Komik.Tests/Program.cs`)
+  - fixed the Docnet.Core acknowledgement link
