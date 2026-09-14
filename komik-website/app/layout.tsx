@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import { Space_Grotesk, Plus_Jakarta_Sans, JetBrains_Mono, Bangers, Comic_Neue } from "next/font/google";
 import "./globals.css";
 import { APP_CONFIG } from "@/lib/config";
 
@@ -21,9 +21,21 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["500", "700"],
 });
 
+const bangers = Bangers({
+  subsets: ["latin"],
+  variable: "--font-bangers",
+  weight: ["400"],
+});
+
+const comicNeue = Comic_Neue({
+  subsets: ["latin"],
+  variable: "--font-comic",
+  weight: ["400", "700"],
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://github.com/mohitbansal25082006/KomiK"),
-  title: "Komik — Modern Fluent Comic & Manga Reader for Windows",
+  title: "Komik — Your Comics. Your PC. Zero Cloud. | Windows Comic & Manga Reader",
   description:
     "A lightning-fast, local-first Windows 11 comic reader built with WinUI 3 and .NET 8. Supports CBZ, CBR, CB7, PDF, and image folders. 100% offline, zero accounts, zero telemetry.",
   keywords: [
@@ -35,6 +47,8 @@ export const metadata: Metadata = {
     "Offline comic viewer",
     "CB7 reader",
     "Open source comic reader",
+    "Webtoon reader Windows",
+    "Offline manga reader",
   ],
   authors: [{ name: APP_CONFIG.author, url: APP_CONFIG.repoUrl }],
   creator: APP_CONFIG.author,
@@ -70,6 +84,8 @@ export const metadata: Metadata = {
   },
 };
 
+const INTRO_ONCE = `try{if(sessionStorage.getItem("komik-intro")){document.documentElement.classList.add("intro-seen")}else{sessionStorage.setItem("komik-intro","1")}}catch(e){}`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -78,9 +94,18 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${jakarta.variable} ${jetbrainsMono.variable} bg-ink text-newsprint dark scroll-smooth`}
+      suppressHydrationWarning
+      className={`${spaceGrotesk.variable} ${jakarta.variable} ${jetbrainsMono.variable} ${bangers.variable} ${comicNeue.variable} bg-ink text-newsprint dark`}
     >
-      <body className="bg-ink text-newsprint min-h-screen selection:bg-amber selection:text-ink antialiased">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: INTRO_ONCE }} />
+      </head>
+      <body className="min-h-screen bg-ink text-newsprint antialiased selection:bg-amber selection:text-ink">
+        <div className="intro-curtain" aria-hidden>
+          <div className="intro-half intro-top" />
+          <div className="intro-half intro-bottom" />
+          <div className="intro-word">KOMIK!</div>
+        </div>
         {children}
       </body>
     </html>

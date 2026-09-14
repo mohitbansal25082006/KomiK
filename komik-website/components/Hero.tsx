@@ -1,475 +1,201 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import {
-  Download,
-  Moon,
-  Sun,
-  BookOpen,
-  ArrowRight,
-  CheckCircle2,
-  Sparkles,
-  Maximize2,
-  FolderOpen,
-  ZoomIn,
-  ZoomOut,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  Bookmark,
-  SlidersHorizontal,
-} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { motion, useScroll, useSpring, useTransform } from "framer-motion";
+import { ArrowDown, Download, Github, Hand, Keyboard, Maximize2, Monitor } from "lucide-react";
 import { APP_CONFIG } from "@/lib/config";
-import { ComicCoverPage, ComicStoryPageA, ComicStoryPageB } from "./MockComicPages";
-import KomikLogo from "./KomikLogo";
+import { gsap, SplitText, useGSAP, prefersReducedMotion } from "@/lib/gsap";
+import ReaderMockup from "@/components/reader/ReaderMockup";
+import ComicBurst from "@/components/fx/ComicBurst";
+
+const TAPE = ["CBZ", "CBR", "CB7", "PDF", "ZIP", "RAR", "7Z", "IMAGE FOLDERS", "WEBTOON MODE", "MANGA RTL", "NIGHT MODE", "OFFLINE OCR", "SERIES & VOLUMES", "READING STATS"];
 
 export default function Hero() {
-  // Live interactive controls for the WinUI 3 Canvas Mockup
-  const [nightMode, setNightMode] = useState(false);
-  const [spreadMode, setSpreadMode] = useState<"single" | "spread">("spread");
-  const [fitMode, setFitMode] = useState<"height" | "width">("height");
-  const [readingDirection, setReadingDirection] = useState<"ltr" | "rtl">("ltr");
-  const [currentPage, setCurrentPage] = useState(14);
-  const [zoomLevel, setZoomLevel] = useState(100);
-  const totalPages = 32;
+  const sectionRef = useRef<HTMLElement>(null);
+  const headRef = useRef<HTMLHeadingElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  // a transformed ancestor would trap the reader's `position: fixed` full-screen mode
+  const [readerFullscreen, setReaderFullscreen] = useState(false);
+  useEffect(() => {
+    const onLock = (e: Event) => setReaderFullscreen((e as CustomEvent<boolean>).detail);
+    document.addEventListener("komik:scroll-lock", onLock);
+    return () => document.removeEventListener("komik:scroll-lock", onLock);
+  }, []);
 
-  // Spring animation variants for authentic comic panel drop-in
-  const panelDrop = {
-    hidden: { opacity: 1, y: 15, rotate: -0.4 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      rotate: 0,
-      transition: { type: "spring" as const, stiffness: 260, damping: 24 },
+  /* 3D "window lands on the desk" as the reader scrolls into view */
+  const { scrollYProgress } = useScroll({ target: stageRef, offset: ["start end", "start 0.6"] });
+  const eased = useSpring(scrollYProgress, { stiffness: 120, damping: 28, mass: 0.4 });
+  const rotateX = useTransform(eased, [0, 1], [22, 0]);
+  const scale = useTransform(eased, [0, 1], [0.9, 1]);
+  const y = useTransform(eased, [0, 1], [60, 0]);
+
+  useGSAP(
+    () => {
+      if (prefersReducedMotion() || !headRef.current) return;
+      let split: SplitText | null = null;
+      document.fonts.ready.then(() => {
+        if (!headRef.current) return;
+        split = SplitText.create(headRef.current.querySelectorAll("[data-split]"), {
+          type: "chars",
+          charsClass: "inline-block will-change-transform",
+        });
+        gsap.from(split.chars, {
+          yPercent: -140,
+          rotate: () => gsap.utils.random(-40, 40),
+          scale: 1.6,
+          opacity: 0,
+          duration: 0.9,
+          ease: "elastic.out(1, 0.55)",
+          stagger: { each: 0.035, from: "start" },
+          delay: 0.35,
+        });
+      });
+      gsap.from("[data-hero-pop]", { scale: 0, rotate: -25, opacity: 0, duration: 0.7, ease: "back.out(2.2)", stagger: 0.12, delay: 1.1 });
+      gsap.from("[data-hero-rise]", { y: 30, opacity: 0, duration: 0.7, ease: "power3.out", stagger: 0.08, delay: 0.9 });
+      return () => split?.revert();
     },
-  };
-
-  const canvasDrop = {
-    hidden: { opacity: 1, y: 20, rotate: 0.5 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      rotate: 0,
-      transition: { type: "spring" as const, stiffness: 240, damping: 22, delay: 0.05 },
-    },
-  };
-
-  // Turn page helpers
-  const handlePrevious = () => {
-    if (currentPage > 1) {
-      setCurrentPage((prev) => (spreadMode === "spread" && prev > 2 ? prev - 2 : prev - 1));
-    }
-  };
-
-  const handleNext = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage((prev) => (spreadMode === "spread" && prev === 1 ? 2 : prev + (spreadMode === "spread" ? 2 : 1)));
-    }
-  };
+    { scope: sectionRef },
+  );
 
   return (
-    <section className="relative overflow-hidden border-b-[3px] border-black bg-ink pt-12 pb-20 lg:pt-16 lg:pb-24">
-      {/* Background Halftone Screen-Tone Matrix */}
-      <div className="absolute inset-0 bg-halftone pointer-events-none opacity-25" />
+    <section ref={sectionRef} id="top" className="relative overflow-hidden border-b-[3px] border-black bg-ink">
+      {/* ---------- animated backdrop ---------- */}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <div className="absolute left-1/2 top-[22%] h-[260vmax] w-[260vmax] -translate-x-1/2 -translate-y-1/2">
+          <div className="bg-speedlines animate-spin-slow h-full w-full" />
+        </div>
+        <div className="absolute -left-40 top-10 h-[520px] w-[520px] rounded-full bg-magenta/25 blur-[120px]" />
+        <div className="absolute -right-40 top-40 h-[520px] w-[520px] rounded-full bg-cyan/20 blur-[120px]" />
+        <div className="bg-halftone-fade absolute inset-0" />
+        <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-ink to-transparent" />
+      </div>
 
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Splash Spread Frame */}
-        <div className="relative border-[3px] border-black bg-[#0F0F12] p-6 sm:p-10 lg:p-12 shadow-[8px_8px_0px_#000000]">
-          {/* Overlapping Diegetic Caption Box pinned directly to panel frame */}
-          <div className="absolute -top-3.5 left-6 sm:left-10 z-20 caption-box px-3.5 py-1 text-xs font-black tracking-wider rotate-[-0.8deg]">
-            SPLASH PAGE · VERSION 1.1.0 · WINDOWS 11 NATIVE
+      <div className="relative mx-auto max-w-7xl px-4 pb-10 pt-10 sm:px-6 sm:pt-14 lg:px-8">
+        {/* ---------- headline block ---------- */}
+        <div className="relative mx-auto max-w-5xl text-center">
+          <div data-hero-rise className="caption-box mx-auto inline-flex -rotate-1 items-center gap-2 px-3 py-1 text-[11px] sm:text-xs">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-magenta" />
+            Issue {APP_CONFIG.version} · Windows 10 &amp; 11 · Free forever
           </div>
 
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-10 items-center">
-            {/* Left Column: Comic Narrative Typography & Action */}
-            <motion.div
-              variants={panelDrop}
-              initial="hidden"
-              animate="visible"
-              className="lg:col-span-5 flex flex-col justify-center"
+          <h1 ref={headRef} className="mt-6 font-bangers leading-[0.9] tracking-wide" aria-label="Your comics. Your PC. Zero cloud.">
+            <span data-split className="text-comic-outline block text-[15vw] text-amber sm:text-[96px] lg:text-[128px]" style={{ WebkitTextStroke: "4px #000" }}>
+              Your comics.
+            </span>
+            <span data-split className="text-comic-outline block text-[15vw] text-cyan sm:text-[96px] lg:text-[128px]" style={{ WebkitTextStroke: "4px #000" }}>
+              Your PC.
+            </span>
+            <span data-split className="text-comic-outline block text-[15vw] text-magenta sm:text-[96px] lg:text-[128px]" style={{ WebkitTextStroke: "4px #000" }}>
+              Zero cloud.
+            </span>
+          </h1>
+
+          {/* draggable stickers */}
+          <div data-hero-pop className="absolute -left-2 top-24 hidden lg:block">
+          <motion.div drag dragSnapToOrigin whileDrag={{ scale: 1.15, rotate: 8 }} className="cursor-grab active:cursor-grabbing" title="Drag me!">
+            <ComicBurst size={150} fill="#FFD700" spikes={14} className="animate-wobble">
+              <span className="font-bangers text-2xl leading-none text-black">
+                100%
+                <br />
+                OFFLINE!
+              </span>
+            </ComicBurst>
+          </motion.div>
+          </div>
+          <div data-hero-pop className="absolute -right-2 top-52 hidden lg:block">
+          <motion.div drag dragSnapToOrigin whileDrag={{ scale: 1.15, rotate: -8 }} className="cursor-grab active:cursor-grabbing" title="Drag me!">
+            <div className="animate-float flex h-32 w-32 rotate-12 items-center justify-center rounded-full border-[3px] border-black bg-magenta text-center shadow-[5px_5px_0_#000]">
+              <span className="font-bangers text-3xl leading-none text-white">
+                FREE
+                <br />
+                <span className="text-xl">&amp; open source</span>
+              </span>
+            </div>
+          </motion.div>
+          </div>
+          <div data-hero-pop className="absolute right-16 top-0 hidden xl:block">
+          <motion.div drag dragSnapToOrigin whileDrag={{ scale: 1.1 }} className="cursor-grab active:cursor-grabbing" title="Drag me!">
+            <div className="-rotate-6 border-[3px] border-black bg-cyan px-3 py-1.5 font-bangers text-xl text-black shadow-[4px_4px_0_#000]">NEW! Webtoon engine</div>
+          </motion.div>
+          </div>
+
+          <p data-hero-rise className="mx-auto mt-7 max-w-2xl text-base font-medium leading-relaxed text-newsprint/85 sm:text-lg">
+            Komik is a fast, native Windows reader for comics, manga &amp; webtoons. Pure .NET archive loaders, two-page spreads, manga RTL, a parallel Webtoon engine,
+            offline OCR and reading stats. <strong className="text-newsprint">No accounts. No telemetry. No network calls.</strong>
+          </p>
+
+          <div data-hero-rise className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <a href={APP_CONFIG.downloadUrl} className="btn-comic-primary group inline-flex w-full items-center justify-center gap-3 px-8 py-4 text-base uppercase tracking-wider sm:w-auto">
+              <Download className="h-5 w-5 stroke-[2.5] transition-transform group-hover:translate-y-0.5" />
+              Download for Windows
+              <span className="hidden whitespace-nowrap rounded-sm bg-black px-1.5 py-0.5 font-mono text-[10px] text-amber sm:inline">{APP_CONFIG.installerSize}</span>
+            </a>
+            <a href="#reader" className="btn-comic-secondary inline-flex w-full items-center justify-center gap-2 px-6 py-4 text-sm tracking-wide sm:w-auto">
+              Read the demo comic
+              <ArrowDown className="h-4 w-4 animate-bounce" />
+            </a>
+            <a
+              href={APP_CONFIG.repoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-comic-secondary hidden items-center justify-center gap-2 px-4 py-4 text-sm sm:inline-flex"
+              aria-label="View source on GitHub"
             >
-              <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-newsprint leading-[1.04]">
-                The comic reader <br />
-                <span className="inline-block bg-amber text-black px-3 py-0.5 border-2 border-black mt-2 shadow-[3px_3px_0px_#000000] rotate-[-0.5deg]">
-                  built for your PC.
-                </span>
-              </h1>
+              <Github className="h-5 w-5" />
+            </a>
+          </div>
 
-              <p className="mt-6 text-base sm:text-lg text-newsprint/85 leading-relaxed font-medium">
-                A high-performance Windows desktop app engineered purely for reading
-                comics, manga, and graphic novels. Pure .NET archive loaders, parallel
-                continuous Webtoon engine, Series &amp; Volumes manager, reading stats, and a native Fluent Mica canvas.
-              </p>
+          <div data-hero-rise className="mx-auto mt-5 flex max-w-md items-center justify-center gap-2 border-2 border-black bg-paper px-3 py-2 text-left font-mono text-[11px] font-bold text-black shadow-[3px_3px_0_#000] md:hidden">
+            <Monitor className="h-4 w-4 shrink-0" />
+            Komik is a Windows desktop app. Read the demo here, install on your PC.
+          </div>
+        </div>
 
-              {/* Action Buttons */}
-              <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <a
-                  href={APP_CONFIG.downloadUrl}
-                  className="btn-comic-primary w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 text-base font-black tracking-wider uppercase"
-                >
-                  <Download className="h-5 w-5 stroke-[2.5]" />
-                  <span>Download for Windows</span>
-                </a>
+        {/* ---------- the interactive reader ---------- */}
+        <div id="reader" ref={stageRef} className="relative mx-auto mt-16 max-w-6xl scroll-mt-24 sm:mt-28" style={{ perspective: readerFullscreen ? undefined : 1800 }}>
+          <div className="pointer-events-none absolute -top-[4.5rem] left-2 z-10 hidden sm:block">
+            <div className="balloon -rotate-3 px-5 py-2 text-sm">Psst! This reader actually works. Go on, read the whole comic!</div>
+          </div>
+          <div className="pointer-events-none absolute -right-3 -top-12 z-10 hidden rotate-6 lg:block">
+            <div className="caption-box-magenta px-3 py-1 text-xs">12-page original comic inside</div>
+          </div>
 
-                <a
-                  href="#reading-engine"
-                  className="btn-comic-secondary w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-4 text-sm font-bold tracking-wide"
-                >
-                  <span>Explore Reading Engine</span>
-                  <ArrowRight className="h-4 w-4" />
-                </a>
-              </div>
+          <motion.div style={readerFullscreen ? undefined : { rotateX, scale, y, transformOrigin: "50% 0%" }} data-no-burst>
+            <ReaderMockup />
+          </motion.div>
 
-              {/* Collector's Guarantees */}
-              <div className="mt-8 pt-6 border-t-2 border-black/80 flex flex-wrap items-center gap-y-2.5 gap-x-6 text-xs font-mono text-muted">
-                <span className="inline-flex items-center gap-1.5 text-newsprint font-bold">
-                  <CheckCircle2 className="h-4 w-4 text-amber" />
-                  Free & Open Source
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-newsprint font-bold">
-                  <CheckCircle2 className="h-4 w-4 text-cyan" />
-                  Windows 10 / 11 64-bit
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-newsprint font-bold">
-                  <CheckCircle2 className="h-4 w-4 text-amber" />
-                  100% Offline · Zero Accounts
-                </span>
-              </div>
-            </motion.div>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2 font-mono text-[11px] font-bold text-newsprint/80">
+            <span className="inline-flex items-center gap-1.5 border-2 border-black bg-black/70 px-2.5 py-1">
+              <Keyboard className="h-3.5 w-3.5 text-amber" /> Click the reader, then ← → · D · V · W/H/A · Ctrl+R · Ctrl+F
+            </span>
+            <span className="inline-flex items-center gap-1.5 border-2 border-black bg-black/70 px-2.5 py-1">
+              <Hand className="h-3.5 w-3.5 text-cyan" /> Swipe to turn · pinch to zoom
+            </span>
+            <span className="inline-flex items-center gap-1.5 border-2 border-black bg-black/70 px-2.5 py-1">
+              <Maximize2 className="h-3.5 w-3.5 text-magenta" /> Full screen for the best read
+            </span>
+          </div>
+        </div>
+      </div>
 
-            {/* Right Column: Pixel-Accurate WinUI 3 Application Mockup */}
-            <motion.div
-              variants={canvasDrop}
-              initial="hidden"
-              animate="visible"
-              className="lg:col-span-7"
-            >
-              <div className="relative">
-                {/* Windows 11 Native Window Frame with Rounded Top & Mica Backdrop */}
-                <div className="rounded-t-xl border-[3px] border-black bg-[#121316]/95 backdrop-blur-xl shadow-[10px_10px_0px_#000000] overflow-hidden flex flex-col">
-                  {/* 1. WINDOWS 11 TITLE BAR (36px high, native Windows window controls) */}
-                  <div className="flex h-9 items-center justify-between border-b border-white/10 bg-[#16171B]/90 px-3 select-none">
-                    {/* App Icon + Window Title */}
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 bg-[#121316] border border-white/20 flex items-center justify-center shadow-[1px_1px_0px_#000]">
-                        <KomikLogo size={13} />
-                      </div>
-                      <span className="text-xs font-sans font-semibold text-newsprint/90 truncate max-w-[200px] sm:max-w-xs">
-                        Cyberpunk_Chronicles_#01.cbz — Komik
-                      </span>
-                    </div>
-
-                    {/* Windows 11 Window Controls (Minimize, Maximize, Close - NOT macOS traffic lights!) */}
-                    <div className="flex items-center">
-                      {/* Minimize Button */}
-                      <button
-                        type="button"
-                        aria-label="Minimize"
-                        className="h-9 w-11 flex items-center justify-center text-newsprint/70 hover:bg-white/10 transition-colors"
-                      >
-                        <span className="w-2.5 h-[1px] bg-current" />
-                      </button>
-
-                      {/* Maximize Button */}
-                      <button
-                        type="button"
-                        aria-label="Maximize"
-                        className="h-9 w-11 flex items-center justify-center text-newsprint/70 hover:bg-white/10 transition-colors"
-                      >
-                        <span className="w-2.5 h-2.5 border border-current" />
-                      </button>
-
-                      {/* Close Button (Turns red on hover like real Windows 11) */}
-                      <button
-                        type="button"
-                        aria-label="Close"
-                        className="h-9 w-11 flex items-center justify-center text-newsprint/70 hover:bg-[#E81123] hover:text-white transition-colors"
-                      >
-                        <span className="text-xs font-light">✕</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 2. MAIN READING CANVAS VIEWPORT (Host of the comic pages + Mica acrylic background) */}
-                  <div className="relative min-h-[360px] sm:min-h-[420px] bg-[#0E0F12] flex flex-col justify-between overflow-hidden">
-                    {/* Mica Backdrop Subtle Pattern */}
-                    <div className="absolute inset-0 bg-halftone pointer-events-none opacity-10" />
-
-                    {/* 3. FLOATING TOP ACRYLIC TOOLBAR PILL (Revealed state from real WinUI 3 app) */}
-                    <div className="relative z-30 pt-3 px-3 flex justify-center">
-                      <div className="rounded-full bg-[#1C1D22]/90 backdrop-blur-md border border-white/20 shadow-2xl px-3 py-1.5 flex flex-wrap items-center justify-center gap-1.5 text-xs select-none max-w-full">
-                        {/* Open Button */}
-                        <div className="flex items-center gap-1 px-2 py-0.5 text-newsprint/90 font-medium text-[11px] hover:bg-white/10 rounded-full cursor-default">
-                          <FolderOpen className="h-3 w-3 text-amber" />
-                          <span>Open</span>
-                        </div>
-
-                        <div className="w-[1px] h-3.5 bg-white/20" />
-
-                        {/* Fit Mode Toggles */}
-                        <div className="flex items-center gap-0.5">
-                          <button
-                            type="button"
-                            onClick={() => setFitMode("height")}
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all ${
-                              fitMode === "height"
-                                ? "bg-amber text-black shadow-sm font-black"
-                                : "text-newsprint/70 hover:text-white hover:bg-white/10"
-                            }`}
-                            title="Fit Height: Scales page vertically to fit screen height (H)"
-                          >
-                            Fit H
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setFitMode("width")}
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all ${
-                              fitMode === "width"
-                                ? "bg-amber text-black shadow-sm font-black"
-                                : "text-newsprint/70 hover:text-white hover:bg-white/10"
-                            }`}
-                            title="Fit Width: Scales page horizontally to fit screen width (W)"
-                          >
-                            Fit W
-                          </button>
-                        </div>
-
-                        <div className="w-[1px] h-3.5 bg-white/20" />
-
-                        {/* Spread Mode Toggle (Single vs 2-Page) */}
-                        <button
-                          type="button"
-                          onClick={() => setSpreadMode(spreadMode === "single" ? "spread" : "single")}
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all ${
-                            spreadMode === "spread"
-                              ? "bg-cyan text-black shadow-sm font-black"
-                              : "text-newsprint/70 hover:text-white hover:bg-white/10"
-                          }`}
-                          title="Toggle Two-Page Spread (D)"
-                        >
-                          {spreadMode === "spread" ? "2-Page Spread" : "Single Page"}
-                        </button>
-
-                        <div className="w-[1px] h-3.5 bg-white/20" />
-
-                        {/* Reading Direction Toggle (Western LTR vs Manga RTL) */}
-                        <button
-                          type="button"
-                          onClick={() => setReadingDirection(readingDirection === "ltr" ? "rtl" : "ltr")}
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all ${
-                            readingDirection === "rtl"
-                              ? "bg-crimson text-white shadow-sm font-black"
-                              : "text-newsprint/70 hover:text-white hover:bg-white/10"
-                          }`}
-                          title="Toggle Reading Direction: Western vs. Japanese Manga RTL (Ctrl+R)"
-                        >
-                          {readingDirection === "rtl" ? "Manga RTL" : "Western"}
-                        </button>
-
-                        <div className="w-[1px] h-3.5 bg-white/20" />
-
-                        {/* Night Mode Warmth LUT Toggle */}
-                        <button
-                          type="button"
-                          onClick={() => setNightMode(!nightMode)}
-                          className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all ${
-                            nightMode
-                              ? "bg-amber text-black shadow-sm font-black"
-                              : "text-newsprint/70 hover:text-white hover:bg-white/10"
-                          }`}
-                          title="Toggle Hardware Warmth LUT Shader"
-                        >
-                          <Moon className="h-3 w-3" />
-                          <span>{nightMode ? "LUT: ON" : "Night LUT"}</span>
-                        </button>
-
-                        <div className="w-[1px] h-3.5 bg-white/20 hidden sm:block" />
-
-                        {/* Zoom Controls */}
-                        <div className="hidden sm:flex items-center gap-1 text-[10px] font-mono text-newsprint/80">
-                          <button
-                            type="button"
-                            onClick={() => setZoomLevel((z) => Math.max(75, z - 10))}
-                            className="h-5 w-5 flex items-center justify-center hover:bg-white/10 rounded"
-                            title="Zoom Out (Ctrl -)"
-                          >
-                            -
-                          </button>
-                          <span>{zoomLevel}%</span>
-                          <button
-                            type="button"
-                            onClick={() => setZoomLevel((z) => Math.min(150, z + 10))}
-                            className="h-5 w-5 flex items-center justify-center hover:bg-white/10 rounded"
-                            title="Zoom In (Ctrl +)"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 4. ACTUAL COMIC PAGE CONTENT AREA (Visually dynamic, responds to all toggles) */}
-                    <div className="flex-1 flex items-center justify-center p-3 sm:p-5 relative z-10">
-                      {/* Left Navigation Zone Button (Hover Arrow) */}
-                      <button
-                        type="button"
-                        onClick={handlePrevious}
-                        className="absolute left-2 z-20 h-16 w-8 rounded-full bg-black/60 border border-white/20 text-white flex items-center justify-center hover:bg-amber hover:text-black transition-colors"
-                        aria-label="Previous Page"
-                      >
-                        <ChevronLeft className="h-5 w-5" />
-                      </button>
-
-                      {/* Right Navigation Zone Button (Hover Arrow) */}
-                      <button
-                        type="button"
-                        onClick={handleNext}
-                        className="absolute right-2 z-20 h-16 w-8 rounded-full bg-black/60 border border-white/20 text-white flex items-center justify-center hover:bg-amber hover:text-black transition-colors"
-                        aria-label="Next Page"
-                      >
-                        <ChevronRight className="h-5 w-5" />
-                      </button>
-
-                      {/* The Illustrated Comic Pages with Live Warmth LUT Shader Filter */}
-                      <div
-                        style={{
-                          filter: nightMode
-                            ? "sepia(0.55) saturate(1.35) hue-rotate(-15deg) brightness(0.92) contrast(1.05)"
-                            : "none",
-                          transform: `scale(${zoomLevel / 100})`,
-                          transition: "filter 0.3s ease, transform 0.2s ease",
-                        }}
-                        className={`w-full flex items-center justify-center transition-all duration-300 ${
-                          fitMode === "width" ? "max-w-full px-2" : "max-w-[580px]"
-                        }`}
-                      >
-                        {/* CASE 1: Page 1 — Cover Page Isolation */}
-                        {currentPage === 1 ? (
-                          <div className="transition-all duration-300 transform">
-                            <ComicCoverPage
-                              className={fitMode === "width" ? "w-full max-w-[340px]" : "max-h-[350px]"}
-                              isNightMode={nightMode}
-                            />
-                            {spreadMode === "spread" && (
-                              <div className="text-center mt-2">
-                                <span className="text-[10px] font-mono font-bold bg-black/80 text-amber px-2 py-0.5 border border-amber/40 rounded-full">
-                                  Cover Isolated (Physical Book Mode)
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        ) : spreadMode === "single" ? (
-                          /* CASE 2: Single Page View */
-                          <div className="transition-all duration-300 transform">
-                            {currentPage % 2 === 0 ? (
-                              <ComicStoryPageA className={fitMode === "width" ? "w-full max-w-[340px]" : "max-h-[350px]"} />
-                            ) : (
-                              <ComicStoryPageB className={fitMode === "width" ? "w-full max-w-[340px]" : "max-h-[350px]"} />
-                            )}
-                          </div>
-                        ) : (
-                          /* CASE 3: Two-Page Spread View with Spine Gutter */
-                          <div
-                            className={`grid grid-cols-2 gap-2 sm:gap-3 transition-all duration-300 w-full ${
-                              fitMode === "width" ? "max-w-[560px]" : "max-w-[500px]"
-                            }`}
-                          >
-                            {/* In Western mode: Left = Page A, Right = Page B. In Manga RTL: Page B on Left, Page A on Right! */}
-                            {readingDirection === "ltr" ? (
-                              <>
-                                <ComicStoryPageA className={fitMode === "width" ? "w-full" : "max-h-[350px]"} />
-                                <ComicStoryPageB className={fitMode === "width" ? "w-full" : "max-h-[350px]"} />
-                              </>
-                            ) : (
-                              <>
-                                <ComicStoryPageB className={fitMode === "width" ? "w-full" : "max-h-[350px]"} />
-                                <ComicStoryPageA className={fitMode === "width" ? "w-full" : "max-h-[350px]"} />
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 5. FLOATING BOTTOM PAGE SCRUBBER OVERLAY (Faithful recreation from MainPage.xaml lines 634-710) */}
-                    <div className="relative z-30 pb-3 px-3 flex justify-center">
-                      <div className="rounded-full bg-[#1C1D22]/90 backdrop-blur-md border border-white/20 shadow-2xl px-3.5 py-1.5 flex items-center gap-2 sm:gap-3 text-xs select-none">
-                        {/* First Page */}
-                        <button
-                          type="button"
-                          onClick={() => setCurrentPage(1)}
-                          className="text-newsprint/70 hover:text-amber transition-colors p-1"
-                          title="First Page (Home)"
-                        >
-                          <ChevronsLeft className="h-3.5 w-3.5" />
-                        </button>
-
-                        {/* Previous Page */}
-                        <button
-                          type="button"
-                          onClick={handlePrevious}
-                          className="text-newsprint/70 hover:text-amber transition-colors p-1"
-                          title="Previous Page (Left Arrow)"
-                        >
-                          <ChevronLeft className="h-3.5 w-3.5" />
-                        </button>
-
-                        {/* Interactive Scrubber Slider */}
-                        <input
-                          type="range"
-                          min="1"
-                          max={totalPages}
-                          value={currentPage}
-                          onChange={(e) => setCurrentPage(parseInt(e.target.value))}
-                          className="w-28 sm:w-44 accent-amber h-1.5 bg-black/60 rounded-full cursor-pointer"
-                          aria-label="Scrub comic page slider"
-                        />
-
-                        {/* Page Counter Label */}
-                        <span className="font-mono text-[11px] font-bold text-newsprint min-w-[55px] text-center">
-                          {currentPage} / {totalPages}
-                        </span>
-
-                        {/* Next Page */}
-                        <button
-                          type="button"
-                          onClick={handleNext}
-                          className="text-newsprint/70 hover:text-amber transition-colors p-1"
-                          title="Next Page (Right Arrow)"
-                        >
-                          <ChevronRight className="h-3.5 w-3.5" />
-                        </button>
-
-                        {/* Last Page */}
-                        <button
-                          type="button"
-                          onClick={() => setCurrentPage(totalPages)}
-                          className="text-newsprint/70 hover:text-amber transition-colors p-1"
-                          title="Last Page (End)"
-                        >
-                          <ChevronsRight className="h-3.5 w-3.5" />
-                        </button>
-
-                        {/* Percentage */}
-                        <span className="font-mono text-[10px] text-amber font-black hidden sm:inline-block pl-1 border-l border-white/10">
-                          {Math.round((currentPage / totalPages) * 100)}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Tactile hint badge below the mockup */}
-                <div className="mt-3.5 text-center">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-newsprint/80 bg-black/90 px-3.5 py-1 border-2 border-black shadow-[2px_2px_0px_#000]">
-                    <Sparkles className="h-3.5 w-3.5 text-amber" />
-                    Interactive WinUI 3 Fluent Canvas: Test Night LUT, Spreads, Manga RTL, and the page scrubber live
-                  </span>
-                </div>
-              </div>
-            </motion.div>
+      {/* ---------- crossing tape marquees ---------- */}
+      <div aria-hidden className="relative -mb-2 mt-10 h-28 sm:h-32">
+        <div className="absolute inset-x-[-5%] top-4 -rotate-2 border-y-[3px] border-black bg-amber py-2.5 shadow-[0_6px_0_#000]">
+          <div className="animate-marquee flex w-max gap-8 whitespace-nowrap font-bangers text-2xl tracking-wider text-black sm:text-3xl">
+            {[...TAPE, ...TAPE].map((t, i) => (
+              <span key={i} className="flex items-center gap-8">
+                {t} <span className="text-magenta">✦</span>
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="absolute inset-x-[-5%] top-16 rotate-1 border-y-[3px] border-black bg-magenta py-2 sm:top-[4.5rem]">
+          <div className="animate-marquee-reverse flex w-max gap-8 whitespace-nowrap font-bangers text-xl tracking-wider text-white sm:text-2xl">
+            {[...TAPE, ...TAPE].reverse().map((t, i) => (
+              <span key={i} className="flex items-center gap-8">
+                {t} <span className="text-amber">★</span>
+              </span>
+            ))}
           </div>
         </div>
       </div>

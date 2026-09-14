@@ -1,196 +1,241 @@
 "use client";
 
-import { APP_CONFIG } from "@/lib/config";
-import { Cpu, RefreshCw, Layers, Check, ArrowRight, Shield, FolderOpen, HardDrive, FileArchive } from "lucide-react";
+import { useRef, useState } from "react";
+import { motion, useMotionTemplate, useMotionValue, useSpring } from "framer-motion";
+import { ArrowRight, Cog, FileArchive, FileText, FolderOpen, RefreshCw, RotateCcw, Sparkles } from "lucide-react";
+import SectionHeading from "@/components/fx/SectionHeading";
 
-export default function FormatShowcase() {
-  const formats = [
-    {
-      ext: ".CBZ",
-      label: "UNIVERSAL STANDARD",
-      engine: "System.IO.Compression",
-      desc: "Standard comic ZIP archive with zero-latency streaming. Pages indexed in memory without disk unpacking.",
-      color: "border-amber bg-[#161510] text-amber",
-      accent: "bg-amber text-black",
-      badge: "Pure .NET 8",
-    },
-    {
-      ext: ".CBR",
-      label: "MANAGED RAR4 & RAR5",
-      engine: "SharpCompress Managed",
-      desc: "Decodes both vintage RAR4 and modern RAR5 comics. Gracefully rejects password locks without crashing.",
-      color: "border-crimson bg-[#181113] text-crimson",
-      accent: "bg-crimson text-white",
-      badge: "No unrar.dll",
-    },
-    {
-      ext: ".CB7",
-      label: "LZMA2 SOLID ARCHIVE",
-      engine: "SevenZip Managed Engine",
-      desc: "Full solid 7-Zip decompression with multi-threaded LZMA2 decoding. Zero external 7z CLI requirements.",
-      color: "border-cyan bg-[#10151A] text-cyan",
-      accent: "bg-cyan text-black",
-      badge: "Multi-Threaded",
-    },
-    {
-      ext: ".PDF",
-      label: "VECTOR & SCAN RASTER",
-      engine: "Docnet.Core + PDFium",
-      desc: "High-DPI multi-page PDF rendering with sharp typography, smooth vector scaling, and natural page aspect preservation.",
-      color: "border-[#FF6B00] bg-[#1A1410] text-[#FF6B00]",
-      accent: "bg-[#FF6B00] text-black",
-      badge: "Direct PDFium",
-    },
-    {
-      ext: ".ZIP",
-      label: "STANDARD ARCHIVES",
-      engine: "Deflate & Store Stream",
-      desc: "Directly opens standard compressed .zip archives containing graphic novel page scans.",
-      color: "border-newsprint bg-[#131418] text-newsprint",
-      accent: "bg-[#252834] text-white",
-      badge: "Zero-Copy",
-    },
-    {
-      ext: ".RAR",
-      label: "MULTI-PART ARCHIVES",
-      engine: "SharpCompress Streamer",
-      desc: "Reads standard compressed and uncompressed RAR volumes without third-party utilities.",
-      color: "border-newsprint bg-[#131418] text-newsprint",
-      accent: "bg-[#252834] text-white",
-      badge: "Native Managed",
-    },
-    {
-      ext: ".7Z",
-      label: "7-ZIP COMPRESSION",
-      engine: "Managed 7z Decoder",
-      desc: "Unpacks standard 7z multi-stream containers with memory-conscious stream extraction.",
-      color: "border-newsprint bg-[#131418] text-newsprint",
-      accent: "bg-[#252834] text-white",
-      badge: "Memory-Tuned",
-    },
-    {
-      ext: "FOLDERS",
-      label: "RAW IMAGE DIRECTORIES",
-      engine: "StrCmpLogicalW Natural Sort",
-      desc: "Drop any directory of loose JPEGs, PNGs, WebPs, or AVIFs. Pages automatically sort in natural numeric order.",
-      color: "border-amber bg-[#161510] text-amber",
-      accent: "bg-amber text-black",
-      badge: "Natural Sort",
-    },
-  ];
+const FORMATS = [
+  { ext: ".CBZ", name: "Comic Book ZIP", rarity: "Common", stars: 3, color: "#FFD700", ink: "#000", engine: "System.IO.Compression", badge: "Pure .NET 8", desc: "The universal standard. Pages stream straight from the archive, no unpacking to disk." },
+  { ext: ".CBR", name: "Comic Book RAR", rarity: "Rare", stars: 4, color: "#FF1F6D", ink: "#fff", engine: "SharpCompress (managed)", badge: "No unrar.dll", desc: "Vintage RAR4 and modern RAR5 comics decode in pure managed code. Password locks fail gracefully." },
+  { ext: ".CB7", name: "Comic Book 7-Zip", rarity: "Epic", stars: 4, color: "#00C2FF", ink: "#000", engine: "Managed 7-Zip decoder", badge: "LZMA / LZMA2", desc: "Solid 7-Zip archives with LZMA2 compression, with zero external 7z command-line tools." },
+  { ext: ".PDF", name: "Portable Document", rarity: "Legendary", stars: 5, color: "#FF7A00", ink: "#000", engine: "Docnet.Core + PDFium", badge: "HQ raster", desc: "Scanned and vector PDFs rasterized page by page with natural aspect ratios preserved." },
+  { ext: ".ZIP", name: "ZIP Archive", rarity: "Common", stars: 2, color: "#F5EFE3", ink: "#000", engine: "Deflate & store", badge: "Zero-copy", desc: "Plain .zip archives full of page scans open exactly like CBZ files." },
+  { ext: ".RAR", name: "RAR Archive", rarity: "Uncommon", stars: 3, color: "#A78BFA", ink: "#000", engine: "SharpCompress streamer", badge: "RAR4 + RAR5", desc: "Standard RAR archives read directly, no third-party utilities or DLLs to install." },
+  { ext: ".7Z", name: "7-Zip Archive", rarity: "Uncommon", stars: 3, color: "#2FD17A", ink: "#000", engine: "Managed 7z decoder", badge: "Memory-tuned", desc: "Standard 7z containers unpacked with memory-conscious stream extraction." },
+  { ext: "DIR", name: "Image Folders", rarity: "Mythic", stars: 5, color: "#FFFFFF", ink: "#000", engine: "Natural sort comparer", badge: "JPG PNG WEBP BMP GIF", desc: "Point at any folder of loose images. Page 2 comes before page 10, the way numbers should sort." },
+];
+
+function FormatCard({ f, i }: { f: (typeof FORMATS)[number]; i: number }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const [flipped, setFlipped] = useState(false);
+  const rx = useMotionValue(0);
+  const ry = useMotionValue(0);
+  const mx = useMotionValue(50);
+  const my = useMotionValue(50);
+  const srx = useSpring(rx, { stiffness: 250, damping: 20 });
+  const sry = useSpring(ry, { stiffness: 250, damping: 20 });
+  const sheen = useMotionTemplate`radial-gradient(circle at ${mx}% ${my}%, rgba(255,255,255,0.55), rgba(255,255,255,0) 45%)`;
+
+  const onMove = (e: React.PointerEvent) => {
+    if (e.pointerType !== "mouse" || !ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;
+    const py = (e.clientY - r.top) / r.height;
+    ry.set((px - 0.5) * 22);
+    rx.set(-(py - 0.5) * 22);
+    mx.set(px * 100);
+    my.set(py * 100);
+  };
+  const onLeave = () => {
+    rx.set(0);
+    ry.set(0);
+  };
 
   return (
-    <section id="formats" className="relative border-b-[3px] border-black bg-ink py-16 sm:py-24">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Dominant Collector's Panel Frame */}
-        <div className="relative border-[3px] border-black bg-[#0C0C0F] p-6 sm:p-10 lg:p-12 shadow-[8px_8px_0px_#000000]">
-          {/* Overlapping Diegetic Caption Box */}
-          <div className="absolute -top-3.5 left-6 sm:left-10 z-20 caption-box-cyan px-3.5 py-1 text-xs font-black tracking-wider rotate-[0.6deg]">
-            ARCHIVE ENGINE · PURE .NET EXTRACTION · NO EXTERNAL CODECS
-          </div>
-
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10">
-            <div>
-              <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-newsprint leading-[1.08]">
-                Every format in your collection. <br />
-                <span className="text-cyan underline decoration-cyan/30 underline-offset-8">
-                  Zero external codecs.
-                </span>
-              </h2>
-              <p className="mt-3 text-base text-newsprint/80 max-w-2xl font-medium">
-                Tired of comic readers that crash on 7-Zip files, complain about missing unrar.dll,
-                or choke on high-res PDFs? Komik embeds pure managed .NET engines for bulletproof decoding.
-              </p>
+    <motion.div
+      initial={{ opacity: 0, y: 60, rotate: i % 2 ? 6 : -6 }}
+      whileInView={{ opacity: 1, y: 0, rotate: 0 }}
+      viewport={{ once: true, margin: "-8% 0px" }}
+      transition={{ type: "spring", stiffness: 220, damping: 20, delay: (i % 4) * 0.07 }}
+      style={{ perspective: 1000 }}
+    >
+      <motion.button
+        ref={ref}
+        type="button"
+        onPointerMove={onMove}
+        onPointerLeave={onLeave}
+        onClick={() => setFlipped((v) => !v)}
+        aria-label={`${f.ext} ${f.name}. ${flipped ? "Showing details, click to flip back" : "Click to flip for engine details"}`}
+        style={{ rotateX: srx, rotateY: sry, transformStyle: "preserve-3d" }}
+        className="relative block aspect-[3/4] w-full text-left lg:aspect-[4/5]"
+      >
+        <motion.div
+          animate={{ rotateY: flipped ? 180 : 0 }}
+          transition={{ type: "spring", stiffness: 260, damping: 24 }}
+          style={{ transformStyle: "preserve-3d" }}
+          className="absolute inset-0"
+        >
+          {/* front */}
+          <div className="absolute inset-0 flex flex-col overflow-hidden border-[3px] border-black shadow-[6px_6px_0_#000] [backface-visibility:hidden]" style={{ background: f.color, color: f.ink }}>
+            <div className="flex items-center justify-between border-b-[3px] border-black bg-black px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase text-white">
+              <span>#{String(i + 1).padStart(2, "0")} · {f.rarity}</span>
+              <span className="text-amber">{"★".repeat(f.stars)}</span>
             </div>
-
-            <div className="flex items-center gap-2.5 font-mono text-xs text-newsprint border-2 border-black bg-black px-4 py-2 shadow-[3px_3px_0px_#000] self-start lg:self-auto font-bold">
-              <Cpu className="h-4 w-4 text-amber" />
-              <span>Managed .NET 8 Runtime</span>
+            <div className="relative flex flex-1 items-center justify-center overflow-hidden">
+              <div className="bg-halftone-paper absolute inset-0 opacity-60" />
+              <div className="bg-speedlines absolute inset-[-50%] opacity-60 [background:repeating-conic-gradient(from_0deg,rgba(0,0,0,0.08)_0deg_4deg,transparent_4deg_12deg)]" />
+              <span className="relative font-bangers text-[3.4rem] leading-none tracking-wide drop-shadow-[4px_4px_0_rgba(0,0,0,0.9)] sm:text-6xl lg:text-7xl" style={{ WebkitTextStroke: "2px #000", color: "#fff" }}>
+                {f.ext}
+              </span>
             </div>
-          </div>
-
-          {/* Unified 8-Format Collector's Arsenal (Consistent Size & High Readability) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {formats.map((fmt, idx) => (
-              <div
-                key={fmt.ext}
-                className="border-[2.5px] border-black p-5 bg-[#141419] flex flex-col justify-between shadow-[4px_4px_0px_#000000] group hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className={`px-2 py-0.5 text-[9px] font-mono font-black border border-black shadow-[1px_1px_0px_#000] ${fmt.accent}`}>
-                      {fmt.badge}
-                    </span>
-                    <span className="text-[11px] font-mono font-bold text-muted">
-                      #{idx + 1}
-                    </span>
-                  </div>
-
-                  <div className="my-1.5">
-                    <span className="font-display text-3xl sm:text-4xl font-black tracking-wider text-newsprint group-hover:text-amber transition-colors">
-                      {fmt.ext}
-                    </span>
-                    <span className="block text-[11px] font-mono text-amber/90 font-bold uppercase tracking-wider mt-1">
-                      {fmt.label}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-newsprint/75 leading-relaxed mt-2 font-medium">
-                    {fmt.desc}
-                  </p>
-                </div>
-
-                <div className="mt-4 pt-3 border-t-2 border-black/80 flex items-center justify-between text-[11px] font-mono text-newsprint font-bold">
-                  <span className="text-muted text-[10px] truncate max-w-[150px]">
-                    {fmt.engine}
-                  </span>
-                  <span className="text-amber">✓ Native</span>
-                </div>
+            <div className="border-t-[3px] border-black bg-white/90 px-3 py-2 text-black">
+              <div className="font-bangers text-xl leading-none tracking-wide">{f.name}</div>
+              <div className="mt-1 flex items-center gap-1 font-mono text-[9px] font-bold uppercase text-black/60">
+                <RotateCcw className="h-3 w-3" /> Tap to flip
               </div>
+            </div>
+            <motion.div className="pointer-events-none absolute inset-0 mix-blend-soft-light" style={{ background: sheen }} />
+          </div>
+          {/* back */}
+          <div className="absolute inset-0 flex flex-col justify-between border-[3px] border-black bg-ink p-3.5 text-newsprint shadow-[6px_6px_0_#000] [backface-visibility:hidden] [transform:rotateY(180deg)]">
+            <div className="bg-halftone pointer-events-none absolute inset-0 opacity-40" />
+            <div className="relative">
+              <div className="font-bangers text-3xl leading-none" style={{ color: f.color === "#F5EFE3" || f.color === "#FFFFFF" ? "#FFD700" : f.color }}>
+                {f.ext}
+              </div>
+              <p className="mt-2 text-[12px] font-medium leading-snug text-newsprint/85 sm:text-[13px]">{f.desc}</p>
+            </div>
+            <div className="relative space-y-1.5">
+              <div className="inline-block border-2 border-black px-1.5 py-0.5 font-mono text-[9px] font-black uppercase text-black" style={{ background: f.color }}>
+                {f.badge}
+              </div>
+              <div className="font-mono text-[10px] text-muted">ENGINE: {f.engine}</div>
+            </div>
+          </div>
+        </motion.div>
+      </motion.button>
+    </motion.div>
+  );
+}
+
+const INPUTS = [
+  { label: "CBR", icon: FileArchive, color: "bg-magenta text-white" },
+  { label: "CB7", icon: FileArchive, color: "bg-cyan text-black" },
+  { label: "PDF", icon: FileText, color: "bg-[#FF7A00] text-black" },
+  { label: "FOLDER", icon: FolderOpen, color: "bg-paper text-black" },
+];
+
+function ConverterMachine() {
+  return (
+    <div className="relative mt-14 overflow-hidden border-[3px] border-black bg-[#15151B] p-5 shadow-[8px_8px_0_#000] sm:p-8 lg:p-10">
+      <div className="bg-halftone-cyan pointer-events-none absolute inset-0 opacity-25" />
+      <div className="relative grid items-center gap-8 lg:grid-cols-12">
+        <div className="lg:col-span-5">
+          <div className="caption-box-magenta inline-flex items-center gap-2 px-3 py-1 text-xs">
+            <RefreshCw className="h-3.5 w-3.5" /> Lossless converter
+          </div>
+          <h3 className="text-comic-outline mt-4 font-bangers text-5xl leading-[0.95] text-newsprint sm:text-6xl">
+            The CBZ-O-Matic <span className="text-amber">3000</span>
+          </h3>
+          <p className="mt-4 text-sm font-medium leading-relaxed text-newsprint/80 sm:text-base">
+            Standardize a messy collection straight from the Library toolbar. Loose image folders, CBR, CB7 and multi-page PDFs come out as clean, portable CBZ archives. Archive images
+            are repacked <strong className="text-newsprint">without re-compression</strong>, pages get deterministic zero-padded names, and it all runs on a background thread with
+            progress and cancel.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2 font-mono text-[11px] font-bold">
+            {["0001.jpg", "0002.jpg", "0003.png", "…", "0120.webp"].map((n) => (
+              <span key={n} className="border-2 border-black bg-black px-2 py-0.5 text-amber">
+                {n}
+              </span>
             ))}
           </div>
+        </div>
 
-          {/* Integrated Universal Archive Converter (High-Impact Comic Lab Panel) */}
-          <div className="mt-8 border-[3px] border-black bg-[#15151B] text-newsprint p-6 sm:p-8 lg:p-10 shadow-[6px_6px_0px_#000000] relative overflow-hidden">
-            <div className="relative z-10 max-w-4xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 border-2 border-black bg-crimson text-white text-xs font-mono font-black uppercase mb-4 shadow-[2px_2px_0px_#000]">
-                <RefreshCw className="h-3.5 w-3.5 stroke-[2.5]" />
-                <span>Lossless Batch Conversion</span>
+        {/* machine */}
+        <div className="lg:col-span-7">
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-stretch sm:gap-3">
+            <div className="grid w-full grid-cols-4 gap-2 sm:w-28 sm:grid-cols-1">
+              {INPUTS.map((inp, i) => (
+                <motion.div
+                  key={inp.label}
+                  animate={{ x: [0, 0, 18, 0], scale: [1, 1.08, 0.9, 1] }}
+                  transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.6, times: [0, 0.35, 0.6, 1] }}
+                  className={`${inp.color} flex items-center justify-center gap-1 border-[3px] border-black px-2 py-2 font-bangers text-lg shadow-[3px_3px_0_#000]`}
+                >
+                  <inp.icon className="h-4 w-4" />
+                  {inp.label}
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="flex items-center text-amber max-sm:rotate-90">
+              <ArrowRight className="h-8 w-8 animate-pulse" />
+            </div>
+
+            <div className="relative flex w-full flex-1 flex-col items-center justify-center border-[3px] border-black bg-amber p-4 text-black shadow-[5px_5px_0_#000] sm:min-h-[220px]">
+              <div className="bg-halftone-paper absolute inset-0 opacity-50" />
+              <div className="relative flex items-center gap-3">
+                <Cog className="h-12 w-12 animate-spin [animation-duration:3s]" />
+                <Cog className="-ml-4 mt-8 h-9 w-9 animate-spin [animation-direction:reverse] [animation-duration:2s]" />
               </div>
-
-              <h3 className="font-display text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-newsprint">
-                Convert Any Archive, Folder, or PDF to Clean .CBZ
-              </h3>
-
-              <p className="mt-3 text-sm sm:text-base text-newsprint/85 leading-relaxed font-medium">
-                Standardize your messy digital comic collection with a single right-click or drag-and-drop. Convert loose image folders, legacy CBR (RAR), CB7 (7-Zip), or multi-page PDFs directly into clean, portable, lossless CBZ archives with zero-padded natural sorting (<code className="bg-black text-amber px-1.5 py-0.5 font-mono text-xs font-bold border border-black">0001_Cover.jpg</code>, <code className="bg-black text-amber px-1.5 py-0.5 font-mono text-xs font-bold border border-black">0002_Page_02.png</code>).
-              </p>
-
-              {/* Conversion Diagram Strip */}
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs">
-                <div className="border-2 border-black bg-[#1B1C22] p-4 shadow-[3px_3px_0px_#000]">
-                  <span className="block text-[10px] font-black uppercase text-crimson">STEP 1 · SOURCE</span>
-                  <span className="font-bold text-newsprint text-sm block mt-0.5">Scans, CBR, CB7, PDF</span>
-                  <p className="text-[11px] text-muted mt-1 leading-snug">Accepts chaotic archive structures, subfolders, and multi-page vector documents.</p>
+              <div className="relative mt-3 w-full max-w-[220px] border-[3px] border-black bg-black p-2">
+                <div className="flex justify-between font-mono text-[10px] font-bold text-amber">
+                  <span>REPACKING…</span>
+                  <span>LOSSLESS</span>
                 </div>
-
-                <div className="border-2 border-black bg-amber text-black p-4 shadow-[3px_3px_0px_#000] flex flex-col justify-between">
-                  <div>
-                    <span className="block text-[10px] font-black uppercase text-black">STEP 2 · PROCESSING</span>
-                    <span className="font-black text-black text-sm block mt-0.5">Lossless Zero-Copy Pass</span>
-                  </div>
-                  <p className="text-[11px] text-black/90 mt-1 font-medium leading-snug">Images re-packed without generational quality loss. Background thread with live progress.</p>
-                </div>
-
-                <div className="border-2 border-black bg-[#1B1C22] p-4 shadow-[3px_3px_0px_#000]">
-                  <span className="block text-[10px] font-black uppercase text-cyan">STEP 3 · STANDARDIZED</span>
-                  <span className="font-bold text-newsprint text-sm block mt-0.5">Standardized .CBZ</span>
-                  <p className="text-[11px] text-muted mt-1 leading-snug">Clean numeric page ordering (<code className="text-amber">0001_Cover.jpg</code>). Portable to any modern viewer.</p>
+                <div className="mt-1.5 h-3 overflow-hidden border-2 border-amber/40 bg-[#222]">
+                  <motion.div
+                    className="h-full bg-[repeating-linear-gradient(45deg,#FFD700_0_8px,#FF1F6D_8px_16px)]"
+                    animate={{ width: ["0%", "100%"] }}
+                    transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                  />
                 </div>
               </div>
+              <div className="relative mt-2 font-bangers text-xl tracking-wider">Zero quality loss</div>
+            </div>
+
+            <div className="flex items-center text-amber max-sm:rotate-90">
+              <ArrowRight className="h-8 w-8 animate-pulse" />
+            </div>
+
+            <div className="relative flex w-40 items-center justify-center sm:w-32">
+              {[2, 1, 0].map((k) => (
+                <motion.div
+                  key={k}
+                  className="absolute flex h-36 w-28 flex-col items-center justify-center border-[3px] border-black bg-cyan font-bangers text-3xl text-black shadow-[4px_4px_0_#000]"
+                  style={{ rotate: (k - 1) * 7, x: (k - 1) * 8 }}
+                  animate={k === 0 ? { y: [20, -6, 0], scale: [0.6, 1.1, 1], opacity: [0, 1, 1] } : undefined}
+                  transition={k === 0 ? { duration: 2.4, repeat: Infinity, times: [0, 0.3, 0.45] } : undefined}
+                >
+                  .CBZ
+                  <span className="mt-1 font-mono text-[9px] font-bold">STANDARDIZED</span>
+                  {k === 0 && <Sparkles className="absolute -right-3 -top-3 h-6 w-6 fill-amber text-black" />}
+                </motion.div>
+              ))}
+              <div className="h-36" />
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+export default function FormatShowcase() {
+  return (
+    <section id="formats" className="relative scroll-mt-16 overflow-hidden border-b-[3px] border-black bg-[#0B0B10] py-20 sm:py-28">
+      <div className="bg-halftone pointer-events-none absolute inset-0 opacity-30" />
+      <div className="pointer-events-none absolute -right-40 top-20 h-[480px] w-[480px] rounded-full bg-cyan/10 blur-[120px]" />
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <SectionHeading
+          caption="Chapter 02 · The archive vault"
+          title="Every format."
+          accent="Zero codecs."
+          tone="cyan"
+          sub={
+            <>
+              Tired of readers that choke on 7-Zip files or demand a missing unrar.dll? Komik ships pure managed .NET decoders for all eight formats.{" "}
+              <span className="font-bold text-cyan">Collect them all</span>: hover to tilt, click to flip.
+            </>
+          }
+        />
+        <div className="mt-12 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
+          {FORMATS.map((f, i) => (
+            <FormatCard key={f.ext} f={f} i={i} />
+          ))}
+        </div>
+        <ConverterMachine />
       </div>
     </section>
   );

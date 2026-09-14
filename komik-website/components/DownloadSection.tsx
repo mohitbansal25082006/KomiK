@@ -1,79 +1,115 @@
 "use client";
 
-import { Download, ExternalLink, ShieldAlert, Cpu, HardDrive, CheckCircle2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowUp, Cpu, Download, ExternalLink, HardDrive, Scale, ShieldAlert } from "lucide-react";
 import { APP_CONFIG } from "@/lib/config";
+import ComicBurst from "@/components/fx/ComicBurst";
+
+const SPECS = [
+  { icon: HardDrive, k: "Installer", v: `${APP_CONFIG.installerSize}, self-contained`, c: "bg-amber" },
+  { icon: Cpu, k: "Platform", v: "Windows 10 1809+ / 11, x64", c: "bg-cyan" },
+  { icon: Scale, k: "License", v: "MIT open source", c: "bg-magenta text-white" },
+];
 
 export default function DownloadSection() {
   return (
-    <section id="download" className="relative border-b-[3px] border-black bg-ink py-16 sm:py-24">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Central Download Command Center */}
-        <div className="relative border-[3px] border-black bg-[#0F0F13] p-8 sm:p-12 lg:p-16 max-w-4xl mx-auto shadow-[10px_10px_0px_#000000] text-center">
-          {/* Overlapping Diegetic Caption Box */}
-          <div className="absolute -top-3.5 left-6 sm:left-10 z-20 caption-box px-3.5 py-1 text-xs font-black tracking-wider rotate-[-0.5deg]">
-            FINAL PANEL · ACQUIRE KOMIK FOR WINDOWS
-          </div>
+    <section id="download" className="relative scroll-mt-16 overflow-hidden border-b-[3px] border-black bg-magenta py-20 sm:py-28">
+      {/* sunburst */}
+      <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[220vmax] w-[220vmax] -translate-x-1/2 -translate-y-1/2">
+        <div className="animate-spin-slow h-full w-full [background:repeating-conic-gradient(from_0deg,#FF4D8B_0deg_6deg,#FF1F6D_6deg_12deg)]" />
+      </div>
+      <div className="bg-halftone-paper pointer-events-none absolute inset-0 opacity-40" />
 
-          <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-newsprint leading-[1.04]">
-            Start reading in seconds.
-          </h2>
+      <div className="relative mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ scale: 0, rotate: -20 }}
+          whileInView={{ scale: 1, rotate: -3 }}
+          viewport={{ once: true }}
+          transition={{ type: "spring", stiffness: 260, damping: 14 }}
+          className="caption-box inline-block px-3 py-1 text-xs"
+        >
+          Final panel · Get Komik
+        </motion.div>
 
-          <p className="mt-4 text-base sm:text-lg text-newsprint/80 max-w-xl mx-auto font-medium leading-relaxed">
-            Self-contained Windows installer bundling the .NET 8 and Windows App SDK runtimes. No Developer Mode, no manual certificates, and no background services.
-          </p>
+        <motion.h2
+          initial={{ y: 60, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ type: "spring", stiffness: 180, damping: 18 }}
+          className="text-comic-outline mt-6 font-bangers text-[17vw] leading-[0.85] text-amber sm:text-9xl"
+          style={{ WebkitTextStroke: "4px #000", textShadow: "8px 8px 0 #000" }}
+        >
+          Start reading
+          <br />
+          <span className="text-white">in seconds!</span>
+        </motion.h2>
 
-          {/* Primary Action Buttons */}
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a
+        <p className="relative z-20 mx-auto mt-6 max-w-xl text-base font-bold text-white sm:text-lg">
+          A self-contained installer that bundles the .NET 8 and Windows App SDK runtimes. No Developer Mode, no manual certificates, no background services.
+        </p>
+
+        <div className="relative mt-14 flex flex-col items-center justify-center gap-6 sm:flex-row">
+          <div className="relative">
+            <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 sm:block">
+              <ComicBurst size={250} fill="#FFD700" spikes={18} seed={9} className="animate-wobble" />
+            </div>
+            <motion.a
               href={APP_CONFIG.downloadUrl}
-              className="btn-comic-primary w-full sm:w-auto inline-flex items-center justify-center gap-3 px-10 py-4 text-base sm:text-lg font-black tracking-wider uppercase"
+              whileHover={{ scale: 1.06, rotate: -2 }}
+              whileTap={{ scale: 0.95, rotate: 2 }}
+              className="btn-comic-primary relative z-10 inline-flex items-center gap-3 px-8 py-5 font-bangers text-3xl tracking-wider sm:text-4xl"
             >
-              <Download className="h-5 w-5 stroke-[2.5]" />
-              <span>Download for Windows (.exe)</span>
-            </a>
-
-            <a
-              href={APP_CONFIG.releasesUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-comic-secondary w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-4 text-sm font-bold tracking-wide"
-            >
-              <span>View Releases & Changelog</span>
-              <ExternalLink className="h-4 w-4" />
-            </a>
+              <Download className="h-8 w-8 stroke-[3]" />
+              Download .exe
+            </motion.a>
           </div>
-
-          {/* Technical Specs Bar */}
-          <div className="mt-10 pt-8 border-t-2 border-black grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono text-left sm:text-center">
-            <div className="border-2 border-black bg-[#15151B] p-3.5 shadow-[2px_2px_0px_#000]">
-              <span className="block text-[10px] text-amber font-black uppercase tracking-wider">INSTALLER SIZE</span>
-              <span className="text-newsprint font-black text-sm">{APP_CONFIG.installerSize}</span>
-            </div>
-            <div className="border-2 border-black bg-[#15151B] p-3.5 shadow-[2px_2px_0px_#000]">
-              <span className="block text-[10px] text-cyan font-black uppercase tracking-wider">PLATFORM</span>
-              <span className="text-newsprint font-black text-sm">Windows 10 / 11 64-bit</span>
-            </div>
-            <div className="border-2 border-black bg-[#15151B] p-3.5 shadow-[2px_2px_0px_#000]">
-              <span className="block text-[10px] text-amber font-black uppercase tracking-wider">LICENSE</span>
-              <span className="text-newsprint font-black text-sm">MIT Open Source</span>
-            </div>
-          </div>
-
-          {/* Plain-Language Windows SmartScreen Reassurance Box */}
-          <div className="mt-8 border-2 border-black bg-paper text-black p-5 text-left flex items-start gap-4 shadow-[4px_4px_0px_#000]">
-            <div className="h-9 w-9 bg-amber border-2 border-black flex items-center justify-center shrink-0 shadow-[1px_1px_0px_#000] mt-0.5">
-              <ShieldAlert className="h-5 w-5 text-black stroke-[2.5]" />
-            </div>
-            <div className="text-xs font-mono leading-relaxed">
-              <strong className="text-black block font-black uppercase tracking-wider mb-1 text-sm">
-                A Note on Windows SmartScreen (&quot;Windows protected your PC&quot;)
-              </strong>
-              Because Komik is free, community-distributed open-source software built without an expensive corporate code-signing certificate ($400+/year), Windows Defender SmartScreen may display an alert when you first run <code className="bg-black/10 px-1 py-0.5 font-mono font-black text-black">Komik-Setup.exe</code>.
-              <br className="my-1.5" />
-              To proceed: Click <strong className="text-black bg-amber px-1 py-0.5 border border-black">&quot;More info&quot;</strong>, then click <strong className="text-black bg-amber px-1 py-0.5 border border-black">&quot;Run anyway&quot;</strong>. The entire codebase is open-source for 100% security inspection.
-            </div>
-          </div>
+          <a href={APP_CONFIG.releasesUrl} target="_blank" rel="noopener noreferrer" className="btn-comic-secondary relative z-10 inline-flex items-center gap-2 px-6 py-4 text-sm">
+            Releases &amp; changelog <ExternalLink className="h-4 w-4" />
+          </a>
         </div>
+
+        <div className="mt-14 grid gap-4 text-left sm:grid-cols-3">
+          {SPECS.map((s, i) => (
+            <motion.div
+              key={s.k}
+              initial={{ opacity: 0, y: 40, rotate: i === 1 ? 4 : -4 }}
+              whileInView={{ opacity: 1, y: 0, rotate: i === 1 ? 1 : -1 }}
+              viewport={{ once: true }}
+              transition={{ type: "spring", stiffness: 240, damping: 18, delay: i * 0.08 }}
+              className={`${s.c} border-[3px] border-black p-4 text-black shadow-[6px_6px_0_#000]`}
+            >
+              <s.icon className="h-6 w-6" />
+              <div className="mt-2 font-mono text-[11px] font-black uppercase opacity-80">{s.k}</div>
+              <div className="font-bangers text-2xl leading-tight tracking-wide">{s.v}</div>
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, rotate: 3, y: 30 }}
+          whileInView={{ opacity: 1, rotate: -0.5, y: 0 }}
+          viewport={{ once: true }}
+          className="relative mx-auto mt-12 max-w-3xl border-[3px] border-black bg-paper-grain p-5 text-left text-black shadow-[6px_6px_0_#000]"
+        >
+          <div className="absolute -top-3 left-1/2 h-6 w-28 -translate-x-1/2 rotate-2 bg-amber/80 shadow-sm" aria-hidden />
+          <div className="flex items-start gap-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-black bg-amber">
+              <ShieldAlert className="h-5 w-5" />
+            </span>
+            <div className="text-sm leading-relaxed">
+              <strong className="font-bangers text-2xl tracking-wide">About &quot;Windows protected your PC&quot;</strong>
+              <p className="mt-1 font-medium text-black/80">
+                Komik is free, open-source software distributed without a costly code-signing certificate, so SmartScreen may warn you the first time you run{" "}
+                <code className="bg-black/10 px-1 font-mono font-bold">{APP_CONFIG.installerName}</code>. Click <mark className="bg-amber px-1 font-bold">More info</mark> and then{" "}
+                <mark className="bg-amber px-1 font-bold">Run anyway</mark>. Every line of code is public on GitHub.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
+        <a href="#reader" className="mt-10 inline-flex items-center gap-2 font-mono text-xs font-black uppercase text-white underline-offset-4 hover:underline">
+          <ArrowUp className="h-4 w-4" /> Or finish reading the demo comic first
+        </a>
       </div>
     </section>
   );
