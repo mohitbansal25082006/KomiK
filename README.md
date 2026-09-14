@@ -36,6 +36,10 @@ built with **WinUI 3 (Windows App SDK)** and **C# / .NET 8** and designed around
 
 <img src="komik-website/public/readme/stats.svg" alt="8 formats · 6 parallel decoders · 6 LUT presets · 0 network calls · 0 accounts · 27 automated test suites" width="100%" />
 
+<br />
+
+**🌐 Live website:** **[komik-website-taupe.vercel.app](https://komik-website-taupe.vercel.app/)**
+
 </div>
 
 > [!NOTE]
@@ -83,11 +87,11 @@ built with **WinUI 3 (Windows App SDK)** and **C# / .NET 8** and designed around
 
 </div>
 
-<details>
-<summary><b>🌐 Peek at the interactive website (click to expand)</b></summary>
 <br />
 
-The [Komik website](#-the-komik-website) contains a fully working replica of the reader. Visitors can read the whole demo comic in the browser, with spreads, manga RTL, webtoon mode, color presets, bookmarks, dialogue search and full screen.
+### 🌐 Interactive Promotional Website
+
+Visit the live site — **[komik-website-taupe.vercel.app](https://komik-website-taupe.vercel.app/)** — for a fully working replica of the reader. Visitors can read the whole demo comic in the browser, with spreads, manga RTL, webtoon mode, color presets, bookmarks, dialogue search and full screen.
 
 <div align="center">
 <img src="komik-website/public/readme/screenshot-hero.jpg" alt="Komik website hero" width="100%" />
@@ -101,11 +105,10 @@ The [Komik website](#-the-komik-website) contains a fully working replica of the
     <td width="50%"><img src="komik-website/public/readme/screenshot-new.jpg" alt="New in 1.1.0 special edition" width="100%" /></td>
   </tr>
 </table>
-<img src="komik-website/public/readme/screenshot-mobile-hero.jpg" alt="Website on mobile" width="32%" />
+<img src="komik-website/public/readme/mobile-screen-hero-section.png" alt="Website on mobile" width="32%" />
 &nbsp;
 <img src="komik-website/public/readme/screenshot-mobile-reader.jpg" alt="Website reader on mobile" width="32%" />
 </div>
-</details>
 
 <img src="komik-website/public/readme/divider.svg" alt="" width="100%" />
 
@@ -576,10 +579,11 @@ The finished installer lands in **`shipping\Komik-Setup.exe`**.
 <a id="-the-komik-website"></a>
 <img src="komik-website/public/readme/section-website.svg" alt="The Komik website" width="100%" />
 
-The marketing and download site lives in [`komik-website/`](komik-website/). It's built as a **living comic book**, and its centerpiece is a working replica of the Komik reader that holds a complete, original 12-page comic.
+The marketing and download site lives in [`komik-website/`](komik-website/) and is live at **[komik-website-taupe.vercel.app](https://komik-website-taupe.vercel.app/)**. It's built as a **living comic book**, and its centerpiece is a working replica of the Komik reader that holds a complete, original 12-page comic.
 
 | | |
 | :-- | :-- |
+| **Live site** | **[komik-website-taupe.vercel.app](https://komik-website-taupe.vercel.app/)** |
 | **Stack** | Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS |
 | **Motion** | GSAP 3 (ScrollTrigger + SplitText) · Lenis smooth scroll · Framer Motion |
 | **Look** | Bangers & Comic Neue lettering · halftone screens · CMYK ink palette · speed lines |
@@ -598,6 +602,7 @@ npm run build    # production build
 <summary><b>Configuration & deployment</b></summary>
 <br />
 
+- **Live deployment:** [komik-website-taupe.vercel.app](https://komik-website-taupe.vercel.app/)
 - **Download links** are centralized in `komik-website/lib/config.ts`:
   - Installer: `https://github.com/mohitbansal25082006/KomiK/releases/latest/download/Komik-Setup.exe`
   - Releases: `https://github.com/mohitbansal25082006/KomiK/releases`
@@ -630,6 +635,8 @@ Komik is released under the **MIT License**. See [`LICENSE`](LICENSE).
 <img src="komik-website/public/readme/the-end.svg" alt="The End... or is it?" width="100%" />
 
 **Created & maintained by [Mohit Bansal](https://github.com/mohitbansal25082006)** · Built natively for Windows with WinUI 3 & .NET 8
+
+**🌐 [komik-website-taupe.vercel.app](https://komik-website-taupe.vercel.app/)**
 
 <sub>If Komik made your reading better, drop a ⭐ on the repo. It helps other readers find it.</sub>
 
