@@ -52,7 +52,7 @@ built with **WinUI 3 (Windows App SDK)** and **C# / .NET 8** and designed around
 
 <img src="komik-website/public/readme/app-reader.jpg" alt="Komik reader in two-page spread mode with the floating toolbar and page scrubber" width="100%" />
 
-<sub><b>The reader.</b> A two-page spread with the floating Fluent toolbar and the page scrubber. The chrome auto-hides while you read.</sub>
+<sub><b>The reader.</b> A two-page spread with the floating Fluent toolbar and the page scrubber. The application auto-hides while you read.</sub>
 
 <br /><br />
 
