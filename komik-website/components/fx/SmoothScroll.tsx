@@ -5,17 +5,32 @@ import Lenis from "lenis";
 import { gsap, ScrollTrigger, prefersReducedMotion } from "@/lib/gsap";
 
 /**
- * Lenis smooth scrolling driven by GSAP's ticker so ScrollTrigger animations
- * stay perfectly in sync. Disabled for reduced-motion users and while the
- * reader mockup is full screen (it dispatches `komik:scroll-lock`).
+ * Buttery wheel scrolling on desktop via Lenis, driven by GSAP's ticker so
+ * ScrollTrigger stays perfectly in sync. Touch devices keep native momentum
+ * scrolling (it is already the smoothest option there). Also pauses CSS loop
+ * animations that are offscreen so the compositor stays free while scrolling.
  */
 export default function SmoothScroll() {
   useEffect(() => {
-    if (prefersReducedMotion()) return;
+    /* ---- pause offscreen CSS animations (all devices) ---- */
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) e.target.classList.toggle("anim-paused", !e.isIntersecting);
+      },
+      { rootMargin: "200px 0px" },
+    );
+    document.querySelectorAll("section, footer").forEach((el) => io.observe(el));
+
+    const touchOnly = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    if (prefersReducedMotion() || touchOnly) {
+      return () => io.disconnect();
+    }
 
     const lenis = new Lenis({
-      lerp: 0.11,
+      lerp: 0.075,
+      wheelMultiplier: 0.95,
       smoothWheel: true,
+      syncTouch: false,
       anchors: { offset: -72 },
     });
 
@@ -32,6 +47,7 @@ export default function SmoothScroll() {
     document.addEventListener("komik:scroll-lock", onLock);
 
     return () => {
+      io.disconnect();
       document.removeEventListener("komik:scroll-lock", onLock);
       gsap.ticker.remove(tick);
       lenis.destroy();

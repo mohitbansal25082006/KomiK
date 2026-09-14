@@ -56,6 +56,7 @@ export default function ReaderMockup() {
 
   const [rootW, setRootW] = useState(1024);
   const [viewport, setViewport] = useState({ w: 900, h: 560 });
+  const [winH, setWinH] = useState(800);
   const compact = rootW < 640;
 
   const [page, setPage] = useState(1);
@@ -98,6 +99,7 @@ export default function ReaderMockup() {
     if (!root) return;
     const ro = new ResizeObserver(() => {
       setRootW(root.clientWidth);
+      setWinH(window.innerHeight);
       if (canvasRef.current) setViewport({ w: canvasRef.current.clientWidth, h: canvasRef.current.clientHeight });
     });
     ro.observe(root);
@@ -164,6 +166,12 @@ export default function ReaderMockup() {
   const spreadKey = shown.join("-");
   const contentW = view === "paged" ? slots.length * pw + (slots.length - 1) * GAP + pad * 2 : pw + pad * 2;
   const hOverflow = contentW > viewport.w + 1;
+  const contentH = view === "paged" ? ph + pad * 2 : Infinity;
+  const vOverflow = contentH > viewport.h + 1;
+  // only capture wheel/swipe when the canvas genuinely has something to scroll
+  const canvasScrollable = view === "webtoon" || hOverflow || vOverflow;
+  // on phones the in-page canvas is sized to fit one full page, so vertical swipes scroll the site
+  const compactCanvasH = Math.round(Math.min((viewport.w - pad * 2) * (PAGE_H / PAGE_W) + pad * 2, winH * 0.8));
 
   /* -------------------------- navigation ---------------------------- */
 
@@ -680,14 +688,15 @@ export default function ReaderMockup() {
 
       {/* ---------------- Canvas ---------------- */}
       <div
-        className={`relative min-h-0 ${fullscreen ? "flex-1" : compact ? "h-[min(72vh,560px)]" : "h-[clamp(420px,66vh,680px)]"}`}
-        style={{ background: canvasBg, transition: "background 0.4s ease" }}
+        className={`relative min-h-0 ${fullscreen ? "flex-1" : compact ? "" : "h-[clamp(420px,66vh,680px)]"}`}
+        style={{ background: canvasBg, transition: "background 0.4s ease", height: compact && !fullscreen ? compactCanvasH : undefined }}
       >
         <div className="bg-halftone pointer-events-none absolute inset-0 opacity-[0.07]" />
 
         <div
           ref={canvasRef}
-          data-lenis-prevent
+          data-lenis-prevent={canvasScrollable ? "" : undefined}
+          data-contain={fullscreen ? "true" : "false"}
           onScroll={onCanvasScroll}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}

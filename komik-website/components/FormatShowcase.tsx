@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { motion, useMotionTemplate, useMotionValue, useSpring } from "framer-motion";
+import { motion, useInView, useMotionTemplate, useMotionValue, useSpring } from "framer-motion";
 import { ArrowRight, Cog, FileArchive, FileText, FolderOpen, RefreshCw, RotateCcw, Sparkles } from "lucide-react";
 import SectionHeading from "@/components/fx/SectionHeading";
 
@@ -117,8 +117,10 @@ const INPUTS = [
 ];
 
 function ConverterMachine() {
+  const ref = useRef<HTMLDivElement>(null);
+  const active = useInView(ref, { margin: "200px 0px" });
   return (
-    <div className="relative mt-14 overflow-hidden border-[3px] border-black bg-[#15151B] p-5 shadow-[8px_8px_0_#000] sm:p-8 lg:p-10">
+    <div ref={ref} className="relative mt-14 overflow-hidden border-[3px] border-black bg-[#15151B] p-5 shadow-[8px_8px_0_#000] sm:p-8 lg:p-10">
       <div className="bg-halftone-cyan pointer-events-none absolute inset-0 opacity-25" />
       <div className="relative grid items-center gap-8 lg:grid-cols-12">
         <div className="lg:col-span-5">
@@ -149,7 +151,7 @@ function ConverterMachine() {
               {INPUTS.map((inp, i) => (
                 <motion.div
                   key={inp.label}
-                  animate={{ x: [0, 0, 18, 0], scale: [1, 1.08, 0.9, 1] }}
+                  animate={active ? { x: [0, 0, 18, 0], scale: [1, 1.08, 0.9, 1] } : undefined}
                   transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.6, times: [0, 0.35, 0.6, 1] }}
                   className={`${inp.color} flex items-center justify-center gap-1 border-[3px] border-black px-2 py-2 font-bangers text-lg shadow-[3px_3px_0_#000]`}
                 >
@@ -177,7 +179,7 @@ function ConverterMachine() {
                 <div className="mt-1.5 h-3 overflow-hidden border-2 border-amber/40 bg-[#222]">
                   <motion.div
                     className="h-full bg-[repeating-linear-gradient(45deg,#FFD700_0_8px,#FF1F6D_8px_16px)]"
-                    animate={{ width: ["0%", "100%"] }}
+                    animate={active ? { width: ["0%", "100%"] } : undefined}
                     transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
                   />
                 </div>
@@ -195,7 +197,7 @@ function ConverterMachine() {
                   key={k}
                   className="absolute flex h-36 w-28 flex-col items-center justify-center border-[3px] border-black bg-cyan font-bangers text-3xl text-black shadow-[4px_4px_0_#000]"
                   style={{ rotate: (k - 1) * 7, x: (k - 1) * 8 }}
-                  animate={k === 0 ? { y: [20, -6, 0], scale: [0.6, 1.1, 1], opacity: [0, 1, 1] } : undefined}
+                  animate={k === 0 && active ? { y: [20, -6, 0], scale: [0.6, 1.1, 1], opacity: [0, 1, 1] } : undefined}
                   transition={k === 0 ? { duration: 2.4, repeat: Infinity, times: [0, 0.3, 0.45] } : undefined}
                 >
                   .CBZ
@@ -216,7 +218,7 @@ export default function FormatShowcase() {
   return (
     <section id="formats" className="relative scroll-mt-16 overflow-hidden border-b-[3px] border-black bg-[#0B0B10] py-20 sm:py-28">
       <div className="bg-halftone pointer-events-none absolute inset-0 opacity-30" />
-      <div className="pointer-events-none absolute -right-40 top-20 h-[480px] w-[480px] rounded-full bg-cyan/10 blur-[120px]" />
+      <div className="pointer-events-none absolute -right-60 top-0 h-[720px] w-[720px] bg-[radial-gradient(circle,rgba(0,194,255,0.1),transparent_65%)]" />
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeading
           caption="Chapter 02 · The archive vault"

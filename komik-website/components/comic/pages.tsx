@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import {
   Balloon,
   Burst,
@@ -781,7 +781,8 @@ export function pageText(n: number): string[] {
   return Object.values(s).map((t) => t.replace(/\n/g, " "));
 }
 
-export function ComicPage({ n }: { n: number }) {
+/** Memoized so reader/demo state changes never re-render the heavy page SVGs. */
+export const ComicPage = memo(function ComicPage({ n }: { n: number }) {
   const C = COMIC_PAGES[n - 1];
   return C ? <C /> : null;
-}
+});

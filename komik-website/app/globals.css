@@ -24,15 +24,17 @@ body {
   font-family: var(--font-jakarta), system-ui, -apple-system, sans-serif;
 }
 
+/* native smooth anchor jumps where Lenis is not running (touch devices) */
+html:not(.lenis) {
+  scroll-behavior: smooth;
+}
+
 html.lenis,
 html.lenis body {
   height: auto;
 }
 .lenis.lenis-smooth {
   scroll-behavior: auto !important;
-}
-.lenis.lenis-smooth [data-lenis-prevent] {
-  overscroll-behavior: contain;
 }
 .lenis.lenis-stopped {
   overflow: clip;
@@ -231,9 +233,11 @@ html.lenis body {
 }
 .animate-marquee {
   animation: marquee 38s linear infinite;
+  will-change: transform;
 }
 .animate-marquee-reverse {
   animation: marquee 44s linear infinite reverse;
+  will-change: transform;
 }
 
 @keyframes spin-slow {
@@ -243,6 +247,13 @@ html.lenis body {
 }
 .animate-spin-slow {
   animation: spin-slow 60s linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+/* paused by SmoothScroll's offscreen observer to keep scrolling light */
+.anim-paused,
+.anim-paused * {
+  animation-play-state: paused !important;
 }
 
 @keyframes wobble {
@@ -329,6 +340,10 @@ html.lenis body {
 .reader-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+  /* let swipes/wheel hand off to the page when the reader reaches its edge */
+  overscroll-behavior: auto;
+}
+.reader-scroll[data-contain="true"] {
   overscroll-behavior: contain;
 }
 .reader-scroll::-webkit-scrollbar {

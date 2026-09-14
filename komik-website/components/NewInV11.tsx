@@ -275,7 +275,7 @@ function OcrPanel() {
           </div>
           <motion.div
             className="pointer-events-none absolute inset-x-0 h-1 bg-cyan shadow-[0_0_18px_4px_#00C2FF]"
-            animate={{ top: ["0%", "100%", "0%"] }}
+            animate={inView ? { top: ["0%", "100%", "0%"] } : undefined}
             transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
           />
         </div>
@@ -303,10 +303,12 @@ function OcrPanel() {
 /* ----------------------------- Backup panel ----------------------------- */
 
 function BackupPanel() {
+  const ref = useRef<HTMLDivElement>(null);
+  const active = useInView(ref, { margin: "200px 0px" });
   return (
     <PanelShell className="lg:col-span-4" tone="bg-[#2FD17A]" tag=".komikbackup" icon={DatabaseBackup} title="Portable Backups" delay={0.12}>
       <div className="flex flex-1 flex-col">
-        <div className="relative flex h-32 items-center justify-between px-2">
+        <div ref={ref} className="relative flex h-32 items-center justify-between px-2">
           {["Old PC", "New PC"].map((l) => (
             <div key={l} className="flex flex-col items-center gap-1">
               <Monitor className="h-14 w-14" strokeWidth={1.6} />
@@ -315,7 +317,7 @@ function BackupPanel() {
           ))}
           <motion.div
             className="absolute left-1/2 top-6 flex h-16 w-14 -translate-x-1/2 flex-col items-center justify-center border-[3px] border-black bg-amber font-mono text-[8px] font-black shadow-[3px_3px_0_#000]"
-            animate={{ x: ["-160%", "60%"], y: [0, -26, 0], rotate: [-10, 10] }}
+            animate={active ? { x: ["-160%", "60%"], y: [0, -26, 0], rotate: [-10, 10] } : undefined}
             transition={{ duration: 2.2, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
           >
             <DatabaseBackup className="h-5 w-5" />
@@ -341,10 +343,13 @@ function BackupPanel() {
 
 function ToolbarPanel() {
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const active = useInView(ref, { margin: "200px 0px" });
   useEffect(() => {
+    if (!active) return;
     const t = setInterval(() => setOpen((o) => !o), 2200);
     return () => clearInterval(t);
-  }, []);
+  }, [active]);
   return (
     <PanelShell className="lg:col-span-12" tone="bg-amber" tag="Remembers you" icon={ArrowLeftRight} title="Responsive Library & Window Memory" delay={0.05}>
       <div className="grid items-center gap-6 md:grid-cols-2">
@@ -354,10 +359,11 @@ function ToolbarPanel() {
             scrolls toolbars sideways on compact windows. Komik also remembers your window size, position and maximized state between launches.
           </p>
         </div>
-        <div className="relative h-44 overflow-hidden border-[3px] border-black bg-[#1b1b1f]">
+        <div ref={ref} className="relative h-44 overflow-hidden border-[3px] border-black bg-[#1b1b1f]">
           <motion.div
             className="absolute left-3 top-3 border-2 border-white/20 bg-[#26262c] shadow-2xl"
-            animate={{ width: ["88%", "58%", "88%"], height: ["80%", "70%", "80%"] }}
+            style={{ width: "88%", height: "80%" }}
+            animate={active ? { width: ["88%", "58%", "88%"], height: ["80%", "70%", "80%"] } : undefined}
             transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
           >
             <div className="flex h-6 items-center justify-between border-b border-white/10 px-2 text-[9px] text-white/70">

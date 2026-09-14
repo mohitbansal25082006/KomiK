@@ -1,26 +1,34 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
+import { AnimatePresence, LayoutGroup, motion, useInView } from "framer-motion";
 import { ArrowLeftRight, Bookmark, BookOpen, Cpu, Moon, Search, ScrollText, Sparkles } from "lucide-react";
 import SectionHeading from "@/components/fx/SectionHeading";
 import { ComicPage } from "@/components/comic/pages";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { PRESETS, cssFilter } from "@/components/reader/readerModel";
 
+/** True while the demo is on (or near) the screen, so offscreen loops stop working. */
+function useActive<T extends Element>() {
+  const ref = useRef<T>(null);
+  const active = useInView(ref, { margin: "200px 0px" });
+  return [ref, active] as const;
+}
+
 /* ----------------------------- Demo 1 ----------------------------- */
 
 function SpreadDemo() {
   const [rtl, setRtl] = useState(false);
   const [auto, setAuto] = useState(true);
+  const [ref, active] = useActive<HTMLDivElement>();
   useEffect(() => {
-    if (!auto) return;
+    if (!auto || !active) return;
     const t = setInterval(() => setRtl((v) => !v), 2800);
     return () => clearInterval(t);
-  }, [auto]);
+  }, [auto, active]);
   const pairs = [[1], [2, 3], [4, 5]];
   return (
-    <div>
+    <div ref={ref}>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {(["ltr", "rtl"] as const).map((d) => (
           <button
@@ -72,18 +80,21 @@ function SpreadDemo() {
 
 function WebtoonDemo() {
   const [tick, setTick] = useState(0);
+  const [ref, active] = useActive<HTMLDivElement>();
   useEffect(() => {
+    if (!active) return;
     const t = setInterval(() => setTick((v) => v + 1), 900);
     return () => clearInterval(t);
-  }, []);
+  }, [active]);
   const center = 5 + (tick % 4);
   const order = [0, 1, -1, 2, -2, 3];
   return (
-    <div className="grid grid-cols-[110px_1fr] gap-4 sm:grid-cols-[140px_1fr] xl:grid-cols-[190px_1fr]">
+    <div ref={ref} className="grid grid-cols-[110px_1fr] gap-4 sm:grid-cols-[140px_1fr] xl:grid-cols-[190px_1fr]">
       <div className="relative h-[240px] overflow-hidden xl:h-[380px] border-[3px] border-black bg-black shadow-[4px_4px_0_#000]">
         <motion.div
           className="absolute inset-x-0 top-0 flex flex-col gap-1 p-1"
-          animate={{ y: ["0%", "-50%"] }}
+          style={{ willChange: "transform" }}
+          animate={active ? { y: ["0%", "-50%"] } : undefined}
           transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
         >
           {[2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9].map((n, i) => (
@@ -198,7 +209,9 @@ const QUERIES = ["chronicles", "neon", "vol", "robots", ""];
 function LibraryDemo() {
   const [qi, setQi] = useState(0);
   const [typed, setTyped] = useState("");
+  const [ref, active] = useActive<HTMLDivElement>();
   useEffect(() => {
+    if (!active) return;
     const target = QUERIES[qi];
     let i = 0;
     const type = setInterval(() => {
@@ -211,10 +224,10 @@ function LibraryDemo() {
       clearInterval(type);
       clearTimeout(next);
     };
-  }, [qi]);
+  }, [qi, active]);
   const results = useMemo(() => LIBRARY.filter((b) => b.t.toLowerCase().includes(typed.toLowerCase())), [typed]);
   return (
-    <div>
+    <div ref={ref}>
       <div className="mb-3 flex items-center gap-2 border-[3px] border-black bg-black px-3 py-2 font-mono text-[12px] shadow-[3px_3px_0_#000]">
         <Search className="h-4 w-4 text-amber" />
         <span className="text-newsprint">
@@ -256,12 +269,14 @@ function LibraryDemo() {
 
 function ResumeDemo() {
   const [cycle, setCycle] = useState(0);
+  const [ref, active] = useActive<HTMLDivElement>();
   useEffect(() => {
+    if (!active) return;
     const t = setInterval(() => setCycle((c) => c + 1), 3200);
     return () => clearInterval(t);
-  }, []);
+  }, [active]);
   return (
-    <div className="relative flex h-[240px] items-center justify-center overflow-hidden border-[3px] xl:h-[380px] border-black bg-[#0f0f12] shadow-[4px_4px_0_#000]">
+    <div ref={ref} className="relative flex h-[240px] items-center justify-center overflow-hidden border-[3px] xl:h-[380px] border-black bg-[#0f0f12] shadow-[4px_4px_0_#000]">
       <div className="bg-halftone absolute inset-0 opacity-20" />
       <div className="relative flex gap-1">
         {[6, 7].map((n) => (

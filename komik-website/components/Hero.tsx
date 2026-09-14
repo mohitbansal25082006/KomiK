@@ -64,8 +64,8 @@ export default function Hero() {
         <div className="absolute left-1/2 top-[22%] h-[260vmax] w-[260vmax] -translate-x-1/2 -translate-y-1/2">
           <div className="bg-speedlines animate-spin-slow h-full w-full" />
         </div>
-        <div className="absolute -left-40 top-10 h-[520px] w-[520px] rounded-full bg-magenta/25 blur-[120px]" />
-        <div className="absolute -right-40 top-40 h-[520px] w-[520px] rounded-full bg-cyan/20 blur-[120px]" />
+        <div className="absolute -left-60 -top-20 h-[760px] w-[760px] bg-[radial-gradient(circle,rgba(255,31,109,0.22),transparent_65%)]" />
+        <div className="absolute -right-60 top-20 h-[760px] w-[760px] bg-[radial-gradient(circle,rgba(0,194,255,0.18),transparent_65%)]" />
         <div className="bg-halftone-fade absolute inset-0" />
         <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-ink to-transparent" />
       </div>

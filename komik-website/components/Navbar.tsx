@@ -50,7 +50,7 @@ export default function Navbar() {
   }, [open]);
 
   return (
-    <header className={`sticky top-0 z-50 w-full border-b-[3px] border-black transition-colors duration-300 ${scrolled ? "bg-ink/90 backdrop-blur-md" : "bg-ink"}`}>
+    <header className={`sticky top-0 z-50 w-full border-b-[3px] border-black transition-colors duration-300 ${scrolled ? "bg-ink/95" : "bg-ink"}`}>
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <a href="#top" className="group flex shrink-0 items-center gap-3" aria-label="Komik home">
           <motion.div
