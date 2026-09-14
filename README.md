@@ -56,7 +56,7 @@ built with **WinUI 3 (Windows App SDK)** and **C# / .NET 8** and designed around
 
 <img src="komik-website/public/readme/app-reader.jpg" alt="Komik reader in two-page spread mode with the floating toolbar and page scrubber" width="100%" />
 
-<sub><b>The reader.</b> A two-page spread with the floating Fluent toolbar and the page scrubber. The application auto-hides while you read.</sub>
+<sub><b>The reader.</b> A two-page spread with the floating Fluent toolbar and the page scrubber. The chrome auto-hides while you read.</sub>
 
 <br /><br />
 
@@ -105,7 +105,7 @@ Visit the live site — **[komik-website-taupe.vercel.app](https://komik-website
     <td width="50%"><img src="komik-website/public/readme/screenshot-new.jpg" alt="New in 1.1.0 special edition" width="100%" /></td>
   </tr>
 </table>
-<img src="komik-website/public/readme/mobile-screen-hero-section.png" alt="Website on mobile" width="32%" />
+<img src="komik-website/public/readme/mobile-screen-hero-section.PNG" alt="Website on mobile" width="32%" />
 &nbsp;
 <img src="komik-website/public/readme/screenshot-mobile-reader.jpg" alt="Website reader on mobile" width="32%" />
 </div>
