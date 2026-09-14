@@ -52,6 +52,8 @@ Komik natively supports all standard digital comic book archives, containers, an
 ## Key Features
 
 ### 📖 High-Performance Reading Canvas
+- **Smooth Animated Scroll to Top**: When flipping to any previous or next page, the viewport automatically and smoothly animates scroll position back to the top of the new page.
+- **Vertical / Webtoon Continuous Scroll Mode (`V`)**: Read modern long-strip webcomics and webtoons with an uninterrupted continuous vertical strip and zero panel gaps.
 - **Versatile Fit Modes**:
   - **Fit to Width** (`W`): Fits page width to the viewport for comfortable vertical webtoon/scrolling reading.
   - **Fit to Height** (`H`): Fits the full page height to the viewport for single-screen reading.
@@ -62,23 +64,42 @@ Komik natively supports all standard digital comic book archives, containers, an
 - **Natural Numerical Page Sorting**: Employs `NaturalSortComparer` so numbered files sort intuitively (`1, 2, ... 9, 10` rather than `1, 10, 2`).
 - **Distraction-Free Full-Screen**: Immersive full-screen reading mode (`F11` or double-click) with auto-hiding UI chrome.
 
-### 📚 Local SQLite Library Management
+### 🔍 100% Offline Windows OCR (Text Search & Selectable Text)
+- **Zero Cloud, 100% Local**: Powered directly by Windows' built-in `Windows.Media.Ocr.OcrEngine` API shipping with Windows 10/11. Zero external network calls or cloud APIs.
+- **Dialogue Search**: Search in-comic spoken dialogue and text, view matching word occurrences, and jump directly to the target page with a single click.
+- **Selectable Text Overlay Layer**: View, highlight, and copy transcribed comic dialogue directly from scanned artwork pages.
+
+### 📚 Local SQLite Library Management & Series Grouping
+- **Series & Volume Grouping**: Clusters issues into series runs with overall progress bars, issue counters, format badges, and a 1-click "Read Next" launcher.
+- **Duplicate Comic Detection & Management**: Identifies cross-format duplicates (e.g. `.cbz` vs. `.pdf`), matching page counts/file sizes, and quality tags. Easily remove redundant copies from disk or dismiss duplicate flags.
 - **Automatic Watched Folders**: Add folders to monitor; Komik scans recursively and indexes comics automatically.
-- **Multiple Layout Views**: Switch between cover card grid view and detailed table list view.
+- **Multiple Layout Views**: Switch between cover card grid view, series grouping view, and detailed table list view.
 - **Instant Search & Real-Time Filtering**: Search titles instantly, or filter by Favorites, In-Progress, Unread, tags, or custom collections.
 - **Rich Sorting Options**: Sort by Title (A-Z / Z-A), Recently Read, Date Added (Newest/Oldest), Page Count, and File Size.
 - **Thumbnail Cache**: Disk-backed cover thumbnail generator and cache in `%LocalAppData%\Komik\Thumbnails` for near-instant rendering.
 - **Non-Destructive Operations**: Removing a folder or comic from the library never deletes the underlying files from disk.
 
-### 🔖 Reading Progress, Bookmarks & Color Correction
+### 📊 Reading Statistics & Komik Wrapped
+- **Automatic Session Tracking**: Automatically logs session durations and pages read in SQLite.
+- **Komik Wrapped Dashboard**: View total reading time, total pages read, comics completed, current & longest daily reading streaks, top 5 most-read comic series, and recent daily activity.
+
+### 🔖 Reading Progress, Bookmarks & Color Correction Presets
 - **Automatic Progress Tracking**: Remembers your last read page and completion status in SQLite with zero lag.
 - **Resume Reading Toast**: Non-intrusive notification ("Resumed at page X") when reopening any comic.
 - **Visual Scrubber Bar**: Interactive seekbar with page numbers and thumbnail tooltips for easy navigation.
 - **Bookmark System**: Bookmark any page with optional custom notes (`Ctrl + D` / `Ctrl + B`).
-- **Real-Time Color Correction**:
-  - Hardware-accelerated 256-entry channel Look-Up Table (LUT).
-  - User-adjustable Brightness (-100 to +100), Contrast (0.5 to 2.0), and Warmth (-100 to +100 paper de-yellowing).
-  - One-click Night Mode preset (warm amber tone with dimmed background).
+- **6 Hardware-Accelerated Reading Presets**:
+  - **Original**: Natural scan colors.
+  - **Night Mode**: Amber warmth with dimmed background.
+  - **Sepia Tone**: Classic warm parchment paper effect.
+  - **High Contrast**: Enhanced ink line sharpness and deep blacks.
+  - **Grayscale**: Pure monochrome rendering.
+  - **Inverted**: Dark mode inversion for white backgrounds.
+  - Fine-grained Brightness (-100 to +100), Contrast (0.5 to 2.0), and Warmth (-100 to +100) sliders.
+
+### 💾 Portable Library Backups (`.komikbackup`)
+- **JSON Export & Import**: Safely export all reading history, bookmarks, user notes, favorites, tags, monitored folders, and app settings into a single portable `.komikbackup` file.
+- **Portability**: Move your library progress between PCs without cloud syncing or vendor lock-in.
 
 ### 📦 Pure .NET Archive Support & Universal CBZ Conversion
 - **Zero External Dependencies**: Pure managed RAR4/RAR5 and 7Z/CB7 archive extraction powered by SharpCompress—no external command-line tools or native `unrar.dll` needed.
@@ -88,14 +109,16 @@ Komik natively supports all standard digital comic book archives, containers, an
   - Standardized zero-padded file naming (`0001_Cover.jpg`, `0002_Page_02.png`) for deterministic ordering across third-party readers.
   - Background asynchronous execution with progress reporting and cancellation.
 
-### ⚙️ Settings, Local Metadata & Windows Shell Integration
+### ⚙️ Settings, Window Geometry & Shell Integration
+- **Window Geometry & Ratio Persistence**: Remembers window dimensions, monitor position, and maximized state across application launches.
+- **New Vector Crest Identity**: Fresh branding across the application icon, title bar, taskbar, splash screen, and installer.
 - **Consolidated Settings Screen**:
   - Theme Override: System Default, Force Light, or Force Dark mode.
-  - Reading Defaults: Default Fit Mode and Default Reading Direction.
+  - Reading Defaults: Default Fit Mode, Default Reading Direction, and Reading Theme Presets.
   - Library Defaults: Default View Mode and Default Sort Option.
-  - Color Correction Defaults: Set persistent Brightness, Contrast, Warmth, and Night Mode preferences.
   - Monitored Folders: Manage watched library directories with confirmation prompts.
   - Thumbnail Cache Management: View cache size, clear cache, or pre-cache library covers with one click.
+  - Library Data & Backup: One-click export and import of `.komikbackup` files.
 - **Local Comic Details Dialog**:
   - Inspect cover thumbnails, page counts, file sizes, reading status, and file paths.
   - Edit extended local metadata: Title, Series Name, Issue #, Writer(s), Artist(s), Publisher, Release Date, and Summary.
@@ -116,6 +139,8 @@ Komik natively supports all standard digital comic book archives, containers, an
 | **Ctrl + D / Ctrl + B** | Toggle Bookmark for Current Page | Reader |
 | **Ctrl + R** | Toggle Reading Direction (LTR Western vs. RTL Manga) | Reader |
 | **D** | Toggle Single Page / Two-Page Spread | Reader |
+| **V** | Toggle Webtoon Continuous Vertical Scroll Mode | Reader |
+| **Ctrl + F** | Search In-Comic Dialogue (Offline Windows OCR) | Reader |
 | **W** | Fit to Width | Reader |
 | **H** | Fit to Height | Reader |
 | **A** | Actual Size (100% native pixels) | Reader |
@@ -198,6 +223,24 @@ CREATE TABLE IF NOT EXISTS ComicTags (
     PRIMARY KEY(comic_id, tag_id),
     FOREIGN KEY(comic_id) REFERENCES Comics(id) ON DELETE CASCADE,
     FOREIGN KEY(tag_id) REFERENCES Tags(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS ReadingSessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    comic_id INTEGER NOT NULL,
+    start_time TEXT NOT NULL,
+    end_time TEXT NOT NULL,
+    duration_seconds INTEGER NOT NULL,
+    pages_read INTEGER NOT NULL,
+    session_date TEXT NOT NULL,
+    FOREIGN KEY(comic_id) REFERENCES Comics(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS IgnoredDuplicates (
+    comic_id_1 INTEGER NOT NULL,
+    comic_id_2 INTEGER NOT NULL,
+    date_ignored TEXT NOT NULL,
+    PRIMARY KEY(comic_id_1, comic_id_2)
 );
 ```
 

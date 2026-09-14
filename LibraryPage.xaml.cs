@@ -44,20 +44,32 @@ public sealed partial class LibraryPage : Page
         : GetThemeBrush("ControlFillColorDefaultBrush", FallbackControlDefault);
 
     public Brush FilterFavoritesBackground => ViewModel.FilterFavoritesOnly
-        ? GetThemeBrush("ControlFillColorSecondaryBrush", FallbackControlSecondary)
+        ? new SolidColorBrush(Windows.UI.Color.FromArgb(60, 255, 69, 96))
         : GetThemeBrush("ControlFillColorDefaultBrush", FallbackControlDefault);
 
     public Brush FilterContinueReadingBackground => ViewModel.FilterInProgressOnly
-        ? GetThemeBrush("ControlFillColorSecondaryBrush", FallbackControlSecondary)
+        ? new SolidColorBrush(Windows.UI.Color.FromArgb(60, 245, 158, 11))
         : GetThemeBrush("ControlFillColorDefaultBrush", FallbackControlDefault);
 
     public Brush FilterCompletedBackground => ViewModel.FilterCompletedOnly
-        ? GetThemeBrush("ControlFillColorSecondaryBrush", FallbackControlSecondary)
+        ? new SolidColorBrush(Windows.UI.Color.FromArgb(60, 76, 175, 80))
         : GetThemeBrush("ControlFillColorDefaultBrush", FallbackControlDefault);
 
     public Brush FilterUnreadBackground => ViewModel.FilterUnreadOnly
-        ? GetThemeBrush("ControlFillColorSecondaryBrush", FallbackControlSecondary)
+        ? new SolidColorBrush(Windows.UI.Color.FromArgb(60, 59, 130, 246))
         : GetThemeBrush("ControlFillColorDefaultBrush", FallbackControlDefault);
+
+    public Brush FilterSeriesBackground => ViewModel.IsSeriesView
+        ? GetThemeBrush("AccentFillColorDefaultBrush", Windows.UI.Color.FromArgb(255, 245, 158, 11))
+        : GetThemeBrush("ControlFillColorDefaultBrush", FallbackControlDefault);
+
+    public Brush FilterSeriesForeground => ViewModel.IsSeriesView
+        ? new SolidColorBrush(Microsoft.UI.Colors.Black)
+        : GetThemeBrush("TextFillColorPrimaryBrush", Microsoft.UI.Colors.White);
+
+    public Brush FilterSeriesIconForeground => ViewModel.IsSeriesView
+        ? new SolidColorBrush(Microsoft.UI.Colors.Black)
+        : GetThemeBrush("AccentFillColorDefaultBrush", Windows.UI.Color.FromArgb(255, 245, 158, 11));
 
     public Brush GridModeBackground => ViewModel.IsGridView
         ? GetThemeBrush("ControlFillColorSecondaryBrush", FallbackControlSecondary)
@@ -98,13 +110,17 @@ public sealed partial class LibraryPage : Page
         {
             EmptyFilterContainer.Visibility = ViewModel.ShowEmptyFilter ? Visibility.Visible : Visibility.Collapsed;
         }
+        if (SeriesGridView != null)
+        {
+            SeriesGridView.Visibility = ViewModel.ShowSeriesGrid ? Visibility.Visible : Visibility.Collapsed;
+        }
         if (ComicsGridView != null)
         {
-            ComicsGridView.Visibility = (ViewModel.IsGridView && hasComics) ? Visibility.Visible : Visibility.Collapsed;
+            ComicsGridView.Visibility = ViewModel.ShowComicsGrid ? Visibility.Visible : Visibility.Collapsed;
         }
         if (ComicsListView != null)
         {
-            ComicsListView.Visibility = (ViewModel.IsListView && hasComics) ? Visibility.Visible : Visibility.Collapsed;
+            ComicsListView.Visibility = ViewModel.ShowComicsList ? Visibility.Visible : Visibility.Collapsed;
         }
         if (GridModeButton != null)
         {
@@ -137,6 +153,7 @@ public sealed partial class LibraryPage : Page
             e.PropertyName == nameof(ViewModel.SelectedTag) ||
             e.PropertyName == nameof(ViewModel.IsGridView) ||
             e.PropertyName == nameof(ViewModel.IsListView) ||
+            e.PropertyName == nameof(ViewModel.IsSeriesView) ||
             e.PropertyName == nameof(ViewModel.HasComics) ||
             e.PropertyName == nameof(ViewModel.HasNoComics) ||
             e.PropertyName == nameof(ViewModel.ShowEmptyLibrary) ||
@@ -157,6 +174,64 @@ public sealed partial class LibraryPage : Page
     private void OnComicSelectedForReading(string filePath)
     {
         Frame.Navigate(typeof(MainPage), filePath);
+    }
+
+    private void SeriesCard_Click(object sender, ItemClickEventArgs e)
+    {
+        if (e.ClickedItem is ComicSeriesGroup group)
+        {
+            ViewModel.OpenSeriesDetail(group);
+        }
+    }
+
+    private void PlaySeriesNext_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ComicSeriesGroup group })
+        {
+            ViewModel.PlaySeriesNext(group);
+        }
+    }
+
+    private void SeriesIssue_Click(object sender, ItemClickEventArgs e)
+    {
+        if (e.ClickedItem is ComicEntity comic)
+        {
+            ViewModel.OpenComic(comic);
+        }
+    }
+
+    private void DismissDuplicate_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: DuplicateComicGroup group })
+        {
+            _ = ViewModel.DismissDuplicateGroupAsync(group);
+        }
+    }
+
+    private async void DeleteDuplicate_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ComicEntity copy })
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "Delete Duplicate Copy?",
+                Content = new TextBlock
+                {
+                    Text = $"Are you sure you want to permanently delete this duplicate copy from your library and disk?\n\n{copy.Title} ({copy.Format})\nPath: {copy.FilePath}",
+                    TextWrapping = TextWrapping.Wrap
+                },
+                PrimaryButtonText = "Delete Permanently",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.XamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                await ViewModel.DeleteDuplicateCopyAsync(copy);
+            }
+        }
     }
 
     private void ComicGrid_ItemClick(object sender, ItemClickEventArgs e)
@@ -245,6 +320,22 @@ public sealed partial class LibraryPage : Page
     private void ClearActiveFilter_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.FilterAll();
+    }
+
+    private void CandidateCard_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ManualSeriesComicItem item })
+        {
+            ViewModel.ToggleCandidateSelection(item);
+        }
+    }
+
+    private void RemoveComicFromSeries_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ComicEntity comic })
+        {
+            _ = ViewModel.RemoveComicFromManualSeriesAsync(comic);
+        }
     }
 
     private void UpdateActiveFilterUi()

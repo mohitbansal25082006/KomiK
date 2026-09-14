@@ -1211,6 +1211,281 @@ public static class Program
                 if (comicAfterFolderDelete == null)
                     throw new Exception("Comic should remain in library after folder is deleted");
             });
+
+            // Test 24: SeriesParserHelper parses comic series and issue numbers
+            await RunTestAsync("SeriesParserHelper Parses Titles and Issues Correctly", () =>
+            {
+                var (series1, issue1) = SeriesParserHelper.ParseSeriesAndIssue("Batman (2016) #05.cbz");
+                if (issue1 != 5.0 || !series1.Contains("Batman"))
+                    throw new Exception($"Failed parsing Batman: got series '{series1}', issue {issue1}");
+
+                var (series2, issue2) = SeriesParserHelper.ParseSeriesAndIssue("Spider-Man Vol. 2 Issue 12 (Digital-Empire).cbr");
+                if (issue2 != 12.0)
+                    throw new Exception($"Failed parsing Spider-Man issue: got {issue2}");
+
+                var (series3, issue3) = SeriesParserHelper.ParseSeriesAndIssue("One Piece Chapter 1000.pdf");
+                if (issue3 != 1000.0 || !series3.Contains("One Piece"))
+                    throw new Exception($"Failed parsing One Piece: got series '{series3}', issue {issue3}");
+
+                var (series4, issue4) = SeriesParserHelper.ParseSeriesAndIssue("Invincible 042.cbz");
+                if (issue4 != 42.0 || !series4.Contains("Invincible"))
+                    throw new Exception($"Failed parsing Invincible: got series '{series4}', issue {issue4}");
+
+                // Test 90% full-title series matching & structural normalization
+                bool sameSeries = SeriesParserHelper.AreInSameSeries("Batman (2016) #01", "Batman (2016) #02", 0.90);
+                if (!sameSeries)
+                    throw new Exception("Expected Batman (2016) #01 and #02 to be matched in same series (>=90%)");
+
+                bool diffSeries = SeriesParserHelper.AreInSameSeries("Batman #01", "Spider-Man #01", 0.90);
+                if (diffSeries)
+                    throw new Exception("Batman #01 and Spider-Man #01 should NOT be in the same series");
+
+                // Test 95% duplicate detection vs series separation
+                bool duplicates = SeriesParserHelper.AreDuplicates("Batman #01 (Digital)", "Batman #01", 0.95);
+                if (!duplicates)
+                    throw new Exception("Expected Batman #01 (Digital) and Batman #01 to be detected as duplicates");
+
+                bool notDuplicates = SeriesParserHelper.AreDuplicates("Batman #01", "Batman #02", 0.95);
+                if (notDuplicates)
+                    throw new Exception("Batman #01 and Batman #02 must NOT be flagged as duplicates under 95% threshold");
+
+                return Task.CompletedTask;
+            });
+
+            // Test 25: DuplicateDetectionService finds cross-format and name duplicates
+            await RunTestAsync("DuplicateDetectionService Finds Cross-Format and Normalized Duplicates", () =>
+            {
+                var duplicateService = new DuplicateDetectionService();
+                var comics = new List<ComicEntity>
+                {
+                    new ComicEntity { Id = 1, Title = "Batman #01 (Digital)", FilePath = @"C:\Comics\Batman #01 (Digital).cbz", Format = ComicSourceType.ZipArchive, PageCount = 24, FileSize = 1000 },
+                    new ComicEntity { Id = 2, Title = "Batman #01", FilePath = @"C:\Comics\Batman #01.pdf", Format = ComicSourceType.PdfDocument, PageCount = 24, FileSize = 1000 },
+                    new ComicEntity { Id = 3, Title = "Saga #01", FilePath = @"C:\Comics\Saga #01.cbz", Format = ComicSourceType.ZipArchive, PageCount = 30, FileSize = 2000 },
+                    new ComicEntity { Id = 4, Title = "Saga #01 (Webrip)", FilePath = @"C:\Comics\Saga #01 (Webrip).cbr", Format = ComicSourceType.RarArchive, PageCount = 30, FileSize = 2500 }
+                };
+
+                var ignoredPairs = new HashSet<(long, long)>();
+                var duplicates = duplicateService.FindDuplicates(comics, ignoredPairs);
+
+                if (duplicates.Count < 2)
+                    throw new Exception($"Expected at least 2 duplicate groups, found {duplicates.Count}");
+
+                // Now test ignored pairs
+                ignoredPairs.Add((1, 2));
+                var filteredDuplicates = duplicateService.FindDuplicates(comics, ignoredPairs);
+                if (filteredDuplicates.Any(g => g.Copies.Any(c => c.Id == 1) && g.Copies.Any(c => c.Id == 2)))
+                    throw new Exception("Ignored duplicate pair (1, 2) was still detected as duplicate");
+
+                return Task.CompletedTask;
+            });
+
+            // Test 26: ColorCorrectionHelper Presets
+            await RunTestAsync("ColorCorrectionHelper Applies Color Presets", () =>
+            {
+                // 4 pixels RGBA: White, Black, Red, Blue
+                byte[] bgra = new byte[]
+                {
+                    255, 255, 255, 255, // White (B=255, G=255, R=255)
+                    0,   0,   0,   255, // Black (B=0, G=0, R=0)
+                    0,   0,   255, 255, // Red   (B=0, G=0, R=255)
+                    255, 0,   0,   255  // Blue  (B=255, G=0, R=0)
+                };
+
+                // Grayscale preset
+                var graySettings = new ColorCorrectionSettings { Preset = ReadingPreset.Grayscale };
+                var grayResult = ColorCorrectionHelper.ApplyColorCorrection(bgra, graySettings);
+                for (int i = 0; i < grayResult.Length; i += 4)
+                {
+                    if (grayResult[i] != grayResult[i + 1] || grayResult[i + 1] != grayResult[i + 2])
+                        throw new Exception($"Grayscale failed at pixel {i / 4}: B={grayResult[i]}, G={grayResult[i+1]}, R={grayResult[i+2]}");
+                }
+
+                // Inverted preset
+                var invSettings = new ColorCorrectionSettings { Preset = ReadingPreset.Inverted };
+                var invResult = ColorCorrectionHelper.ApplyColorCorrection(bgra, invSettings);
+                if (invResult[0] > 10 || invResult[1] > 10 || invResult[2] > 10)
+                    throw new Exception("Inverted white pixel was not dark");
+
+                // Sepia preset
+                var sepiaSettings = new ColorCorrectionSettings { Preset = ReadingPreset.Sepia };
+                var sepiaResult = ColorCorrectionHelper.ApplyColorCorrection(bgra, sepiaSettings);
+                if (sepiaResult.Length != bgra.Length)
+                    throw new Exception("Sepia result length mismatch");
+
+                return Task.CompletedTask;
+            });
+
+            // Test 27: Window Geometry Persistence
+            await RunTestAsync("LibraryRepository Saves and Restores Window Geometry", async () =>
+            {
+                string dbPath = Path.Combine(tempDir, "window_test.db");
+                using var repo = new LibraryRepository(dbPath);
+                await repo.InitializeAsync();
+
+                var settings = await repo.GetAppSettingsAsync();
+                settings.WindowWidth = 1400;
+                settings.WindowHeight = 900;
+                settings.WindowX = 120;
+                settings.WindowY = 80;
+                settings.IsMaximized = false;
+                await repo.SaveAppSettingsAsync(settings);
+
+                var loadedSettings = await repo.GetAppSettingsAsync();
+                if (loadedSettings.WindowWidth != 1400 || loadedSettings.WindowHeight != 900)
+                    throw new Exception($"Window dimensions mismatch: {loadedSettings.WindowWidth}x{loadedSettings.WindowHeight}");
+                if (loadedSettings.WindowX != 120 || loadedSettings.WindowY != 80)
+                    throw new Exception($"Window position mismatch: {loadedSettings.WindowX}, {loadedSettings.WindowY}");
+                if (loadedSettings.IsMaximized)
+                    throw new Exception("Window should not be maximized");
+
+                // Test maximized state
+                loadedSettings.IsMaximized = true;
+                await repo.SaveAppSettingsAsync(loadedSettings);
+                var reloadedSettings = await repo.GetAppSettingsAsync();
+                if (!reloadedSettings.IsMaximized)
+                    throw new Exception("Maximized state was not persisted");
+            });
+
+            // Test 28: Reading Sessions and Stats Summary
+            await RunTestAsync("LibraryRepository Tracks Reading Sessions and Calculates Statistics", async () =>
+            {
+                string dbPath = Path.Combine(tempDir, "stats_test.db");
+                using var repo = new LibraryRepository(dbPath);
+                await repo.InitializeAsync();
+
+                var comic1 = new ComicEntity
+                {
+                    Title = "Action Comics #01",
+                    FilePath = @"C:\Comics\Action Comics #01.cbz",
+                    Format = ComicSourceType.ZipArchive,
+                    PageCount = 30,
+                    FileSize = 2048,
+                    IsCompleted = true
+                };
+                long comicId1 = await repo.InsertComicAsync(comic1);
+
+                // Add sessions
+                var now = DateTime.UtcNow;
+                await repo.RecordReadingSessionAsync(comicId1, now.AddMinutes(-30), now, 1800, 30);
+                await repo.RecordReadingSessionAsync(comicId1, now.AddDays(-1).AddMinutes(-20), now.AddDays(-1), 1200, 20);
+
+                var stats = await repo.GetReadingStatsSummaryAsync();
+                if (stats.TotalPagesRead != 50)
+                    throw new Exception($"Expected 50 pages read, got {stats.TotalPagesRead}");
+                if (stats.TotalDurationMinutes != 50) // 1800s + 1200s = 3000s = 50 min
+                    throw new Exception($"Expected 50 minutes, got {stats.TotalDurationMinutes}");
+                if (stats.ComicsCompleted != 1)
+                    throw new Exception($"Expected 1 completed comic, got {stats.ComicsCompleted}");
+                if (stats.CurrentDailyStreak < 1)
+                    throw new Exception($"Expected current streak >= 1, got {stats.CurrentDailyStreak}");
+                if (stats.TopSeries.Count == 0 || !stats.TopSeries[0].SeriesName.Contains("Action Comics"))
+                    throw new Exception("Top series was not detected correctly");
+            });
+
+            // Test 29: Full Library Backup Export and Import
+            await RunTestAsync("LibraryRepository Exports and Restores Portable Backup JSON", async () =>
+            {
+                string db1Path = Path.Combine(tempDir, "backup_src.db");
+                string db2Path = Path.Combine(tempDir, "backup_dst.db");
+
+                using var repo1 = new LibraryRepository(db1Path);
+                await repo1.InitializeAsync();
+
+                var comic = new ComicEntity
+                {
+                    Title = "Daredevil #01",
+                    FilePath = @"C:\Comics\Daredevil #01.cbz",
+                    Format = ComicSourceType.ZipArchive,
+                    PageCount = 32,
+                    FileSize = 4096,
+                    IsFavorite = true,
+                    LastReadPage = 16
+                };
+                long comicId = await repo1.InsertComicAsync(comic);
+                await repo1.AddTagToComicAsync(comicId, "Favorite Marvel");
+                await repo1.AddBookmarkAsync(comicId, 10, "Great splash page!");
+
+                // Export to JSON
+                string backupJson = await repo1.ExportLibraryBackupJsonAsync();
+                if (string.IsNullOrWhiteSpace(backupJson) || !backupJson.Contains("Daredevil #01"))
+                    throw new Exception("Exported JSON is invalid or missing comic data");
+
+                // Now import into fresh repo2 that already has the file indexed
+                using var repo2 = new LibraryRepository(db2Path);
+                await repo2.InitializeAsync();
+                await repo2.InsertComicAsync(new ComicEntity
+                {
+                    Title = "Daredevil #01",
+                    FilePath = @"C:\Comics\Daredevil #01.cbz",
+                    Format = ComicSourceType.ZipArchive,
+                    PageCount = 32,
+                    FileSize = 4096,
+                    IsFavorite = false,
+                    LastReadPage = 0
+                });
+
+                var (restoredComics, restoredBookmarks, restoredTags) = await repo2.ImportLibraryBackupJsonAsync(backupJson, overwriteExisting: true);
+
+                if (restoredComics != 1)
+                    throw new Exception($"Expected 1 comic restored, got {restoredComics}");
+                if (restoredBookmarks != 1)
+                    throw new Exception($"Expected 1 bookmark restored, got {restoredBookmarks}");
+                if (restoredTags != 1)
+                    throw new Exception($"Expected 1 tag restored, got {restoredTags}");
+
+                var restoredComic = await repo2.GetComicByPathAsync(@"C:\Comics\Daredevil #01.cbz");
+                if (restoredComic == null || !restoredComic.IsFavorite || restoredComic.LastReadPage != 16)
+                    throw new Exception("Restored comic properties mismatch");
+
+                var bookmarks = await repo2.GetBookmarksForComicAsync(restoredComic.Id);
+                if (bookmarks.Count != 1 || bookmarks[0].UserNote != "Great splash page!")
+                    throw new Exception("Restored bookmark mismatch");
+
+                var tags = await repo2.GetTagsForComicAsync(restoredComic.Id);
+                if (!tags.Contains("Favorite Marvel"))
+                    throw new Exception("Restored tag mismatch");
+            });
+
+            await RunTestAsync("LibraryRepository Supports Manual Series Creation, Retrieval and Deletion", async () =>
+            {
+                string seriesDb = Path.Combine(tempDir, "series_test.db");
+                using var repo = new LibraryRepository(seriesDb);
+                await repo.InitializeAsync();
+
+                long c1 = await repo.InsertComicAsync(new ComicEntity
+                {
+                    Title = "Batman: Year One #1",
+                    FilePath = @"C:\Comics\batman_1.cbz",
+                    PageCount = 24
+                });
+                long c2 = await repo.InsertComicAsync(new ComicEntity
+                {
+                    Title = "Batman: Year One #2",
+                    FilePath = @"C:\Comics\batman_2.cbz",
+                    PageCount = 24
+                });
+
+                // Create manual series
+                long seriesId = await repo.CreateManualSeriesAsync("Batman: Year One Complete", new[] { c1, c2 });
+                if (seriesId <= 0) throw new Exception("Expected valid seriesId > 0");
+
+                var allSeries = await repo.GetManualSeriesAsync();
+                if (allSeries.Count != 1) throw new Exception($"Expected 1 manual series, got {allSeries.Count}");
+                if (allSeries[0].SeriesName != "Batman: Year One Complete") throw new Exception("Series name mismatch");
+                if (allSeries[0].Issues.Count != 2) throw new Exception($"Expected 2 issues, got {allSeries[0].Issues.Count}");
+                if (!allSeries[0].IsManual) throw new Exception("Expected IsManual to be true");
+
+                // Remove 1 issue
+                await repo.RemoveComicFromManualSeriesAsync(seriesId, c1);
+                allSeries = await repo.GetManualSeriesAsync();
+                if (allSeries[0].Issues.Count != 1 || allSeries[0].Issues[0].Id != c2)
+                    throw new Exception("Issue was not removed from manual series");
+
+                // Delete series
+                await repo.DeleteManualSeriesAsync(seriesId);
+                allSeries = await repo.GetManualSeriesAsync();
+                if (allSeries.Count != 0) throw new Exception("Expected 0 manual series after deletion");
+            });
         }
         finally
         {

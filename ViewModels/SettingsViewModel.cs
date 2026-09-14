@@ -46,21 +46,43 @@ public partial class SettingsViewModel : ObservableObject
     private double _warmth;
 
     [ObservableProperty]
-    private bool _isNightMode;
+    private int _readingPresetIndex; // 0: Original, 1: NightMode, 2: Sepia, 3: HighContrast, 4: Grayscale, 5: Inverted
 
-    partial void OnIsNightModeChanged(bool value)
+    partial void OnReadingPresetIndexChanged(int value)
     {
-        if (value)
+        switch (value)
         {
-            Brightness = -25;
-            Contrast = 1.1;
-            Warmth = 15;
-        }
-        else if (Brightness == -25 && Math.Abs(Contrast - 1.1) < 0.05 && Warmth == 15)
-        {
-            Brightness = 0;
-            Contrast = 1.0;
-            Warmth = 0;
+            case 1: // Night Mode
+                Brightness = -25;
+                Contrast = 1.1;
+                Warmth = 18;
+                break;
+            case 2: // Sepia
+                Brightness = -10;
+                Contrast = 1.05;
+                Warmth = 38;
+                break;
+            case 3: // High Contrast
+                Brightness = 5;
+                Contrast = 1.55;
+                Warmth = 0;
+                break;
+            case 4: // Grayscale
+                Brightness = 0;
+                Contrast = 1.1;
+                Warmth = 0;
+                break;
+            case 5: // Inverted
+                Brightness = 0;
+                Contrast = 1.0;
+                Warmth = 0;
+                break;
+            case 0: // Original
+            default:
+                Brightness = 0;
+                Contrast = 1.0;
+                Warmth = 0;
+                break;
         }
     }
 
@@ -147,11 +169,19 @@ public partial class SettingsViewModel : ObservableObject
         ViewModeIndex = settings.DefaultViewMode == "List" ? 1 : 0;
         SortOptionIndex = Math.Clamp(settings.DefaultSortOption, 0, 6);
 
+        ReadingPresetIndex = settings.DefaultReadingPreset switch
+        {
+            "NightMode" => 1,
+            "Sepia" => 2,
+            "HighContrast" => 3,
+            "Grayscale" => 4,
+            "Inverted" => 5,
+            _ => 0
+        };
+
         Brightness = settings.DefaultBrightness;
         Contrast = settings.DefaultContrast;
         Warmth = settings.DefaultWarmth;
-        IsNightMode = settings.DefaultNightMode;
-
         await RefreshWatchedFoldersAsync();
         RefreshCacheSize();
     }
@@ -174,6 +204,15 @@ public partial class SettingsViewModel : ObservableObject
 
         string dir = ReadingDirectionIndex == 1 ? "RightToLeft" : "LeftToRight";
         string view = ViewModeIndex == 1 ? "List" : "Grid";
+        string preset = ReadingPresetIndex switch
+        {
+            1 => "NightMode",
+            2 => "Sepia",
+            3 => "HighContrast",
+            4 => "Grayscale",
+            5 => "Inverted",
+            _ => "Original"
+        };
 
         var settings = new AppSettings
         {
@@ -182,14 +221,54 @@ public partial class SettingsViewModel : ObservableObject
             DefaultReadingDirection = dir,
             DefaultViewMode = view,
             DefaultSortOption = SortOptionIndex,
+            DefaultReadingPreset = preset,
             DefaultBrightness = Brightness,
             DefaultContrast = Contrast,
             DefaultWarmth = Warmth,
-            DefaultNightMode = IsNightMode
+            DefaultNightMode = (ReadingPresetIndex == 1)
         };
 
         await _repository.SaveAppSettingsAsync(settings);
         ApplyThemeOverride(theme);
+    }
+
+    [RelayCommand]
+    public async Task ExportBackupAsync()
+    {
+        try
+        {
+            string defaultName = $"Komik_Backup_{DateTime.Now:yyyyMMdd_HHmmss}";
+            string? filePath = await _pickerService.PickSaveBackupFileAsync(defaultName);
+            if (string.IsNullOrWhiteSpace(filePath)) return;
+
+            string json = await _repository.ExportLibraryBackupJsonAsync();
+            await File.WriteAllTextAsync(filePath, json);
+            ShowNotification("Backup Exported", $"Library backup successfully saved to '{Path.GetFileName(filePath)}'.", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Backup Export Failed", ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    [RelayCommand]
+    public async Task ImportBackupAsync()
+    {
+        try
+        {
+            string? filePath = await _pickerService.PickOpenBackupFileAsync();
+            if (string.IsNullOrWhiteSpace(filePath)) return;
+
+            string json = await File.ReadAllTextAsync(filePath);
+            var (comicsRestored, bookmarksRestored, tagsRestored) = await _repository.ImportLibraryBackupJsonAsync(json, overwriteExisting: true);
+            RefreshCacheSize();
+            LibraryViewModel.NotifyLibraryThumbnailsChanged();
+            ShowNotification("Backup Restored", $"Successfully restored {comicsRestored} comics, {bookmarksRestored} bookmarks, and {tagsRestored} tags from backup.", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Backup Restore Failed", ex.Message, InfoBarSeverity.Error);
+        }
     }
 
     public void ApplyThemeOverride(string theme)
@@ -214,7 +293,7 @@ public partial class SettingsViewModel : ObservableObject
         Brightness = 0.0;
         Contrast = 1.0;
         Warmth = 0.0;
-        IsNightMode = false;
+        ReadingPresetIndex = 0;
         _ = SaveSettingsAsync();
     }
 

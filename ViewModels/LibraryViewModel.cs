@@ -8,8 +8,10 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml.Controls;
+using Komik.Helpers;
 using Komik.Models;
 using Komik.Services;
+
 
 namespace Komik.ViewModels;
 
@@ -31,6 +33,7 @@ public partial class LibraryViewModel : ObservableObject
     private readonly ILibraryScannerService _scannerService;
     private readonly IFilePickerService _pickerService;
     private readonly IFormatConversionService _conversionService;
+    private readonly IDuplicateDetectionService _duplicateService;
 
     private CancellationTokenSource? _searchDebounceCts;
     private CancellationTokenSource? _conversionCts;
@@ -39,6 +42,69 @@ public partial class LibraryViewModel : ObservableObject
 
     [ObservableProperty]
     private ObservableCollection<ComicEntity> _comics = new();
+
+    public ObservableCollection<ComicSeriesGroup> SeriesGroups { get; } = new();
+
+    [ObservableProperty]
+    private bool _isSeriesView;
+
+    partial void OnIsSeriesViewChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowComicsGrid));
+        OnPropertyChanged(nameof(ShowComicsList));
+        OnPropertyChanged(nameof(ShowSeriesGrid));
+        OnPropertyChanged(nameof(ShowEmptyFilter));
+        OnPropertyChanged(nameof(EmptyFilterTitle));
+        OnPropertyChanged(nameof(EmptyFilterSubtitle));
+        OnPropertyChanged(nameof(EmptyFilterGlyph));
+    }
+
+    [ObservableProperty]
+    private ComicSeriesGroup? _selectedSeriesGroup;
+
+    [ObservableProperty]
+    private bool _isSeriesDetailOpen;
+
+    [ObservableProperty]
+    private bool _isCreateSeriesDialogOpen;
+
+    [ObservableProperty]
+    private string _newSeriesName = string.Empty;
+
+    [ObservableProperty]
+    private string _manualSeriesSearchQuery = string.Empty;
+
+    [ObservableProperty]
+    private int _selectedCandidateCount;
+
+    public ObservableCollection<ManualSeriesComicItem> ManualSeriesCandidates { get; } = new();
+
+    partial void OnManualSeriesSearchQueryChanged(string value)
+    {
+        string query = value?.Trim() ?? string.Empty;
+        foreach (var item in ManualSeriesCandidates)
+        {
+            item.IsVisible = string.IsNullOrWhiteSpace(query) ||
+                             item.Comic.Title.Contains(query, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    public ObservableCollection<DuplicateComicGroup> DuplicateGroups { get; } = new();
+
+    [ObservableProperty]
+    private bool _isDuplicateManagerOpen;
+
+    [ObservableProperty]
+    private bool _isScanningDuplicates;
+
+    public int DuplicateCount => DuplicateGroups.Count;
+    public bool HasDuplicates => DuplicateGroups.Count > 0;
+
+    [ObservableProperty]
+    private bool _isStatsDialogOpen;
+
+    [ObservableProperty]
+    private ReadingStatsSummary? _statsSummary;
 
     [ObservableProperty]
     private ObservableCollection<WatchedFolder> _watchedFolders = new();
@@ -58,6 +124,7 @@ public partial class LibraryViewModel : ObservableObject
 
     [ObservableProperty]
     private string _searchText = string.Empty;
+
 
     [ObservableProperty]
     private bool _filterFavoritesOnly;
@@ -146,14 +213,39 @@ public partial class LibraryViewModel : ObservableObject
         !string.IsNullOrEmpty(SelectedTag) ||
         !string.IsNullOrEmpty(SelectedCollection);
 
-    public bool ShowEmptyLibrary => !HasComics && !IsLoading && !IsScanning && !IsConverting && TotalComicCount == 0 && !IsFilterOrSearchActive;
+    public bool ShowEmptyLibrary => TotalComicCount == 0 && !IsLoading && !IsScanning && !IsConverting && !IsFilterOrSearchActive;
 
-    public bool ShowEmptyFilter => !HasComics && !IsLoading && !IsScanning && !IsConverting && (TotalComicCount > 0 || IsFilterOrSearchActive);
+    public bool ShowEmptyFilter => !IsLoading && !IsScanning && !IsConverting &&
+        ((!IsSeriesView && !HasComics && (TotalComicCount > 0 || IsFilterOrSearchActive)) ||
+         (IsSeriesView && SeriesGroups.Count == 0 && (TotalComicCount > 0 || IsFilterOrSearchActive)));
+
+    public bool ShowComicsGrid => !IsSeriesView && IsGridView && HasComics && !ShowEmptyFilter && !ShowEmptyLibrary;
+    public bool ShowComicsList => !IsSeriesView && IsListView && HasComics && !ShowEmptyFilter && !ShowEmptyLibrary;
+    public bool ShowSeriesGrid => IsSeriesView && SeriesGroups.Count > 0 && !ShowEmptyFilter && !ShowEmptyLibrary;
 
     public string EmptyFilterTitle
     {
         get
         {
+            if (IsSeriesView && SeriesGroups.Count == 0)
+            {
+                if (!string.IsNullOrWhiteSpace(SearchText))
+                    return $"No series match \"{SearchText}\"";
+                if (FilterFavoritesOnly)
+                    return "No Favorite Series";
+                if (FilterInProgressOnly)
+                    return "No Series in Progress";
+                if (FilterUnreadOnly)
+                    return "No Unread Series";
+                if (FilterCompletedOnly)
+                    return "No Completed Series";
+                if (!string.IsNullOrEmpty(SelectedTag))
+                    return $"No Series Tagged \"{SelectedTag}\"";
+                if (!string.IsNullOrEmpty(SelectedCollection))
+                    return $"No Series in \"{SelectedCollection}\"";
+                return "No Series Found";
+            }
+
             if (!string.IsNullOrWhiteSpace(SearchText))
                 return $"No comics match \"{SearchText}\"";
             if (FilterFavoritesOnly)
@@ -176,6 +268,13 @@ public partial class LibraryViewModel : ObservableObject
     {
         get
         {
+            if (IsSeriesView && SeriesGroups.Count == 0)
+            {
+                if (!string.IsNullOrWhiteSpace(SearchText))
+                    return "Try searching with a different title or keyword, or create a new manual series.";
+                return "No series match your current filter criteria. Try clearing filters or create a manual series.";
+            }
+
             if (!string.IsNullOrWhiteSpace(SearchText))
                 return "Try searching with a different title, creator, or keyword.";
             if (FilterFavoritesOnly)
@@ -198,6 +297,8 @@ public partial class LibraryViewModel : ObservableObject
     {
         get
         {
+            if (IsSeriesView && SeriesGroups.Count == 0)
+                return "\uE8B7"; // Books / Series
             if (!string.IsNullOrWhiteSpace(SearchText))
                 return "\uE721"; // Search
             if (FilterFavoritesOnly)
@@ -218,12 +319,14 @@ public partial class LibraryViewModel : ObservableObject
         ILibraryRepository? repository = null,
         ILibraryScannerService? scannerService = null,
         IFilePickerService? pickerService = null,
-        IFormatConversionService? conversionService = null)
+        IFormatConversionService? conversionService = null,
+        IDuplicateDetectionService? duplicateService = null)
     {
         _repository = repository ?? new LibraryRepository();
         _scannerService = scannerService ?? new LibraryScannerService(_repository);
         _pickerService = pickerService ?? new FilePickerService();
         _conversionService = conversionService ?? new FormatConversionService();
+        _duplicateService = duplicateService ?? new DuplicateDetectionService();
 
         SortOptions = new List<SortOptionItem>
         {
@@ -270,11 +373,13 @@ public partial class LibraryViewModel : ObservableObject
         {
             var settings = await _repository.GetAppSettingsAsync();
             IsGridView = settings.DefaultViewMode != "List";
+            IsSeriesView = settings.IsSeriesViewDefault;
             if (settings.DefaultSortOption >= 0 && settings.DefaultSortOption < SortOptions.Count)
             {
                 SelectedSortOption = SortOptions[settings.DefaultSortOption];
             }
         }
+
         catch (Exception ex)
         {
             Debug.WriteLine($"[LibraryViewModel] Failed to apply settings: {ex.Message}");
@@ -888,6 +993,8 @@ public partial class LibraryViewModel : ObservableObject
             InProgressCount = await _repository.GetInProgressCountAsync();
             UnreadCount = await _repository.GetUnreadCountAsync();
             CompletedCount = await _repository.GetCompletedCountAsync();
+            await UpdateSeriesGroupsAsync();
+            _ = ScanDuplicatesAsync();
             NotifyComicsChanged();
         }
         finally
@@ -896,9 +1003,469 @@ public partial class LibraryViewModel : ObservableObject
             OnPropertyChanged(nameof(HasNoComics));
             OnPropertyChanged(nameof(ShowEmptyLibrary));
             OnPropertyChanged(nameof(ShowEmptyFilter));
+            OnPropertyChanged(nameof(ShowComicsGrid));
+            OnPropertyChanged(nameof(ShowComicsList));
+            OnPropertyChanged(nameof(ShowSeriesGrid));
             OnPropertyChanged(nameof(EmptyFilterTitle));
             OnPropertyChanged(nameof(EmptyFilterSubtitle));
             OnPropertyChanged(nameof(EmptyFilterGlyph));
+        }
+    }
+
+    public void UpdateSeriesGroups()
+    {
+        _ = UpdateSeriesGroupsAsync();
+    }
+
+    public async Task UpdateSeriesGroupsAsync()
+    {
+        SeriesGroups.Clear();
+
+        // 1. Fetch manual series from the database
+        var manualSeries = await _repository.GetManualSeriesAsync();
+        var manualComicIds = new HashSet<long>();
+        var matchingManualGroups = new List<ComicSeriesGroup>();
+
+        foreach (var ms in manualSeries)
+        {
+            foreach (var issue in ms.Issues)
+            {
+                manualComicIds.Add(issue.Id);
+            }
+
+            if (IsFilterOrSearchActive)
+            {
+                var filteredIssues = ms.Issues.Where(issue => Comics.Any(c => c.Id == issue.Id)).ToList();
+                if (filteredIssues.Count > 0)
+                {
+                    var filteredGroup = new ComicSeriesGroup
+                    {
+                        ManualSeriesId = ms.ManualSeriesId,
+                        SeriesName = ms.SeriesName,
+                        IsManual = true,
+                        CoverThumbnailPath = filteredIssues[0].ThumbnailPath
+                    };
+                    foreach (var fi in filteredIssues)
+                    {
+                        filteredGroup.Issues.Add(fi);
+                    }
+                    filteredGroup.RefreshProperties();
+                    matchingManualGroups.Add(filteredGroup);
+                }
+            }
+            else
+            {
+                if (ms.Issues.Count > 0)
+                {
+                    matchingManualGroups.Add(ms);
+                }
+            }
+        }
+
+        // 2. Auto-detect series from comics not in manual series (matching >= 90% full title)
+        var clusters = new List<(string BaseSeriesName, string RepresentativeTitle, List<ComicEntity> Issues)>();
+
+        foreach (var comic in Comics)
+        {
+            if (manualComicIds.Contains(comic.Id)) continue;
+
+            bool added = false;
+            foreach (var cluster in clusters)
+            {
+                if (SeriesParserHelper.AreInSameSeries(comic.Title, cluster.RepresentativeTitle, 0.90))
+                {
+                    cluster.Issues.Add(comic);
+                    added = true;
+                    break;
+                }
+            }
+
+            if (!added)
+            {
+                var (series, _) = SeriesParserHelper.ParseSeriesAndIssue(comic.Title, comic.FilePath);
+                clusters.Add((series, comic.Title, new List<ComicEntity> { comic }));
+            }
+        }
+
+        int minIssues = IsFilterOrSearchActive ? 1 : 2;
+        var validClusters = clusters.Where(c => c.Issues.Count >= minIssues).ToList();
+
+        var autoGroups = new List<ComicSeriesGroup>();
+        foreach (var cluster in validClusters)
+        {
+            var sGroup = new ComicSeriesGroup
+            {
+                SeriesName = cluster.BaseSeriesName
+            };
+
+            var sortedIssues = cluster.Issues
+                .OrderBy(i => SeriesParserHelper.ParseSeriesAndIssue(i.Title, i.FilePath).IssueNumber)
+                .ThenBy(i => i.Title, new NaturalSortComparer())
+                .ToList();
+
+            foreach (var issue in sortedIssues)
+            {
+                sGroup.Issues.Add(issue);
+            }
+
+            if (!string.IsNullOrEmpty(sortedIssues[0].ThumbnailPath))
+            {
+                sGroup.CoverThumbnailPath = sortedIssues[0].ThumbnailPath;
+            }
+
+            sGroup.RefreshProperties();
+            autoGroups.Add(sGroup);
+        }
+
+        var allGroups = matchingManualGroups.Concat(autoGroups).ToList();
+
+        // Sort series according to selected sort option
+        var sortOption = SelectedSortOption?.Option ?? LibrarySortOption.TitleAscending;
+        IEnumerable<ComicSeriesGroup> sortedGroups = sortOption switch
+        {
+            LibrarySortOption.TitleDescending => allGroups.OrderByDescending(g => g.SeriesName, new NaturalSortComparer()),
+            LibrarySortOption.LastReadDescending => allGroups.OrderByDescending(g => g.Issues.Max(i => i.LastReadAt ?? DateTime.MinValue)),
+            LibrarySortOption.DateAddedDescending => allGroups.OrderByDescending(g => g.Issues.Max(i => i.DateAdded)),
+            LibrarySortOption.DateAddedAscending => allGroups.OrderBy(g => g.Issues.Min(i => i.DateAdded)),
+            LibrarySortOption.PageCountDescending => allGroups.OrderByDescending(g => g.Issues.Sum(i => i.PageCount)),
+            LibrarySortOption.FileSizeDescending => allGroups.OrderByDescending(g => g.Issues.Sum(i => i.FileSize)),
+            _ => allGroups.OrderBy(g => g.SeriesName, new NaturalSortComparer())
+        };
+
+        foreach (var group in sortedGroups)
+        {
+            SeriesGroups.Add(group);
+        }
+
+        OnPropertyChanged(nameof(ShowSeriesGrid));
+        OnPropertyChanged(nameof(ShowEmptyFilter));
+    }
+
+    [RelayCommand]
+    public void ToggleSeriesView()
+    {
+        IsSeriesView = !IsSeriesView;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var settings = await _repository.GetAppSettingsAsync();
+                settings.IsSeriesViewDefault = IsSeriesView;
+                await _repository.SaveAppSettingsAsync(settings);
+            }
+            catch { }
+        });
+    }
+
+    [RelayCommand]
+    public void OpenSeriesDetail(ComicSeriesGroup? group)
+    {
+        if (group == null) return;
+        SelectedSeriesGroup = group;
+        IsSeriesDetailOpen = true;
+    }
+
+    [RelayCommand]
+    public void CloseSeriesDetail()
+    {
+        IsSeriesDetailOpen = false;
+        SelectedSeriesGroup = null;
+    }
+
+    [RelayCommand]
+    public void PlaySeriesNext(ComicSeriesGroup? group)
+    {
+        if (group == null) return;
+        var next = group.NextIssueToRead;
+        if (next != null)
+        {
+            OpenComic(next);
+        }
+    }
+
+    [RelayCommand]
+    public async Task OpenCreateSeriesDialogAsync()
+    {
+        NewSeriesName = string.Empty;
+        ManualSeriesSearchQuery = string.Empty;
+        ManualSeriesCandidates.Clear();
+
+        var allComics = await _repository.GetComicsAsync();
+        foreach (var comic in allComics)
+        {
+            var candidate = new ManualSeriesComicItem(comic, isSelected: false);
+            ManualSeriesCandidates.Add(candidate);
+        }
+        SelectedCandidateCount = 0;
+        IsCreateSeriesDialogOpen = true;
+    }
+
+    [RelayCommand]
+    public void CloseCreateSeriesDialog()
+    {
+        IsCreateSeriesDialogOpen = false;
+        ManualSeriesCandidates.Clear();
+        NewSeriesName = string.Empty;
+        ManualSeriesSearchQuery = string.Empty;
+        SelectedCandidateCount = 0;
+    }
+
+    [RelayCommand]
+    public void ToggleCandidateSelection(ManualSeriesComicItem? item)
+    {
+        if (item == null) return;
+        item.IsSelected = !item.IsSelected;
+        SelectedCandidateCount = ManualSeriesCandidates.Count(c => c.IsSelected);
+    }
+
+    [RelayCommand]
+    public void SelectAllCandidates()
+    {
+        foreach (var item in ManualSeriesCandidates)
+        {
+            if (item.IsVisible) item.IsSelected = true;
+        }
+        SelectedCandidateCount = ManualSeriesCandidates.Count(c => c.IsSelected);
+    }
+
+    [RelayCommand]
+    public void ClearCandidateSelection()
+    {
+        foreach (var item in ManualSeriesCandidates)
+        {
+            item.IsSelected = false;
+        }
+        SelectedCandidateCount = 0;
+    }
+
+    [RelayCommand]
+    public async Task SaveManualSeriesAsync()
+    {
+        string name = NewSeriesName?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            ShowNotification("Series Name Required", "Please enter a name for the new series.", InfoBarSeverity.Warning);
+            return;
+        }
+
+        var selectedIds = ManualSeriesCandidates.Where(c => c.IsSelected).Select(c => c.Comic.Id).ToList();
+        if (selectedIds.Count == 0)
+        {
+            ShowNotification("No Comics Selected", "Please select at least one comic to add to this series.", InfoBarSeverity.Warning);
+            return;
+        }
+
+        try
+        {
+            await _repository.CreateManualSeriesAsync(name, selectedIds);
+            IsCreateSeriesDialogOpen = false;
+            await ReloadComicsAsync();
+            ShowNotification("Series Created", $"Successfully created series '{name}' with {selectedIds.Count} comic(s).", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Create Series Failed", ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    [RelayCommand]
+    public async Task DeleteManualSeriesAsync(ComicSeriesGroup? group)
+    {
+        var target = group ?? SelectedSeriesGroup;
+        if (target == null || !target.IsManual) return;
+
+        try
+        {
+            await _repository.DeleteManualSeriesAsync(target.ManualSeriesId);
+            if (IsSeriesDetailOpen && SelectedSeriesGroup == target)
+            {
+                IsSeriesDetailOpen = false;
+                SelectedSeriesGroup = null;
+            }
+            await ReloadComicsAsync();
+            ShowNotification("Series Deleted", $"Successfully deleted series '{target.SeriesName}'.", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Delete Series Failed", ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    [RelayCommand]
+    public async Task RemoveComicFromManualSeriesAsync(ComicEntity? comic)
+    {
+        if (comic == null || SelectedSeriesGroup == null || !SelectedSeriesGroup.IsManual) return;
+
+        try
+        {
+            await _repository.RemoveComicFromManualSeriesAsync(SelectedSeriesGroup.ManualSeriesId, comic.Id);
+            SelectedSeriesGroup.Issues.Remove(comic);
+            SelectedSeriesGroup.RefreshProperties();
+            if (SelectedSeriesGroup.Issues.Count == 0)
+            {
+                IsSeriesDetailOpen = false;
+                SelectedSeriesGroup = null;
+            }
+            await ReloadComicsAsync();
+            ShowNotification("Comic Removed", $"Removed '{comic.Title}' from series.", InfoBarSeverity.Informational);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Remove Failed", ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    [RelayCommand]
+    public void OpenDuplicateManager()
+    {
+        IsDuplicateManagerOpen = true;
+        _ = ScanDuplicatesAsync();
+    }
+
+    [RelayCommand]
+    public void CloseDuplicateManager()
+    {
+        IsDuplicateManagerOpen = false;
+    }
+
+    [RelayCommand]
+    public async Task ScanDuplicatesAsync()
+    {
+        IsScanningDuplicates = true;
+        try
+        {
+            var allComics = await _repository.GetComicsAsync();
+            var ignored = await _repository.GetIgnoredDuplicatePairsAsync();
+            var dupes = _duplicateService.FindDuplicates(allComics, ignored);
+
+            DuplicateGroups.Clear();
+            foreach (var d in dupes)
+            {
+                DuplicateGroups.Add(d);
+            }
+            OnPropertyChanged(nameof(DuplicateCount));
+            OnPropertyChanged(nameof(HasDuplicates));
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[LibraryViewModel] Duplicate scan failed: {ex.Message}");
+        }
+        finally
+        {
+            IsScanningDuplicates = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task DismissDuplicateGroupAsync(DuplicateComicGroup? group)
+    {
+        if (group == null) return;
+
+        try
+        {
+            for (int i = 0; i < group.Copies.Count; i++)
+            {
+                for (int j = i + 1; j < group.Copies.Count; j++)
+                {
+                    await _repository.IgnoreDuplicatePairAsync(group.Copies[i].Id, group.Copies[j].Id);
+                }
+            }
+
+            DuplicateGroups.Remove(group);
+            OnPropertyChanged(nameof(DuplicateCount));
+            OnPropertyChanged(nameof(HasDuplicates));
+            ShowNotification("Duplicates Dismissed", $"Flag removed for '{group.GroupTitle}'. Both copies will be kept.", InfoBarSeverity.Informational);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error", ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    [RelayCommand]
+    public async Task DeleteDuplicateCopyAsync(ComicEntity? comic)
+    {
+        if (comic == null) return;
+
+        try
+        {
+            await _repository.DeleteComicAsync(comic.Id, deleteFileFromDisk: true);
+            Comics.Remove(comic);
+
+            foreach (var group in DuplicateGroups.ToList())
+            {
+                if (group.Copies.Contains(comic))
+                {
+                    group.Copies.Remove(comic);
+                    if (group.Copies.Count < 2)
+                    {
+                        DuplicateGroups.Remove(group);
+                    }
+                }
+            }
+
+            OnPropertyChanged(nameof(DuplicateCount));
+            OnPropertyChanged(nameof(HasDuplicates));
+            await UpdateSeriesGroupsAsync();
+            NotifyComicsChanged();
+            ShowNotification("Duplicate Deleted", $"Successfully deleted '{comic.Title}' from disk and library.", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Deletion Failed", ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    [RelayCommand]
+    public async Task OpenReadingStatsAsync()
+    {
+        try
+        {
+            StatsSummary = await _repository.GetReadingStatsSummaryAsync();
+            IsStatsDialogOpen = true;
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Stats Error", ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    [RelayCommand]
+    public void CloseReadingStats()
+    {
+        IsStatsDialogOpen = false;
+    }
+
+    [RelayCommand]
+    public async Task ExportLibraryDataAsync(string destinationFilePath)
+    {
+        if (string.IsNullOrWhiteSpace(destinationFilePath)) return;
+        try
+        {
+            string json = await _repository.ExportLibraryBackupJsonAsync();
+            await File.WriteAllTextAsync(destinationFilePath, json);
+            ShowNotification("Backup Exported", $"Library backup successfully saved to {Path.GetFileName(destinationFilePath)}.", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Export Failed", ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    [RelayCommand]
+    public async Task ImportLibraryDataAsync(string sourceFilePath)
+    {
+        if (string.IsNullOrWhiteSpace(sourceFilePath) || !File.Exists(sourceFilePath)) return;
+        try
+        {
+            string json = await File.ReadAllTextAsync(sourceFilePath);
+            var result = await _repository.ImportLibraryBackupJsonAsync(json, overwriteExisting: true);
+            await ReloadComicsAsync();
+            ShowNotification("Restore Complete", $"Restored progress for {result.comicsRestored} comic(s), {result.bookmarksRestored} bookmark(s), and {result.tagsRestored} tag(s).", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Import Failed", ex.Message, InfoBarSeverity.Error);
         }
     }
 
@@ -958,3 +1525,4 @@ public partial class LibraryViewModel : ObservableObject
         OnPropertyChanged(nameof(EmptyFilterGlyph));
     }
 }
+

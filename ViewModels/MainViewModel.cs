@@ -31,6 +31,7 @@ public partial class MainViewModel : ObservableObject
     private readonly Queue<int> _cacheEvictionQueue = new();
 
     private CancellationTokenSource? _pageLoadCts;
+    private CancellationTokenSource? _webtoonCts;
     private CancellationTokenSource? _progressSaveCts;
     private DispatcherTimer? _toastTimer;
 
@@ -88,6 +89,33 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _isCurrentPageBookmarked;
 
+    private readonly IOcrService _ocrService;
+    private DateTime _sessionStartTime = DateTime.UtcNow;
+    private int _pagesReadInSession;
+
+    [ObservableProperty]
+    private bool _isOcrLayerVisible;
+
+    [ObservableProperty]
+    private OcrPageResult? _currentPageOcrResult;
+
+    [ObservableProperty]
+    private bool _isOcrLoading;
+
+    [ObservableProperty]
+    private bool _isSearchingOcr;
+
+    [ObservableProperty]
+    private string _ocrSearchQuery = string.Empty;
+
+    public ObservableCollection<OcrSearchResultItem> OcrSearchResults { get; } = new();
+
+    public ObservableCollection<WebtoonPageItem> WebtoonPages { get; } = new();
+
+    public bool IsWebtoonMode => ViewMode == ViewMode.VerticalContinuous;
+
+    public bool IsOcrSupported => _ocrService.IsOcrSupported;
+
     public ColorCorrectionSettings ColorSettings { get; } = new();
 
     public ObservableCollection<BookmarkEntity> Bookmarks { get; } = new();
@@ -95,20 +123,27 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel(
         IComicLoaderService? loaderService = null,
         IFilePickerService? pickerService = null,
-        ILibraryRepository? repository = null)
+        ILibraryRepository? repository = null,
+        IOcrService? ocrService = null)
     {
         _loaderService = loaderService ?? new ComicLoaderService();
         _pickerService = pickerService ?? new FilePickerService();
         _repository = repository ?? new LibraryRepository();
+        _ocrService = ocrService ?? new OcrService();
 
         ColorSettings.PropertyChanged += (s, e) =>
         {
             if (HasComic)
             {
                 _ = RenderCurrentPageAsync();
+                if (IsWebtoonMode)
+                {
+                    _ = LoadWebtoonPagesAsync();
+                }
             }
         };
     }
+
 
     public async Task ApplyDefaultSettingsAsync()
     {
@@ -128,20 +163,19 @@ public partial class MainViewModel : ObservableObject
                 ? ReadingDirection.RightToLeft
                 : ReadingDirection.LeftToRight;
 
-            if (settings.DefaultNightMode)
+            if (Enum.TryParse<ReadingPreset>(settings.DefaultReadingPreset, out var parsedPreset))
             {
-                ColorSettings.IsNightMode = true;
-                ColorSettings.Brightness = settings.DefaultBrightness != 0 ? settings.DefaultBrightness : -25;
-                ColorSettings.Contrast = Math.Abs(settings.DefaultContrast - 1.0) > 0.05 ? settings.DefaultContrast : 1.1;
-                ColorSettings.Warmth = settings.DefaultWarmth != 0 ? settings.DefaultWarmth : 15;
+                ColorSettings.Preset = parsedPreset;
+            }
+            else if (settings.DefaultNightMode)
+            {
+                ColorSettings.Preset = ReadingPreset.NightMode;
             }
             else
             {
-                ColorSettings.IsNightMode = false;
-                ColorSettings.Brightness = settings.DefaultBrightness;
-                ColorSettings.Contrast = settings.DefaultContrast;
-                ColorSettings.Warmth = settings.DefaultWarmth;
+                ColorSettings.Preset = ReadingPreset.Original;
             }
+
 
             RequestedTheme = settings.Theme switch
             {
@@ -178,6 +212,8 @@ public partial class MainViewModel : ObservableObject
     public bool CanGoPrevious => HasComic && CurrentPageIndex > 0;
 
     public bool IsDoublePageMode => ViewMode == ViewMode.DoublePage;
+
+    public bool IsSinglePageMode => ViewMode == ViewMode.SinglePage;
 
     public bool IsRtlMode => ReadingDirection == ReadingDirection.RightToLeft;
 
@@ -258,8 +294,14 @@ public partial class MainViewModel : ObservableObject
 
             _currentComicPath = path;
             CurrentComic = comic;
+            _sessionStartTime = DateTime.UtcNow;
+            _pagesReadInSession = 0;
+            _ocrService.ClearCache();
+            CurrentPageOcrResult = null;
+            IsOcrLayerVisible = false;
 
             // Check database for existing reading progress and bookmarks
+
             int resumePage = 0;
             try
             {
@@ -304,6 +346,10 @@ public partial class MainViewModel : ObservableObject
             NotifyStateChanged();
             await CheckIsCurrentPageBookmarkedAsync();
             await RenderCurrentPageAsync();
+            if (IsWebtoonMode)
+            {
+                _ = LoadWebtoonPagesAsync();
+            }
 
             TriggerOverlayNotification();
         }
@@ -335,6 +381,11 @@ public partial class MainViewModel : ObservableObject
         if (target >= TotalPages)
         {
             target = TotalPages - 1;
+        }
+
+        if (target > CurrentPageIndex)
+        {
+            _pagesReadInSession += (target - CurrentPageIndex);
         }
 
         CurrentPageIndex = target;
@@ -398,6 +449,11 @@ public partial class MainViewModel : ObservableObject
 
         if (pageIndex == CurrentPageIndex) return;
 
+        if (pageIndex > CurrentPageIndex)
+        {
+            _pagesReadInSession += (pageIndex - CurrentPageIndex);
+        }
+
         CurrentPageIndex = pageIndex;
         NotifyStateChanged();
         await CheckIsCurrentPageBookmarkedAsync();
@@ -425,6 +481,8 @@ public partial class MainViewModel : ObservableObject
             }
         }
         OnPropertyChanged(nameof(IsDoublePageMode));
+        OnPropertyChanged(nameof(IsSinglePageMode));
+        OnPropertyChanged(nameof(IsWebtoonMode));
         NotifyStateChanged();
         await RenderCurrentPageAsync();
         TriggerOverlayNotification();
@@ -482,7 +540,224 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    public async Task ToggleWebtoonModeAsync()
+    {
+        if (ViewMode == ViewMode.VerticalContinuous)
+        {
+            ViewMode = ViewMode.SinglePage;
+            ShowToast("Switched to Single Page Mode");
+        }
+        else
+        {
+            ViewMode = ViewMode.VerticalContinuous;
+            ShowToast("Switched to Webtoon Continuous Mode");
+            await LoadWebtoonPagesAsync();
+        }
+        OnPropertyChanged(nameof(IsWebtoonMode));
+        OnPropertyChanged(nameof(IsDoublePageMode));
+        OnPropertyChanged(nameof(IsSinglePageMode));
+        NotifyStateChanged();
+        await RenderCurrentPageAsync();
+    }
+
+    [RelayCommand]
+    public void SetReadingPreset(ReadingPreset preset)
+    {
+        ColorSettings.Preset = preset;
+        ShowToast($"Reading Theme: {preset}");
+    }
+
+    [RelayCommand]
+    public async Task ToggleOcrLayerAsync()
+    {
+        if (CurrentComic == null) return;
+
+        if (IsOcrLayerVisible)
+        {
+            IsOcrLayerVisible = false;
+            CurrentPageOcrResult = null;
+            return;
+        }
+
+        IsOcrLoading = true;
+        try
+        {
+            var pageData = await GetPageDataWithCacheAsync(CurrentPageIndex, CancellationToken.None);
+            var ocrRes = await _ocrService.RecognizePageAsync(CurrentPageIndex, pageData);
+            CurrentPageOcrResult = ocrRes;
+            IsOcrLayerVisible = ocrRes != null && ocrRes.Words.Count > 0;
+            if (ocrRes == null || ocrRes.Words.Count == 0)
+            {
+                ShowToast("No speech or text detected on this page.");
+            }
+            else
+            {
+                ShowToast($"Detected {ocrRes.Words.Count} words on page.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"OCR error: {ex.Message}");
+        }
+        finally
+        {
+            IsOcrLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task SearchInComicOcrAsync(string? query)
+    {
+        string q = query ?? OcrSearchQuery;
+        if (CurrentComic == null || string.IsNullOrWhiteSpace(q)) return;
+
+        IsSearchingOcr = true;
+        OcrSearchResults.Clear();
+        try
+        {
+            var matches = await _ocrService.SearchInComicAsync(CurrentComic, q);
+            foreach (var m in matches)
+            {
+                OcrSearchResults.Add(m);
+            }
+            if (matches.Count == 0)
+            {
+                ShowToast($"No matches found for '{q}'");
+            }
+            else
+            {
+                ShowToast($"Found {matches.Count} matching page(s)");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"OCR search failed: {ex.Message}");
+        }
+        finally
+        {
+            IsSearchingOcr = false;
+        }
+    }
+
+    [RelayCommand]
+    public void CopyCurrentPageText()
+    {
+        if (CurrentPageOcrResult != null && !string.IsNullOrWhiteSpace(CurrentPageOcrResult.FullText))
+        {
+            var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            dataPackage.SetText(CurrentPageOcrResult.FullText);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+            ShowToast("Page text copied to clipboard!");
+        }
+        else
+        {
+            ShowToast("No OCR text available to copy.");
+        }
+    }
+
+    public Task LoadWebtoonPagesAsync()
+    {
+        if (CurrentComic == null || CurrentComic.PageCount == 0) return Task.CompletedTask;
+
+        _webtoonCts?.Cancel();
+        _webtoonCts = new CancellationTokenSource();
+        var ct = _webtoonCts.Token;
+
+        WebtoonPages.Clear();
+        var allItems = new List<WebtoonPageItem>(CurrentComic.PageCount);
+        for (int i = 0; i < CurrentComic.PageCount; i++)
+        {
+            var item = new WebtoonPageItem
+            {
+                PageIndex = i,
+                IsLoading = true
+            };
+            allItems.Add(item);
+            WebtoonPages.Add(item);
+        }
+
+        // Fire parallel asynchronous background pipeline to stream the entire comic rapidly
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var semaphore = new SemaphoreSlim(6);
+
+                // Prioritize current viewing page, then outward
+                int current = CurrentPageIndex;
+                var sorted = allItems.OrderBy(x => Math.Abs(x.PageIndex - current)).ToList();
+
+                var tasks = sorted.Select(async item =>
+                {
+                    if (ct.IsCancellationRequested) return;
+                    await semaphore.WaitAsync(ct);
+                    try
+                    {
+                        if (ct.IsCancellationRequested) return;
+                        var pageData = await GetPageDataWithCacheAsync(item.PageIndex, ct);
+                        if (ct.IsCancellationRequested) return;
+
+                        var dispatcher = App.DispatcherQueue;
+                        if (dispatcher != null)
+                        {
+                            var tcs = new TaskCompletionSource<bool>();
+                            dispatcher.TryEnqueue(async () =>
+                            {
+                                try
+                                {
+                                    if (!ct.IsCancellationRequested)
+                                    {
+                                        var source = await ImageHelper.CreateImageSourceAsync(pageData, ColorSettings);
+                                        item.Image = source;
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"[MainViewModel] Webtoon page {item.PageIndex} UI decode error: {ex.Message}");
+                                }
+                                finally
+                                {
+                                    item.IsLoading = false;
+                                    tcs.TrySetResult(true);
+                                }
+                            });
+                            await tcs.Task;
+                        }
+                        else
+                        {
+                            var source = await ImageHelper.CreateImageSourceAsync(pageData, ColorSettings);
+                            item.Image = source;
+                            item.IsLoading = false;
+                        }
+                    }
+                    catch (OperationCanceledException) { }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[MainViewModel] Webtoon page {item.PageIndex} load failed: {ex.Message}");
+                        item.IsLoading = false;
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                });
+
+                await Task.WhenAll(tasks);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainViewModel] Webtoon background pipeline error: {ex.Message}");
+            }
+        }, ct);
+
+        return Task.CompletedTask;
+    }
+
+
+    [RelayCommand]
     public void DismissError()
+
     {
         IsError = false;
         ErrorMessage = string.Empty;
@@ -672,6 +947,16 @@ public partial class MainViewModel : ObservableObject
             try
             {
                 await _repository.UpdateReadingProgressAsync(_currentComicPath, CurrentPageIndex, TotalPages);
+                if (_currentComicEntity != null)
+                {
+                    int durationSec = (int)(DateTime.UtcNow - _sessionStartTime).TotalSeconds;
+                    if (durationSec >= 3 || _pagesReadInSession > 0)
+                    {
+                        await _repository.RecordReadingSessionAsync(_currentComicEntity.Id, _sessionStartTime, DateTime.UtcNow, durationSec, _pagesReadInSession);
+                        _sessionStartTime = DateTime.UtcNow;
+                        _pagesReadInSession = 0;
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -679,6 +964,7 @@ public partial class MainViewModel : ObservableObject
             }
         }
     }
+
 
     #endregion
 

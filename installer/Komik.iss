@@ -1,6 +1,6 @@
 ; Script generated for Komik Windows Installer
 #define MyAppName "Komik"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "Mohit Bansal"
 #define MyAppURL "https://github.com/mohitbansal25082006/KomiK"
 #define MyAppExeName "Komik.exe"

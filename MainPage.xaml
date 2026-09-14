@@ -84,7 +84,7 @@
                     Stretch="Uniform"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    Visibility="{x:Bind ViewModel.IsDoublePageMode, Mode=OneWay, Converter={StaticResource InvertedBoolToVisConverter}}" />
+                    Visibility="{x:Bind ViewModel.IsSinglePageMode, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
 
                 <!-- Double Page Spread View -->
                 <StackPanel
@@ -105,6 +105,93 @@
                         Source="{x:Bind ViewModel.SecondPageImage, Mode=OneWay}"
                         Stretch="Uniform" />
                 </StackPanel>
+
+                <!-- Webtoon Continuous Mode View -->
+                <ItemsControl
+                    x:Name="WebtoonContainer"
+                    ItemsSource="{x:Bind ViewModel.WebtoonPages, Mode=OneWay}"
+                    HorizontalAlignment="Center"
+                    Visibility="{x:Bind ViewModel.IsWebtoonMode, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
+                    <ItemsControl.ItemContainerTransitions>
+                        <TransitionCollection>
+                            <EntranceThemeTransition FromVerticalOffset="24" />
+                            <RepositionThemeTransition />
+                        </TransitionCollection>
+                    </ItemsControl.ItemContainerTransitions>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="models:WebtoonPageItem">
+                            <Grid Margin="0,0,0,3" HorizontalAlignment="Center" MinHeight="120">
+                                <Image
+                                    Source="{x:Bind Image, Mode=OneWay}"
+                                    Stretch="Uniform"
+                                    MaxWidth="1000"
+                                    HorizontalAlignment="Center" />
+                                <ProgressRing
+                                    IsActive="{x:Bind IsLoading, Mode=OneWay}"
+                                    Visibility="{x:Bind IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Width="36" Height="36" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- OCR Selectable Text Overlay Card -->
+                <Border
+                    x:Name="OcrTextOverlayCard"
+                    Visibility="{x:Bind ViewModel.IsOcrLayerVisible, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
+                    MaxWidth="420"
+                    MaxHeight="360"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    Margin="16,76,20,16"
+                    Padding="16"
+                    Background="{ThemeResource FloatingPillBackgroundBrush}"
+                    BorderBrush="{ThemeResource FloatingPillBorderBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="14"
+                    Canvas.ZIndex="50">
+                    <Grid RowSpacing="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0">
+                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <FontIcon Glyph="&#xE8C1;" FontSize="13" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+                                <TextBlock Text="Recognized Page Dialogue" FontWeight="Bold" FontSize="13" />
+                            </StackPanel>
+                            <Button
+                                HorizontalAlignment="Right"
+                                Width="26" Height="26" Padding="0"
+                                Command="{x:Bind ViewModel.ToggleOcrLayerCommand}"
+                                ToolTipService.ToolTip="Close OCR Overlay">
+                                <FontIcon Glyph="&#xE711;" FontSize="10" />
+                            </Button>
+                        </Grid>
+                        <ScrollViewer Grid.Row="1" MaxHeight="240" VerticalScrollBarVisibility="Auto">
+                            <TextBox
+                                Text="{x:Bind ViewModel.CurrentPageOcrResult.FullText, Mode=OneWay}"
+                                IsReadOnly="True"
+                                TextWrapping="Wrap"
+                                BorderThickness="0"
+                                Background="Transparent"
+                                FontSize="12" />
+                        </ScrollViewer>
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                            <Button
+                                Command="{x:Bind ViewModel.CopyCurrentPageTextCommand}"
+                                ToolTipService.ToolTip="Copy detected dialogue to clipboard">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE8C8;" FontSize="12" />
+                                    <TextBlock Text="Copy Text" FontSize="11" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
             </Grid>
         </ScrollViewer>
 
@@ -124,20 +211,12 @@
                 BorderThickness="1">
 
                 <StackPanel Spacing="24" HorizontalAlignment="Center">
-                    <!-- App Logo / Hero Icon -->
-                    <Border
+                    <!-- App Logo Crest -->
+                    <Image
+                        Source="ms-appx:///Assets/Square150x150Logo.scale-200.png"
                         Width="84"
                         Height="84"
-                        CornerRadius="42"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        HorizontalAlignment="Center">
-                        <FontIcon
-                            Glyph="&#xE82D;"
-                            FontSize="40"
-                            Foreground="White"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center" />
-                    </Border>
+                        HorizontalAlignment="Center" />
 
                     <!-- App Title and Tagline -->
                     <StackPanel Spacing="8" HorizontalAlignment="Center">
@@ -397,6 +476,34 @@
                     </StackPanel>
                 </Button>
 
+                <!-- Webtoon Continuous Mode Toggle with Info -->
+                <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                    <Button
+                        Height="32"
+                        Padding="10,0"
+                        Command="{x:Bind ViewModel.ToggleWebtoonModeCommand}"
+                        ToolTipService.ToolTip="Webtoon Mode: Continuous vertical scroll (V)">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE896;" FontSize="13" />
+                            <TextBlock Text="Webtoon" FontSize="12" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Webtoon Continuous Scroll Info">
+                        <FontIcon Glyph="&#xE946;" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <Button.Flyout>
+                            <Flyout Placement="Bottom">
+                                <StackPanel Width="270" Spacing="8">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <FontIcon Glyph="&#xE896;" FontSize="15" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+                                        <TextBlock Text="Webtoon Continuous Mode" FontWeight="Bold" FontSize="13" />
+                                    </StackPanel>
+                                    <TextBlock Text="Reads comics as a continuous vertical strip without page turning. Scroll smoothly using the mouse wheel or Up/Down arrow keys." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+
                 <!-- Reading Direction Toggle (LTR/RTL) -->
                 <Button
                     Height="32"
@@ -408,6 +515,109 @@
                         <TextBlock Text="{x:Bind ViewModel.ReadingDirectionDisplay, Mode=OneWay}" FontSize="11" FontWeight="SemiBold" />
                     </StackPanel>
                 </Button>
+
+                <Rectangle Width="1" Height="18" Fill="{ThemeResource CardStrokeColorDefaultBrush}" Margin="2,0" />
+
+                <!-- Offline Local OCR & Search Dropdown Button -->
+                <DropDownButton
+                    x:Name="OcrDropDownButton"
+                    Height="32"
+                    Padding="8,0"
+                    ToolTipService.ToolTip="Offline OCR &amp; Dialogue Search (Windows Native)">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE8C1;" FontSize="13" />
+                        <TextBlock Text="OCR" FontSize="12" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <DropDownButton.Flyout>
+                        <Flyout Placement="Bottom">
+                            <StackPanel Width="310" Spacing="10" Padding="4">
+                                <Grid>
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <TextBlock Text="Comic OCR (Local Offline)" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" />
+                                        <Button
+                                            Style="{StaticResource InfoButtonStyle}"
+                                            ToolTipService.ToolTip="OCR Info">
+                                            <FontIcon Glyph="&#xE946;" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            <Button.Flyout>
+                                                <Flyout Placement="Bottom">
+                                                    <StackPanel Width="260" Spacing="8">
+                                                        <TextBlock Text="Offline On-Device OCR" FontWeight="Bold" FontSize="13" />
+                                                        <TextBlock Text="100% private, offline speech bubble detection using Windows OCR. Copy detected dialogue or search keywords across all comic pages." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                    </StackPanel>
+                                                </Flyout>
+                                            </Button.Flyout>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Detect Current Page Text -->
+                                <Button
+                                    HorizontalAlignment="Stretch"
+                                    Command="{x:Bind ViewModel.ToggleOcrLayerCommand}"
+                                    IsEnabled="{x:Bind ViewModel.IsOcrLoading, Mode=OneWay, Converter={StaticResource InvertedBoolConverter}}"
+                                    ToolTipService.ToolTip="Recognize dialogue and text on current page">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                        <FontIcon Glyph="&#xE8C1;" FontSize="13" />
+                                        <TextBlock Text="{x:Bind ViewModel.IsOcrLayerVisible, Mode=OneWay, Converter={StaticResource OcrButtonTextConverter}}" />
+                                    </StackPanel>
+                                </Button>
+
+                                <ProgressBar
+                                    IsIndeterminate="{x:Bind ViewModel.IsOcrLoading, Mode=OneWay}"
+                                    Visibility="{x:Bind ViewModel.IsOcrLoading, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+
+                                <Rectangle Height="1" Fill="{ThemeResource CardStrokeColorDefaultBrush}" Margin="0,2" />
+
+                                <!-- Search Dialogue in Comic -->
+                                <TextBlock Text="Search Dialogue in Comic" FontWeight="SemiBold" FontSize="12" />
+                                <Grid ColumnSpacing="6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox
+                                        x:Name="OcrSearchBox"
+                                        Grid.Column="0"
+                                        PlaceholderText="Search dialogue or text..."
+                                        Text="{x:Bind ViewModel.OcrSearchQuery, Mode=TwoWay}"
+                                        KeyDown="OcrSearchBox_KeyDown" />
+                                    <Button
+                                        Grid.Column="1"
+                                        Content="Search"
+                                        Click="OcrSearch_Click" />
+                                </Grid>
+
+                                <ProgressBar
+                                    IsIndeterminate="{x:Bind ViewModel.IsSearchingOcr, Mode=OneWay}"
+                                    Visibility="{x:Bind ViewModel.IsSearchingOcr, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+
+                                <!-- Search Results -->
+                                <ListView
+                                    ItemsSource="{x:Bind ViewModel.OcrSearchResults, Mode=OneWay}"
+                                    MaxHeight="160"
+                                    SelectionMode="None">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate x:DataType="models:OcrSearchResultItem">
+                                            <Button
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Padding="4,3"
+                                                Click="OcrSearchResult_Click"
+                                                Tag="{x:Bind}">
+                                                <StackPanel Spacing="2">
+                                                    <TextBlock Text="{x:Bind PageDisplay}" FontWeight="SemiBold" FontSize="11" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+                                                    <TextBlock Text="{x:Bind Snippet}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </StackPanel>
+                        </Flyout>
+                    </DropDownButton.Flyout>
+                </DropDownButton>
 
                 <Rectangle Width="1" Height="18" Fill="{ThemeResource CardStrokeColorDefaultBrush}" Margin="2,0" />
 
@@ -526,12 +736,27 @@
                                     </Button>
                                 </Grid>
 
-                                <!-- One-click Night Mode Toggle -->
-                                <ToggleSwitch
-                                    Header="Night Mode Preset"
-                                    IsOn="{x:Bind ViewModel.ColorSettings.IsNightMode, Mode=TwoWay}"
-                                    OffContent="Off"
-                                    OnContent="On" />
+                                <!-- Reading Theme Presets -->
+                                <TextBlock Text="Reading Theme Presets" FontWeight="SemiBold" FontSize="12" />
+                                <Grid ColumnSpacing="6" RowSpacing="6">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Button Grid.Row="0" Grid.Column="0" Content="Original" HorizontalAlignment="Stretch" Padding="2,4" FontSize="11" Click="PresetOriginal_Click" />
+                                    <Button Grid.Row="0" Grid.Column="1" Content="Night" HorizontalAlignment="Stretch" Padding="2,4" FontSize="11" Click="PresetNight_Click" />
+                                    <Button Grid.Row="0" Grid.Column="2" Content="Sepia" HorizontalAlignment="Stretch" Padding="2,4" FontSize="11" Click="PresetSepia_Click" />
+                                    <Button Grid.Row="1" Grid.Column="0" Content="Contrast" HorizontalAlignment="Stretch" Padding="2,4" FontSize="11" Click="PresetHighContrast_Click" />
+                                    <Button Grid.Row="1" Grid.Column="1" Content="Grayscale" HorizontalAlignment="Stretch" Padding="2,4" FontSize="11" Click="PresetGrayscale_Click" />
+                                    <Button Grid.Row="1" Grid.Column="2" Content="Invert" HorizontalAlignment="Stretch" Padding="2,4" FontSize="11" Click="PresetInverted_Click" />
+                                </Grid>
+
+                                <Rectangle Height="1" Fill="{ThemeResource CardStrokeColorDefaultBrush}" Margin="0,2" />
 
                                 <!-- Brightness Slider -->
                                 <StackPanel Spacing="2">

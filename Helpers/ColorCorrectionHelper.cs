@@ -45,9 +45,57 @@ public static class ColorCorrectionHelper
             lutB[i] = (byte)Math.Clamp(Math.Round(bVal), 0, 255);
         }
 
-        // Apply LUT to BGRA byte array (byte 0=B, 1=G, 2=R, 3=A)
         Span<byte> srcSpan = bgraBytes.AsSpan();
         Span<byte> destSpan = output.AsSpan();
+
+        if (settings.Preset == ReadingPreset.Grayscale)
+        {
+            for (int i = 0; i < srcSpan.Length; i += 4)
+            {
+                byte b = lutB[srcSpan[i]];
+                byte g = lutG[srcSpan[i + 1]];
+                byte r = lutR[srcSpan[i + 2]];
+                byte gray = (byte)Math.Clamp((int)Math.Round(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+
+                destSpan[i] = gray;     // B
+                destSpan[i + 1] = gray; // G
+                destSpan[i + 2] = gray; // R
+                destSpan[i + 3] = srcSpan[i + 3]; // Alpha
+            }
+            return output;
+        }
+
+        if (settings.Preset == ReadingPreset.Sepia)
+        {
+            for (int i = 0; i < srcSpan.Length; i += 4)
+            {
+                byte b = lutB[srcSpan[i]];
+                byte g = lutG[srcSpan[i + 1]];
+                byte r = lutR[srcSpan[i + 2]];
+
+                int sepiaR = (int)(0.393 * r + 0.769 * g + 0.189 * b);
+                int sepiaG = (int)(0.349 * r + 0.686 * g + 0.168 * b);
+                int sepiaB = (int)(0.272 * r + 0.534 * g + 0.131 * b);
+
+                destSpan[i] = (byte)Math.Clamp(sepiaB, 0, 255);
+                destSpan[i + 1] = (byte)Math.Clamp(sepiaG, 0, 255);
+                destSpan[i + 2] = (byte)Math.Clamp(sepiaR, 0, 255);
+                destSpan[i + 3] = srcSpan[i + 3];
+            }
+            return output;
+        }
+
+        if (settings.Preset == ReadingPreset.Inverted)
+        {
+            for (int i = 0; i < srcSpan.Length; i += 4)
+            {
+                destSpan[i] = (byte)(255 - lutB[srcSpan[i]]);
+                destSpan[i + 1] = (byte)(255 - lutG[srcSpan[i + 1]]);
+                destSpan[i + 2] = (byte)(255 - lutR[srcSpan[i + 2]]);
+                destSpan[i + 3] = srcSpan[i + 3];
+            }
+            return output;
+        }
 
         for (int i = 0; i < srcSpan.Length; i += 4)
         {
@@ -60,3 +108,4 @@ public static class ColorCorrectionHelper
         return output;
     }
 }
+

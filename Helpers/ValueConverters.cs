@@ -77,3 +77,17 @@ public sealed class StringToImageSourceConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
+
+public sealed class OcrButtonTextConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, string language)
+    {
+        return value is true ? "Hide OCR Text Layer" : "Detect & Show Text Layer";
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, string language)
+    {
+        throw new NotImplementedException();
+    }
+}
+

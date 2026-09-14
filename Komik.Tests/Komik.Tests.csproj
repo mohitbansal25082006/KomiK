@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\Models\*.cs" Link="Models\%(Filename)%(Extension)" />
+    <Compile Include="..\Models\*.cs" Exclude="..\Models\WebtoonPageItem.cs" Link="Models\%(Filename)%(Extension)" />
     <Compile Include="..\Services\IComicLoader.cs" Link="Services\%(Filename)%(Extension)" />
     <Compile Include="..\Services\FolderComicLoader.cs" Link="Services\%(Filename)%(Extension)" />
     <Compile Include="..\Services\ZipComicLoader.cs" Link="Services\%(Filename)%(Extension)" />
@@ -30,8 +30,10 @@
     <Compile Include="..\Services\ILibraryScannerService.cs" Link="Services\%(Filename)%(Extension)" />
     <Compile Include="..\Services\LibraryScannerService.cs" Link="Services\%(Filename)%(Extension)" />
     <Compile Include="..\Services\FormatConversionService.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\DuplicateDetectionService.cs" Link="Services\%(Filename)%(Extension)" />
     <Compile Include="..\Helpers\NaturalSortComparer.cs" Link="Helpers\%(Filename)%(Extension)" />
     <Compile Include="..\Helpers\ColorCorrectionHelper.cs" Link="Helpers\%(Filename)%(Extension)" />
+    <Compile Include="..\Helpers\SeriesParserHelper.cs" Link="Helpers\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

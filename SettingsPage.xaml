@@ -228,27 +228,39 @@
 
                         <MenuFlyoutSeparator />
 
-                        <!-- Default Color & Night Mode -->
-                        <StackPanel Spacing="12">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <TextBlock Text="Default Night Mode" FontWeight="SemiBold" />
-                                        <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Applies non-destructive real-time GPU color filters to adjust brightness, contrast, and blue-light warmth without altering comic files.">
-                                            <FontIcon Glyph="&#xE946;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        </Button>
-                                    </StackPanel>
-                                    <TextBlock Text="Enable warm amber tone and lowered brightness preset by default." FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <!-- Default Reading Theme / Preset -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="Default Reading Theme" FontWeight="SemiBold" />
+                                    <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Select a reading theme preset: Original scan colors, Night Mode (amber paper tint &amp; dimmer tones), Warm Sepia (vintage tone), High Contrast (deep ink &amp; crisp whites), Grayscale (B&amp;W manga), or Inverted (dark background with light ink).">
+                                        <FontIcon Glyph="&#xE946;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    </Button>
                                 </StackPanel>
-                                <ToggleSwitch
-                                    Grid.Column="1"
-                                    IsOn="{x:Bind ViewModel.IsNightMode, Mode=TwoWay}"
-                                    Toggled="SettingChanged" />
-                            </Grid>
+                                <TextBlock Text="Preset visual filter applied when opening any comic." FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <ComboBox
+                                Grid.Column="1"
+                                Width="180"
+                                SelectedIndex="{x:Bind ViewModel.ReadingPresetIndex, Mode=TwoWay}"
+                                SelectionChanged="SettingChanged">
+                                <ComboBoxItem Content="Original (No Filter)" />
+                                <ComboBoxItem Content="Night Mode (Amber)" />
+                                <ComboBoxItem Content="Warm Sepia" />
+                                <ComboBoxItem Content="High Contrast" />
+                                <ComboBoxItem Content="Grayscale (Manga)" />
+                                <ComboBoxItem Content="Inverted (Negatives)" />
+                            </ComboBox>
+                        </Grid>
+
+                        <MenuFlyoutSeparator />
+
+                        <!-- Default Color Fine Tuning -->
+                        <StackPanel Spacing="12">
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -438,15 +450,79 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 5. ABOUT KOMIK -->
+                <!-- 5. LIBRARY BACKUP & DATA PORTABILITY -->
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,8,0,8" VerticalAlignment="Center">
+                    <TextBlock Text="Library Data &amp; Backup (Portable JSON)" FontSize="16" FontWeight="SemiBold" />
+                    <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Library Data &amp; Backup Details">
+                        <FontIcon Glyph="&#xE946;" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <Button.Flyout>
+                            <Flyout Placement="Bottom">
+                                <StackPanel Width="280" Spacing="8">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <FontIcon Glyph="&#xEDE1;" FontSize="16" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+                                        <TextBlock Text="Library Data &amp; Backup" FontWeight="Bold" FontSize="14" />
+                                    </StackPanel>
+                                    <TextBlock Text="Export or restore your complete reading progress, bookmarks, favorites, tags, and reading sessions in a portable, human-readable JSON format (.komikbackup). Seamlessly transfer your collection history between machines and drives." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+                <Border Style="{StaticResource SettingsSectionCard}">
+                    <StackPanel Spacing="14">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+                                <TextBlock Text="Export Library Backup" FontWeight="SemiBold" />
+                                <TextBlock Text="Save your reading history, page positions, bookmarks, favorites, tags, and stats to a portable .komikbackup file." FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <Button
+                                Grid.Column="1"
+                                Command="{x:Bind ViewModel.ExportBackupCommand}"
+                                ToolTipService.ToolTip="Save a portable backup file (.komikbackup)">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xEDE1;" FontSize="13" />
+                                    <TextBlock Text="Export Backup..." />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <MenuFlyoutSeparator />
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+                                <TextBlock Text="Restore from Backup" FontWeight="SemiBold" />
+                                <TextBlock Text="Restore previously saved bookmarks, progress, favorites, and reading stats from a backup file." FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <Button
+                                Grid.Column="1"
+                                Command="{x:Bind ViewModel.ImportBackupCommand}"
+                                ToolTipService.ToolTip="Restore library data from a .komikbackup file">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xED43;" FontSize="13" />
+                                    <TextBlock Text="Import Backup..." />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 6. ABOUT KOMIK -->
                 <TextBlock Text="About Komik" FontSize="16" FontWeight="SemiBold" Margin="0,8,0,8" />
                 <Border Style="{StaticResource SettingsSectionCard}">
                     <StackPanel Spacing="6">
-                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                            <Image Source="Assets/Square44x44Logo.png" Width="24" Height="24" />
+                        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                            <Image Source="ms-appx:///Assets/Square44x44Logo.png" Width="30" Height="30" VerticalAlignment="Center" />
                             <TextBlock Text="Komik" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
                             <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4" Padding="6,2">
-                                <TextBlock Text="v1.0.0" FontSize="10" FontWeight="Bold" Foreground="White" />
+                                <TextBlock Text="v1.1.0" FontSize="10" FontWeight="Bold" Foreground="White" />
                             </Border>
                         </StackPanel>
 

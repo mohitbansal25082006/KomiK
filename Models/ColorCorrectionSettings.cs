@@ -31,6 +31,20 @@ public sealed class ColorCorrectionSettings : ObservableObject
         set => SetProperty(ref _warmth, Math.Clamp(value, -100, 100));
     }
 
+    private ReadingPreset _preset = ReadingPreset.Original;
+
+    public ReadingPreset Preset
+    {
+        get => _preset;
+        set
+        {
+            if (SetProperty(ref _preset, value))
+            {
+                ApplyPreset(value);
+            }
+        }
+    }
+
     public bool IsNightMode
     {
         get => _isNightMode;
@@ -40,35 +54,89 @@ public sealed class ColorCorrectionSettings : ObservableObject
             {
                 if (value)
                 {
-                    ApplyNightModePreset();
+                    Preset = ReadingPreset.NightMode;
                 }
-                else
+                else if (_preset == ReadingPreset.NightMode)
                 {
-                    Reset();
+                    Preset = ReadingPreset.Original;
                 }
             }
         }
     }
 
-    public bool HasAdjustments => Math.Abs(Brightness) > 0.1 || Math.Abs(Contrast - 1.0) > 0.02 || Math.Abs(Warmth) > 0.1 || IsNightMode;
+    public bool HasAdjustments =>
+        Math.Abs(Brightness) > 0.1 ||
+        Math.Abs(Contrast - 1.0) > 0.02 ||
+        Math.Abs(Warmth) > 0.1 ||
+        Preset != ReadingPreset.Original;
 
     public void Reset()
     {
+        _preset = ReadingPreset.Original;
         _isNightMode = false;
         Brightness = 0;
         Contrast = 1.0;
         Warmth = 0;
+        OnPropertyChanged(nameof(Preset));
         OnPropertyChanged(nameof(IsNightMode));
         OnPropertyChanged(nameof(HasAdjustments));
     }
 
     public void ApplyNightModePreset()
     {
-        Brightness = -25;
-        Contrast = 1.1;
-        Warmth = 15;
-        _isNightMode = true;
+        ApplyPreset(ReadingPreset.NightMode);
+    }
+
+    public void ApplyPreset(ReadingPreset preset)
+    {
+        _preset = preset;
+        switch (preset)
+        {
+            case ReadingPreset.NightMode:
+                _brightness = -25;
+                _contrast = 1.1;
+                _warmth = 18;
+                _isNightMode = true;
+                break;
+            case ReadingPreset.Sepia:
+                _brightness = -10;
+                _contrast = 1.05;
+                _warmth = 38;
+                _isNightMode = false;
+                break;
+            case ReadingPreset.HighContrast:
+                _brightness = 5;
+                _contrast = 1.55;
+                _warmth = 0;
+                _isNightMode = false;
+                break;
+            case ReadingPreset.Grayscale:
+                _brightness = 0;
+                _contrast = 1.1;
+                _warmth = 0;
+                _isNightMode = false;
+                break;
+            case ReadingPreset.Inverted:
+                _brightness = 0;
+                _contrast = 1.0;
+                _warmth = 0;
+                _isNightMode = false;
+                break;
+            case ReadingPreset.Original:
+            default:
+                _brightness = 0;
+                _contrast = 1.0;
+                _warmth = 0;
+                _isNightMode = false;
+                break;
+        }
+
+        OnPropertyChanged(nameof(Preset));
+        OnPropertyChanged(nameof(Brightness));
+        OnPropertyChanged(nameof(Contrast));
+        OnPropertyChanged(nameof(Warmth));
         OnPropertyChanged(nameof(IsNightMode));
         OnPropertyChanged(nameof(HasAdjustments));
     }
 }
+

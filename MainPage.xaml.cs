@@ -116,10 +116,11 @@ public sealed partial class MainPage : Page
         }
         else if (e.PropertyName == nameof(ViewModel.CurrentPageIndex))
         {
-            if (ViewModel.FitMode == FitMode.FitToWidth)
+            if (ReaderScrollViewer.VerticalOffset > 1)
             {
-                ReaderScrollViewer.ChangeView(null, 0, null, true);
+                ReaderScrollViewer.ChangeView(null, 0, null, disableAnimation: false);
             }
+            AnimatePageTransition();
             Bindings.Update();
         }
     }
@@ -137,6 +138,16 @@ public sealed partial class MainPage : Page
         double viewportH = ReaderScrollViewer.ActualHeight > 0 ? ReaderScrollViewer.ActualHeight : ActualHeight;
 
         if (viewportW <= 0 || viewportH <= 0) return;
+
+        if (ViewModel.IsWebtoonMode)
+        {
+            ReaderScrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
+            ReaderScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+            PageDisplayContainer.VerticalAlignment = VerticalAlignment.Top;
+            PageDisplayContainer.HorizontalAlignment = HorizontalAlignment.Center;
+            WebtoonContainer.MaxWidth = Math.Min(viewportW - 32, 1000);
+            return;
+        }
 
         bool isDoubleSpread = ViewModel.IsDoublePageMode &&
             (ViewModel.SecondPageImage != null || (ViewModel.HasComic && ViewModel.CurrentPageIndex + 1 < ViewModel.TotalPages));
@@ -270,6 +281,16 @@ public sealed partial class MainPage : Page
         if (Math.Abs(ViewModel.ZoomFactor - ReaderScrollViewer.ZoomFactor) > 0.05)
         {
             ViewModel.ZoomFactor = Math.Round(ReaderScrollViewer.ZoomFactor, 2);
+        }
+
+        if (ViewModel.IsWebtoonMode && ReaderScrollViewer.ScrollableHeight > 0 && ViewModel.TotalPages > 0)
+        {
+            double ratio = Math.Clamp(ReaderScrollViewer.VerticalOffset / ReaderScrollViewer.ScrollableHeight, 0.0, 1.0);
+            int estPage = Math.Clamp((int)Math.Round(ratio * (ViewModel.TotalPages - 1)), 0, ViewModel.TotalPages - 1);
+            if (estPage != ViewModel.CurrentPageIndex)
+            {
+                ViewModel.CurrentPageIndex = estPage;
+            }
         }
     }
 
@@ -439,6 +460,12 @@ public sealed partial class MainPage : Page
 
     private void ReaderScrollViewer_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
+        if (ViewModel.IsWebtoonMode)
+        {
+            // In Webtoon mode, do not pan or drag on pointer move
+            return;
+        }
+
         var point = e.GetCurrentPoint(ReaderScrollViewer);
         if (point.Properties.IsLeftButtonPressed)
         {
@@ -454,6 +481,8 @@ public sealed partial class MainPage : Page
 
     private void ReaderScrollViewer_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
+        if (ViewModel.IsWebtoonMode) return;
+
         if (_isPanning)
         {
             var point = e.GetCurrentPoint(ReaderScrollViewer);
@@ -472,6 +501,13 @@ public sealed partial class MainPage : Page
 
     private void ReaderScrollViewer_PointerReleased(object sender, PointerRoutedEventArgs e)
     {
+        if (ViewModel.IsWebtoonMode)
+        {
+            ToggleOrDismissChrome();
+            e.Handled = true;
+            return;
+        }
+
         if (_isPanning)
         {
             _isPanning = false;
@@ -534,8 +570,22 @@ public sealed partial class MainPage : Page
 
         if (!isCtrlDown)
         {
-            // If scrolled down/up, flip page if in fit-to-height mode or at vertical scroll boundary
             int delta = properties.MouseWheelDelta;
+
+            if (ViewModel.IsWebtoonMode)
+            {
+                // Smooth scroll in Webtoon mode without page turns
+                double scrollStep = 180.0;
+                double target = delta < 0
+                    ? ReaderScrollViewer.VerticalOffset + scrollStep
+                    : ReaderScrollViewer.VerticalOffset - scrollStep;
+                target = Math.Clamp(target, 0, ReaderScrollViewer.ScrollableHeight);
+                ReaderScrollViewer.ChangeView(null, target, null, disableAnimation: false);
+                e.Handled = true;
+                return;
+            }
+
+            // If scrolled down/up, flip page if in fit-to-height mode or at vertical scroll boundary
             if (ViewModel.FitMode == FitMode.FitToHeight ||
                 (delta < 0 && ReaderScrollViewer.VerticalOffset >= ReaderScrollViewer.ScrollableHeight - 5) ||
                 (delta > 0 && ReaderScrollViewer.VerticalOffset <= 5))
@@ -574,8 +624,63 @@ public sealed partial class MainPage : Page
                 e.Handled = true;
                 break;
 
-            case VirtualKey.Right:
+            case VirtualKey.Up:
+                if (ViewModel.IsWebtoonMode)
+                {
+                    double target = Math.Max(0, ReaderScrollViewer.VerticalOffset - 180);
+                    ReaderScrollViewer.ChangeView(null, target, null, disableAnimation: false);
+                    e.Handled = true;
+                }
+                break;
+
+            case VirtualKey.Down:
+                if (ViewModel.IsWebtoonMode)
+                {
+                    double target = Math.Min(ReaderScrollViewer.ScrollableHeight, ReaderScrollViewer.VerticalOffset + 180);
+                    ReaderScrollViewer.ChangeView(null, target, null, disableAnimation: false);
+                    e.Handled = true;
+                }
+                break;
+
             case VirtualKey.PageDown:
+                if (ViewModel.IsWebtoonMode)
+                {
+                    double target = Math.Min(ReaderScrollViewer.ScrollableHeight, ReaderScrollViewer.VerticalOffset + Math.Max(200, ReaderScrollViewer.ViewportHeight * 0.85));
+                    ReaderScrollViewer.ChangeView(null, target, null, disableAnimation: false);
+                    e.Handled = true;
+                    break;
+                }
+                if (ViewModel.ReadingDirection == ReadingDirection.RightToLeft)
+                {
+                    if (ViewModel.CanGoPrevious) _ = ViewModel.PreviousPageAsync();
+                }
+                else
+                {
+                    if (ViewModel.CanGoNext) _ = ViewModel.NextPageAsync();
+                }
+                e.Handled = true;
+                break;
+
+            case VirtualKey.PageUp:
+                if (ViewModel.IsWebtoonMode)
+                {
+                    double target = Math.Max(0, ReaderScrollViewer.VerticalOffset - Math.Max(200, ReaderScrollViewer.ViewportHeight * 0.85));
+                    ReaderScrollViewer.ChangeView(null, target, null, disableAnimation: false);
+                    e.Handled = true;
+                    break;
+                }
+                if (ViewModel.ReadingDirection == ReadingDirection.RightToLeft)
+                {
+                    if (ViewModel.CanGoNext) _ = ViewModel.NextPageAsync();
+                }
+                else
+                {
+                    if (ViewModel.CanGoPrevious) _ = ViewModel.PreviousPageAsync();
+                }
+                e.Handled = true;
+                break;
+
+            case VirtualKey.Right:
                 if (ViewModel.ReadingDirection == ReadingDirection.RightToLeft)
                 {
                     if (ViewModel.CanGoPrevious) _ = ViewModel.PreviousPageAsync();
@@ -607,17 +712,6 @@ public sealed partial class MainPage : Page
                 }
                 break;
 
-            case VirtualKey.PageUp:
-                if (ViewModel.ReadingDirection == ReadingDirection.RightToLeft)
-                {
-                    if (ViewModel.CanGoNext) _ = ViewModel.NextPageAsync();
-                }
-                else
-                {
-                    if (ViewModel.CanGoPrevious) _ = ViewModel.PreviousPageAsync();
-                }
-                e.Handled = true;
-                break;
 
             case VirtualKey.Space:
                 if (isShift)
@@ -764,6 +858,22 @@ public sealed partial class MainPage : Page
                     e.Handled = true;
                 }
                 break;
+
+            case VirtualKey.V:
+                if (!isCtrl)
+                {
+                    _ = ViewModel.ToggleWebtoonModeAsync();
+                    e.Handled = true;
+                }
+                break;
+
+            case VirtualKey.F:
+                if (isCtrl)
+                {
+                    OcrDropDownButton.Flyout?.ShowAt(OcrDropDownButton);
+                    e.Handled = true;
+                }
+                break;
         }
     }
 
@@ -870,6 +980,66 @@ public sealed partial class MainPage : Page
     private void ResetColorSettings_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.ColorSettings.Reset();
+    }
+
+    #endregion
+
+    #region Page Transition Animation
+
+    private void AnimatePageTransition()
+    {
+        try
+        {
+            var fadeIn = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation
+            {
+                From = 0.35,
+                To = 1.0,
+                Duration = new Duration(TimeSpan.FromMilliseconds(220)),
+                EasingFunction = new Microsoft.UI.Xaml.Media.Animation.CubicEase { EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseOut }
+            };
+            var sb = new Microsoft.UI.Xaml.Media.Animation.Storyboard();
+            sb.Children.Add(fadeIn);
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(fadeIn, PageDisplayContainer);
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(fadeIn, "Opacity");
+            sb.Begin();
+        }
+        catch
+        {
+            PageDisplayContainer.Opacity = 1.0;
+        }
+    }
+
+    #endregion
+
+    #region Reading Preset & OCR Handlers
+
+    private void PresetOriginal_Click(object sender, RoutedEventArgs e) => ViewModel.SetReadingPreset(ReadingPreset.Original);
+    private void PresetNight_Click(object sender, RoutedEventArgs e) => ViewModel.SetReadingPreset(ReadingPreset.NightMode);
+    private void PresetSepia_Click(object sender, RoutedEventArgs e) => ViewModel.SetReadingPreset(ReadingPreset.Sepia);
+    private void PresetHighContrast_Click(object sender, RoutedEventArgs e) => ViewModel.SetReadingPreset(ReadingPreset.HighContrast);
+    private void PresetGrayscale_Click(object sender, RoutedEventArgs e) => ViewModel.SetReadingPreset(ReadingPreset.Grayscale);
+    private void PresetInverted_Click(object sender, RoutedEventArgs e) => ViewModel.SetReadingPreset(ReadingPreset.Inverted);
+
+    private void OcrSearch_Click(object sender, RoutedEventArgs e)
+    {
+        _ = ViewModel.SearchInComicOcrAsync(OcrSearchBox.Text.Trim());
+    }
+
+    private void OcrSearchBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter)
+        {
+            _ = ViewModel.SearchInComicOcrAsync(OcrSearchBox.Text.Trim());
+            e.Handled = true;
+        }
+    }
+
+    private void OcrSearchResult_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: OcrSearchResultItem item })
+        {
+            _ = ViewModel.GoToPageAsync(item.PageIndex);
+        }
     }
 
     #endregion

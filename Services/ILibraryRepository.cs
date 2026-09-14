@@ -92,4 +92,27 @@ public interface ILibraryRepository : IDisposable
     Task SetSettingAsync(string key, string value);
     Task<AppSettings> GetAppSettingsAsync();
     Task SaveAppSettingsAsync(AppSettings settings);
+
+    // Reading Sessions & Statistics
+    Task RecordReadingSessionAsync(long comicId, DateTime startTime, DateTime endTime, int durationSeconds, int pagesRead);
+    Task<ReadingStatsSummary> GetReadingStatsSummaryAsync();
+
+    // Duplicate Handling
+    Task IgnoreDuplicatePairAsync(long comicId1, long comicId2);
+    Task<HashSet<(long, long)>> GetIgnoredDuplicatePairsAsync();
+    Task RemoveIgnoredDuplicatePairAsync(long comicId1, long comicId2);
+    Task DeleteComicAsync(long comicId, bool deleteFileFromDisk);
+
+    // Full Library Export & Import
+    Task<string> ExportLibraryBackupJsonAsync();
+    Task<(int comicsRestored, int bookmarksRestored, int tagsRestored)> ImportLibraryBackupJsonAsync(string jsonContent, bool overwriteExisting);
+
+    // Manual Series
+    Task<List<ComicSeriesGroup>> GetManualSeriesAsync();
+    Task<long> CreateManualSeriesAsync(string name, IEnumerable<long> comicIds);
+    Task AddComicsToManualSeriesAsync(long seriesId, IEnumerable<long> comicIds);
+    Task RemoveComicFromManualSeriesAsync(long seriesId, long comicId);
+    Task DeleteManualSeriesAsync(long seriesId);
 }
+
+

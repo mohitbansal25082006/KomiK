@@ -194,6 +194,40 @@ public sealed class LibraryRepository : ILibraryRepository
                     value TEXT NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS ReadingSessions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    comic_id INTEGER NOT NULL,
+                    start_time TEXT NOT NULL,
+                    end_time TEXT NOT NULL,
+                    duration_seconds INTEGER NOT NULL,
+                    pages_read INTEGER NOT NULL,
+                    session_date TEXT NOT NULL,
+                    FOREIGN KEY(comic_id) REFERENCES Comics(id) ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS IgnoredDuplicates (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    comic_id_1 INTEGER NOT NULL,
+                    comic_id_2 INTEGER NOT NULL,
+                    date_ignored TEXT NOT NULL,
+                    UNIQUE(comic_id_1, comic_id_2)
+                );
+
+                CREATE TABLE IF NOT EXISTS ManualSeries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT UNIQUE NOT NULL COLLATE NOCASE,
+                    date_created TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ManualSeriesComics (
+                    series_id INTEGER NOT NULL,
+                    comic_id INTEGER NOT NULL,
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY(series_id, comic_id),
+                    FOREIGN KEY(series_id) REFERENCES ManualSeries(id) ON DELETE CASCADE,
+                    FOREIGN KEY(comic_id) REFERENCES Comics(id) ON DELETE CASCADE
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_comics_file_path ON Comics(file_path);
                 CREATE INDEX IF NOT EXISTS idx_comics_title ON Comics(title);
                 CREATE INDEX IF NOT EXISTS idx_comics_is_favorite ON Comics(is_favorite);
@@ -204,7 +238,11 @@ public sealed class LibraryRepository : ILibraryRepository
                 CREATE INDEX IF NOT EXISTS idx_comic_colls_coll ON ComicCollections(collection_id);
                 CREATE INDEX IF NOT EXISTS idx_bookmarks_comic ON Bookmarks(comic_id);
                 CREATE INDEX IF NOT EXISTS idx_comic_metadata_comic ON ComicMetadata(comic_id);
+                CREATE INDEX IF NOT EXISTS idx_reading_sessions_comic ON ReadingSessions(comic_id);
+                CREATE INDEX IF NOT EXISTS idx_reading_sessions_date ON ReadingSessions(session_date);
+                CREATE INDEX IF NOT EXISTS idx_manual_series_comic ON ManualSeriesComics(comic_id);
             ";
+
 
             await cmd.ExecuteNonQueryAsync();
             _isInitialized = true;
@@ -1649,6 +1687,13 @@ public sealed class LibraryRepository : ILibraryRepository
         if (dict.TryGetValue(nameof(AppSettings.DefaultContrast), out var contrast) && double.TryParse(contrast, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double c)) settings.DefaultContrast = c;
         if (dict.TryGetValue(nameof(AppSettings.DefaultWarmth), out var warm) && double.TryParse(warm, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double w)) settings.DefaultWarmth = w;
         if (dict.TryGetValue(nameof(AppSettings.DefaultNightMode), out var nm) && bool.TryParse(nm, out bool n)) settings.DefaultNightMode = n;
+        if (dict.TryGetValue(nameof(AppSettings.DefaultReadingPreset), out var preset)) settings.DefaultReadingPreset = preset;
+        if (dict.TryGetValue(nameof(AppSettings.WindowWidth), out var ww) && int.TryParse(ww, out int wVal)) settings.WindowWidth = wVal;
+        if (dict.TryGetValue(nameof(AppSettings.WindowHeight), out var wh) && int.TryParse(wh, out int hVal)) settings.WindowHeight = hVal;
+        if (dict.TryGetValue(nameof(AppSettings.WindowX), out var wx) && int.TryParse(wx, out int xVal)) settings.WindowX = xVal;
+        if (dict.TryGetValue(nameof(AppSettings.WindowY), out var wy) && int.TryParse(wy, out int yVal)) settings.WindowY = yVal;
+        if (dict.TryGetValue(nameof(AppSettings.IsMaximized), out var max) && bool.TryParse(max, out bool mVal)) settings.IsMaximized = mVal;
+        if (dict.TryGetValue(nameof(AppSettings.IsSeriesViewDefault), out var sview) && bool.TryParse(sview, out bool svVal)) settings.IsSeriesViewDefault = svVal;
 
         return settings;
     }
@@ -1664,6 +1709,612 @@ public sealed class LibraryRepository : ILibraryRepository
         await SetSettingAsync(nameof(AppSettings.DefaultContrast), settings.DefaultContrast.ToString(System.Globalization.CultureInfo.InvariantCulture));
         await SetSettingAsync(nameof(AppSettings.DefaultWarmth), settings.DefaultWarmth.ToString(System.Globalization.CultureInfo.InvariantCulture));
         await SetSettingAsync(nameof(AppSettings.DefaultNightMode), settings.DefaultNightMode.ToString());
+        await SetSettingAsync(nameof(AppSettings.DefaultReadingPreset), settings.DefaultReadingPreset);
+        await SetSettingAsync(nameof(AppSettings.WindowWidth), settings.WindowWidth.ToString());
+        await SetSettingAsync(nameof(AppSettings.WindowHeight), settings.WindowHeight.ToString());
+        await SetSettingAsync(nameof(AppSettings.WindowX), settings.WindowX.ToString());
+        await SetSettingAsync(nameof(AppSettings.WindowY), settings.WindowY.ToString());
+        await SetSettingAsync(nameof(AppSettings.IsMaximized), settings.IsMaximized.ToString());
+        await SetSettingAsync(nameof(AppSettings.IsSeriesViewDefault), settings.IsSeriesViewDefault.ToString());
+    }
+
+    #endregion
+
+    #region Reading Sessions & Statistics
+
+
+    public async Task RecordReadingSessionAsync(long comicId, DateTime startTime, DateTime endTime, int durationSeconds, int pagesRead)
+    {
+        if (durationSeconds <= 2 && pagesRead <= 0) return;
+
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            INSERT INTO ReadingSessions (comic_id, start_time, end_time, duration_seconds, pages_read, session_date)
+            VALUES (@comicId, @startTime, @endTime, @duration, @pages, @sessionDate);
+        ";
+        cmd.Parameters.AddWithValue("@comicId", comicId);
+        cmd.Parameters.AddWithValue("@startTime", startTime.ToString("o"));
+        cmd.Parameters.AddWithValue("@endTime", endTime.ToString("o"));
+        cmd.Parameters.AddWithValue("@duration", durationSeconds);
+        cmd.Parameters.AddWithValue("@pages", pagesRead);
+        cmd.Parameters.AddWithValue("@sessionDate", startTime.ToString("yyyy-MM-dd"));
+
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task<ReadingStatsSummary> GetReadingStatsSummaryAsync()
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        var summary = new ReadingStatsSummary();
+
+        // 1. Total pages & duration
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                SELECT COALESCE(SUM(pages_read), 0), COALESCE(SUM(duration_seconds), 0), COUNT(*)
+                FROM ReadingSessions;
+            ";
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                summary.TotalPagesRead = reader.GetInt32(0);
+                summary.TotalDurationMinutes = (int)Math.Round(reader.GetInt32(1) / 60.0);
+                summary.TotalSessionsCount = reader.GetInt32(2);
+            }
+        }
+
+        // 2. Completed comics
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT COUNT(*) FROM Comics WHERE is_completed = 1;";
+            var res = await cmd.ExecuteScalarAsync();
+            summary.ComicsCompleted = Convert.ToInt32(res ?? 0);
+        }
+
+        // 3. Daily activity and streaks
+        var sessionDates = new List<DateTime>();
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                SELECT session_date, SUM(pages_read), SUM(duration_seconds)
+                FROM ReadingSessions
+                GROUP BY session_date
+                ORDER BY session_date DESC;
+            ";
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                string dtStr = reader.GetString(0);
+                int pages = reader.GetInt32(1);
+                int durationSec = reader.GetInt32(2);
+
+                if (DateTime.TryParse(dtStr, out var parsedDate))
+                {
+                    sessionDates.Add(parsedDate.Date);
+                }
+
+                if (summary.RecentActivity.Count < 14)
+                {
+                    summary.RecentActivity.Add(new DailyReadingActivity
+                    {
+                        Date = dtStr,
+                        PagesRead = pages,
+                        DurationMinutes = (int)Math.Round(durationSec / 60.0)
+                    });
+                }
+            }
+        }
+
+        // Calculate streaks
+        if (sessionDates.Count > 0)
+        {
+            var distinctDates = sessionDates.Distinct().OrderByDescending(d => d).ToList();
+            DateTime today = DateTime.UtcNow.Date;
+            DateTime yesterday = today.AddDays(-1);
+
+            int currentStreak = 0;
+            if (distinctDates.Contains(today) || distinctDates.Contains(yesterday))
+            {
+                DateTime checkDate = distinctDates.Contains(today) ? today : yesterday;
+                foreach (var d in distinctDates)
+                {
+                    if (d == checkDate)
+                    {
+                        currentStreak++;
+                        checkDate = checkDate.AddDays(-1);
+                    }
+                    else if (d < checkDate)
+                    {
+                        break;
+                    }
+                }
+            }
+            summary.CurrentDailyStreak = currentStreak;
+
+            // Longest streak
+            int longestStreak = 0;
+            int tempStreak = 0;
+            DateTime? prevDate = null;
+            foreach (var d in distinctDates.OrderBy(d => d))
+            {
+                if (prevDate == null || d == prevDate.Value.AddDays(1))
+                {
+                    tempStreak++;
+                }
+                else if (d != prevDate.Value)
+                {
+                    tempStreak = 1;
+                }
+                longestStreak = Math.Max(longestStreak, tempStreak);
+                prevDate = d;
+            }
+            summary.LongestDailyStreak = Math.Max(longestStreak, currentStreak);
+        }
+
+        // Fallback: If no ReadingSessions logged yet, aggregate from Comics read progress
+        if (summary.TotalPagesRead == 0)
+        {
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT COALESCE(SUM(last_read_page), 0) FROM Comics WHERE last_read_page > 0;";
+                var res = await cmd.ExecuteScalarAsync();
+                int fallbackPages = Convert.ToInt32(res ?? 0);
+                if (fallbackPages > 0)
+                {
+                    summary.TotalPagesRead = fallbackPages;
+                    if (summary.TotalDurationMinutes == 0)
+                    {
+                        summary.TotalDurationMinutes = (int)Math.Round(fallbackPages * 1.5);
+                    }
+                }
+            }
+        }
+
+        // 4. Top Series & Comics read (Top 20)
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                SELECT COALESCE(m.series_name, c.title) AS series,
+                       MAX(COALESCE(SUM(s.pages_read), 0), COALESCE(SUM(c.last_read_page), 0)) AS total_pages,
+                       COALESCE(SUM(s.duration_seconds), 0) AS total_seconds,
+                       COUNT(DISTINCT c.id) AS issues
+                FROM Comics c
+                LEFT JOIN ReadingSessions s ON s.comic_id = c.id
+                LEFT JOIN ComicMetadata m ON c.id = m.comic_id
+                WHERE c.last_read_page > 0 OR s.id IS NOT NULL
+                GROUP BY series
+                HAVING total_pages > 0
+                ORDER BY total_pages DESC
+                LIMIT 20;
+            ";
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                string sName = reader.GetString(0);
+                int p = reader.GetInt32(1);
+                int sec = reader.GetInt32(2);
+                int issues = reader.GetInt32(3);
+
+                int durationMins = (int)Math.Round(sec / 60.0);
+                if (durationMins == 0 && p > 0)
+                {
+                    durationMins = Math.Max(1, (int)Math.Round(p * 1.5));
+                }
+
+                summary.TopSeries.Add(new SeriesReadingStat
+                {
+                    SeriesName = sName,
+                    PagesRead = p,
+                    DurationMinutes = durationMins,
+                    IssuesCompleted = issues
+                });
+            }
+        }
+
+        if (summary.TopSeries.Count > 0)
+        {
+            summary.TopSeriesName = summary.TopSeries[0].SeriesName;
+            summary.TopSeriesPages = summary.TopSeries[0].PagesRead;
+        }
+
+        return summary;
+    }
+
+    #endregion
+
+    #region Duplicate Handling
+
+    public async Task IgnoreDuplicatePairAsync(long comicId1, long comicId2)
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        long minId = Math.Min(comicId1, comicId2);
+        long maxId = Math.Max(comicId1, comicId2);
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            INSERT INTO IgnoredDuplicates (comic_id_1, comic_id_2, date_ignored)
+            VALUES (@c1, @c2, @dt)
+            ON CONFLICT(comic_id_1, comic_id_2) DO NOTHING;
+        ";
+        cmd.Parameters.AddWithValue("@c1", minId);
+        cmd.Parameters.AddWithValue("@c2", maxId);
+        cmd.Parameters.AddWithValue("@dt", DateTime.UtcNow.ToString("o"));
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task<HashSet<(long, long)>> GetIgnoredDuplicatePairsAsync()
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        var set = new HashSet<(long, long)>();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT comic_id_1, comic_id_2 FROM IgnoredDuplicates;";
+
+        using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            set.Add((reader.GetInt64(0), reader.GetInt64(1)));
+        }
+        return set;
+    }
+
+    public async Task RemoveIgnoredDuplicatePairAsync(long comicId1, long comicId2)
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        long minId = Math.Min(comicId1, comicId2);
+        long maxId = Math.Max(comicId1, comicId2);
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "DELETE FROM IgnoredDuplicates WHERE comic_id_1 = @c1 AND comic_id_2 = @c2;";
+        cmd.Parameters.AddWithValue("@c1", minId);
+        cmd.Parameters.AddWithValue("@c2", maxId);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task DeleteComicAsync(long comicId, bool deleteFileFromDisk)
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        string? filePath = null;
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT file_path FROM Comics WHERE id = @id;";
+            cmd.Parameters.AddWithValue("@id", comicId);
+            var res = await cmd.ExecuteScalarAsync();
+            filePath = res?.ToString();
+        }
+
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "DELETE FROM Comics WHERE id = @id;";
+            cmd.Parameters.AddWithValue("@id", comicId);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        if (deleteFileFromDisk && !string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
+        {
+            try
+            {
+                File.Delete(filePath);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LibraryRepository] Failed to delete file {filePath}: {ex.Message}");
+            }
+        }
+    }
+
+    #endregion
+
+    #region Full Library Export & Import
+
+    public async Task<string> ExportLibraryBackupJsonAsync()
+    {
+        await InitializeAsync();
+        var backup = new LibraryBackupData();
+
+        var watched = await GetWatchedFoldersAsync();
+        backup.WatchedFolders.AddRange(watched.Select(w => w.Path));
+
+        var allComics = await GetComicsAsync();
+        foreach (var c in allComics)
+
+        {
+            var rec = new BackupComicRecord
+            {
+                FilePath = c.FilePath,
+                Title = c.Title,
+                LastReadPage = c.LastReadPage,
+                IsCompleted = c.IsCompleted,
+                IsFavorite = c.IsFavorite,
+                LastReadAt = c.LastReadAt?.ToString("o")
+            };
+
+            var tags = await GetTagsForComicAsync(c.Id);
+            rec.Tags.AddRange(tags);
+
+            var meta = await GetMetadataForComicAsync(c.Id);
+            rec.Metadata = meta;
+
+            backup.Comics.Add(rec);
+
+            var bms = await GetBookmarksForComicAsync(c.Id);
+            foreach (var b in bms)
+            {
+                backup.Bookmarks.Add(new BackupBookmarkRecord
+                {
+                    ComicFilePath = c.FilePath,
+                    PageNumber = b.PageNumber,
+                    UserNote = b.UserNote,
+                    CreatedAt = b.CreatedAt.ToString("o")
+                });
+            }
+        }
+
+        var settings = await GetAppSettingsAsync();
+        backup.Settings[nameof(AppSettings.Theme)] = settings.Theme;
+        backup.Settings[nameof(AppSettings.DefaultFitMode)] = settings.DefaultFitMode;
+        backup.Settings[nameof(AppSettings.DefaultReadingDirection)] = settings.DefaultReadingDirection;
+        backup.Settings[nameof(AppSettings.DefaultViewMode)] = settings.DefaultViewMode;
+        backup.Settings[nameof(AppSettings.DefaultReadingPreset)] = settings.DefaultReadingPreset;
+        backup.Settings[nameof(AppSettings.DefaultNightMode)] = settings.DefaultNightMode.ToString();
+
+        return System.Text.Json.JsonSerializer.Serialize(backup, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+    }
+
+    public async Task<(int comicsRestored, int bookmarksRestored, int tagsRestored)> ImportLibraryBackupJsonAsync(string jsonContent, bool overwriteExisting)
+    {
+        if (string.IsNullOrWhiteSpace(jsonContent)) return (0, 0, 0);
+
+        var backup = System.Text.Json.JsonSerializer.Deserialize<LibraryBackupData>(jsonContent);
+        if (backup == null) return (0, 0, 0);
+
+        await InitializeAsync();
+        int comicsRestored = 0;
+        int bookmarksRestored = 0;
+        int tagsRestored = 0;
+
+        foreach (var cRec in backup.Comics)
+        {
+            var existing = await GetComicByPathAsync(cRec.FilePath);
+            if (existing == null)
+            {
+                string fileName = Path.GetFileName(cRec.FilePath);
+                string title = Path.GetFileNameWithoutExtension(fileName);
+                using var conn = CreateConnection();
+                await conn.OpenAsync();
+                using var fCmd = conn.CreateCommand();
+                fCmd.CommandText = "SELECT id, file_path, title, page_count, last_read_page, is_favorite FROM Comics WHERE file_path LIKE @tail OR title = @title LIMIT 1;";
+                fCmd.Parameters.AddWithValue("@tail", "%" + fileName);
+                fCmd.Parameters.AddWithValue("@title", title);
+                using var fReader = await fCmd.ExecuteReaderAsync();
+                if (await fReader.ReadAsync())
+                {
+                    existing = new ComicEntity
+                    {
+                        Id = fReader.GetInt64(0),
+                        FilePath = fReader.GetString(1),
+                        Title = fReader.GetString(2),
+                        PageCount = fReader.GetInt32(3),
+                        LastReadPage = fReader.GetInt32(4),
+                        IsFavorite = fReader.GetInt32(5) == 1
+                    };
+                }
+            }
+
+            if (existing != null)
+            {
+                if (overwriteExisting || existing.LastReadPage == 0 || cRec.LastReadPage > existing.LastReadPage || cRec.IsFavorite)
+                {
+                    await UpdateReadingProgressAsync(existing.FilePath, cRec.LastReadPage, existing.PageCount);
+                    await SetFavoriteAsync(existing.Id, cRec.IsFavorite);
+                    comicsRestored++;
+                }
+
+                if (cRec.Metadata != null)
+                {
+                    cRec.Metadata.ComicId = existing.Id;
+                    await SaveComicMetadataAsync(cRec.Metadata);
+                }
+
+                foreach (var tag in cRec.Tags)
+                {
+                    await AddTagToComicAsync(existing.Id, tag);
+                    tagsRestored++;
+                }
+            }
+        }
+
+        foreach (var bRec in backup.Bookmarks)
+        {
+            var existing = await GetComicByPathAsync(bRec.ComicFilePath);
+            if (existing == null)
+            {
+                string fileName = Path.GetFileName(bRec.ComicFilePath);
+                using var conn = CreateConnection();
+                await conn.OpenAsync();
+                using var fCmd = conn.CreateCommand();
+                fCmd.CommandText = "SELECT id, file_path FROM Comics WHERE file_path LIKE @tail LIMIT 1;";
+                fCmd.Parameters.AddWithValue("@tail", "%" + fileName);
+                using var fReader = await fCmd.ExecuteReaderAsync();
+                if (await fReader.ReadAsync())
+                {
+                    existing = new ComicEntity { Id = fReader.GetInt64(0), FilePath = fReader.GetString(1) };
+                }
+            }
+
+            if (existing != null)
+            {
+                await AddBookmarkAsync(existing.Id, bRec.PageNumber, bRec.UserNote);
+                bookmarksRestored++;
+            }
+        }
+
+        if (backup.Settings != null && backup.Settings.Count > 0)
+        {
+            var currentSettings = await GetAppSettingsAsync();
+            if (backup.Settings.TryGetValue(nameof(AppSettings.Theme), out var t)) currentSettings.Theme = t;
+            if (backup.Settings.TryGetValue(nameof(AppSettings.DefaultFitMode), out var fm)) currentSettings.DefaultFitMode = fm;
+            if (backup.Settings.TryGetValue(nameof(AppSettings.DefaultReadingDirection), out var rd)) currentSettings.DefaultReadingDirection = rd;
+            if (backup.Settings.TryGetValue(nameof(AppSettings.DefaultReadingPreset), out var rp)) currentSettings.DefaultReadingPreset = rp;
+            await SaveAppSettingsAsync(currentSettings);
+        }
+
+        return (comicsRestored, bookmarksRestored, tagsRestored);
+    }
+
+    #endregion
+
+    #region Manual Series
+
+    public async Task<List<ComicSeriesGroup>> GetManualSeriesAsync()
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        var seriesList = new List<ComicSeriesGroup>();
+
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT id, name FROM ManualSeries ORDER BY name ASC;";
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                seriesList.Add(new ComicSeriesGroup
+                {
+                    ManualSeriesId = reader.GetInt64(0),
+                    SeriesName = reader.GetString(1),
+                    IsManual = true
+                });
+            }
+        }
+
+        foreach (var s in seriesList)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT c.id, c.file_path, c.title, c.format, c.page_count, c.thumbnail_path,
+                       c.date_added, c.last_modified, c.parent_folder, c.file_size,
+                       c.is_favorite, c.is_missing, c.last_read_page, c.last_read_at, c.is_completed
+                FROM ManualSeriesComics m
+                JOIN Comics c ON m.comic_id = c.id
+                WHERE m.series_id = @sid AND c.is_missing = 0
+                ORDER BY m.sort_order ASC, c.title ASC;
+            ";
+            cmd.Parameters.AddWithValue("@sid", s.ManualSeriesId);
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                s.Issues.Add(MapComicEntity(reader));
+            }
+
+            if (s.Issues.Count > 0)
+            {
+                s.CoverThumbnailPath = s.Issues[0].ThumbnailPath;
+            }
+            s.RefreshProperties();
+        }
+
+        return seriesList;
+    }
+
+    public async Task<long> CreateManualSeriesAsync(string name, IEnumerable<long> comicIds)
+    {
+        string trimmed = name.Trim();
+        if (string.IsNullOrEmpty(trimmed)) throw new ArgumentException("Series name cannot be empty", nameof(name));
+
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            INSERT INTO ManualSeries (name, date_created)
+            VALUES (@name, @created);
+            SELECT last_insert_rowid();
+        ";
+        cmd.Parameters.AddWithValue("@name", trimmed);
+        cmd.Parameters.AddWithValue("@created", DateTime.UtcNow.ToString("o"));
+
+        long seriesId = Convert.ToInt64(await cmd.ExecuteScalarAsync());
+
+        await AddComicsToManualSeriesAsync(seriesId, comicIds);
+        return seriesId;
+    }
+
+    public async Task AddComicsToManualSeriesAsync(long seriesId, IEnumerable<long> comicIds)
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        using var trans = conn.BeginTransaction();
+        try
+        {
+            int order = 0;
+            foreach (var cid in comicIds)
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.Transaction = trans;
+                cmd.CommandText = @"
+                    INSERT OR IGNORE INTO ManualSeriesComics (series_id, comic_id, sort_order)
+                    VALUES (@sid, @cid, @order);
+                ";
+                cmd.Parameters.AddWithValue("@sid", seriesId);
+                cmd.Parameters.AddWithValue("@cid", cid);
+                cmd.Parameters.AddWithValue("@order", order++);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            await trans.CommitAsync();
+        }
+        catch
+        {
+            await trans.RollbackAsync();
+            throw;
+        }
+    }
+
+    public async Task RemoveComicFromManualSeriesAsync(long seriesId, long comicId)
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "DELETE FROM ManualSeriesComics WHERE series_id = @sid AND comic_id = @cid;";
+        cmd.Parameters.AddWithValue("@sid", seriesId);
+        cmd.Parameters.AddWithValue("@cid", comicId);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task DeleteManualSeriesAsync(long seriesId)
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "DELETE FROM ManualSeries WHERE id = @sid;";
+        cmd.Parameters.AddWithValue("@sid", seriesId);
+        await cmd.ExecuteNonQueryAsync();
     }
 
     #endregion

@@ -11,11 +11,31 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="ModalScrimBrush" Color="#D80B0C0E" />
+                    <SolidColorBrush x:Key="WrappedCardBrush" Color="#1E293B" />
+                    <SolidColorBrush x:Key="WrappedCardTextBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="WrappedCardSubtextBrush" Color="#CBD5E1" />
+                    <SolidColorBrush x:Key="WrappedPillBrush" Color="#33FFFFFF" />
+                    <SolidColorBrush x:Key="ModalCardBackgroundBrush" Color="#1C1E24" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="ModalScrimBrush" Color="#70000000" />
+                    <SolidColorBrush x:Key="WrappedCardBrush" Color="#F1F5F9" />
+                    <SolidColorBrush x:Key="WrappedCardTextBrush" Color="#0F172A" />
+                    <SolidColorBrush x:Key="WrappedCardSubtextBrush" Color="#475569" />
+                    <SolidColorBrush x:Key="WrappedPillBrush" Color="#E2E8F0" />
+                    <SolidColorBrush x:Key="ModalCardBackgroundBrush" Color="#FFFFFF" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
             <helpers:BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
             <helpers:BooleanToVisibilityConverter x:Key="InvertedBoolToVisConverter" IsInverted="True" />
             <helpers:InverseBooleanConverter x:Key="InvertedBoolConverter" />
             <helpers:ViewModeTextConverter x:Key="ViewModeTextConverter" />
             <helpers:StringToImageSourceConverter x:Key="StringToImageSourceConverter" />
+            <helpers:OcrButtonTextConverter x:Key="OcrButtonTextConverter" />
 
             <Style x:Key="InfoButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="Transparent" />

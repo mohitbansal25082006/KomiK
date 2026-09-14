@@ -6,5 +6,6 @@ namespace Komik.Models;
 public enum ViewMode
 {
     SinglePage,
-    DoublePage
+    DoublePage,
+    VerticalContinuous
 }

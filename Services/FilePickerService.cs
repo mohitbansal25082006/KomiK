@@ -13,6 +13,8 @@ public interface IFilePickerService
 {
     Task<string?> PickComicFileAsync();
     Task<string?> PickComicFolderAsync();
+    Task<string?> PickSaveBackupFileAsync(string defaultFileName);
+    Task<string?> PickOpenBackupFileAsync();
 }
 
 /// <summary>
@@ -60,5 +62,39 @@ public sealed class FilePickerService : IFilePickerService
 
         var folder = await picker.PickSingleFolderAsync();
         return folder?.Path;
+    }
+
+    public async Task<string?> PickSaveBackupFileAsync(string defaultFileName)
+    {
+        var picker = new FileSavePicker
+        {
+            SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+            SuggestedFileName = defaultFileName
+        };
+        picker.FileTypeChoices.Add("Komik Library Backup (*.komikbackup)", new List<string> { ".komikbackup" });
+        picker.FileTypeChoices.Add("JSON Document (*.json)", new List<string> { ".json" });
+
+        nint hwnd = App.WindowHandle;
+        InitializeWithWindow.Initialize(picker, hwnd);
+
+        var file = await picker.PickSaveFileAsync();
+        return file?.Path;
+    }
+
+    public async Task<string?> PickOpenBackupFileAsync()
+    {
+        var picker = new FileOpenPicker
+        {
+            SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+            ViewMode = PickerViewMode.List
+        };
+        picker.FileTypeFilter.Add(".komikbackup");
+        picker.FileTypeFilter.Add(".json");
+
+        nint hwnd = App.WindowHandle;
+        InitializeWithWindow.Initialize(picker, hwnd);
+
+        var file = await picker.PickSingleFileAsync();
+        return file?.Path;
     }
 }
