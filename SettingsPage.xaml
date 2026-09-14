@@ -519,9 +519,9 @@
                 <Border Style="{StaticResource SettingsSectionCard}">
                     <StackPanel Spacing="6">
                         <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                            <Image Source="ms-appx:///Assets/Square44x44Logo.png" Width="30" Height="30" VerticalAlignment="Center" />
-                            <TextBlock Text="Komik" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
-                            <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4" Padding="6,2">
+                            <Image Source="ms-appx:///Assets/Square150x150Logo.scale-200.png" Width="36" Height="36" Stretch="Uniform" VerticalAlignment="Center" />
+                            <TextBlock Text="Komik" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" />
+                            <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
                                 <TextBlock Text="v1.1.0" FontSize="10" FontWeight="Bold" Foreground="White" />
                             </Border>
                         </StackPanel>

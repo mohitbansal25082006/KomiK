@@ -527,6 +527,7 @@ public sealed class LibraryRepository : ILibraryRepository
                 last_modified = excluded.last_modified,
                 parent_folder = COALESCE(excluded.parent_folder, Comics.parent_folder),
                 file_size = excluded.file_size,
+                is_completed = CASE WHEN excluded.is_completed = 1 THEN 1 ELSE Comics.is_completed END,
                 is_missing = 0
             RETURNING id;
         ";
@@ -1206,9 +1207,9 @@ public sealed class LibraryRepository : ILibraryRepository
 
     #region Persistent Cache & Backup
 
-    private static string GetCacheDataFilePath()
+    private string GetCacheDataFilePath()
     {
-        string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".komik");
+        string dir = Path.GetDirectoryName(_databaseFilePath) ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".komik");
         try { Directory.CreateDirectory(dir); } catch { }
         return Path.Combine(dir, "library_data_cache.json");
     }

@@ -1475,10 +1475,22 @@ public static class Program
                 if (allSeries[0].Issues.Count != 2) throw new Exception($"Expected 2 issues, got {allSeries[0].Issues.Count}");
                 if (!allSeries[0].IsManual) throw new Exception("Expected IsManual to be true");
 
+                // Add comic to existing series
+                long c3 = await repo.InsertComicAsync(new ComicEntity
+                {
+                    Title = "Batman: Year One #3",
+                    FilePath = @"C:\Comics\batman_3.cbz",
+                    PageCount = 24
+                });
+                await repo.AddComicsToManualSeriesAsync(seriesId, new[] { c3 });
+                allSeries = await repo.GetManualSeriesAsync();
+                if (allSeries[0].Issues.Count != 3)
+                    throw new Exception($"Expected 3 issues after adding to existing series, got {allSeries[0].Issues.Count}");
+
                 // Remove 1 issue
                 await repo.RemoveComicFromManualSeriesAsync(seriesId, c1);
                 allSeries = await repo.GetManualSeriesAsync();
-                if (allSeries[0].Issues.Count != 1 || allSeries[0].Issues[0].Id != c2)
+                if (allSeries[0].Issues.Count != 2 || allSeries[0].Issues.Any(i => i.Id == c1))
                     throw new Exception("Issue was not removed from manual series");
 
                 // Delete series

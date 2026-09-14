@@ -371,3 +371,46 @@ Following the initial v1.1.0 implementation, a comprehensive polish pass was exe
    - Compiled full self-contained win-x64 Release build (`publish_selfcontained`).
    - Built Inno Setup installer: `shipping/Komik-Setup.exe` (v1.1.0).
    - Installed locally on system for immediate testing.
+
+---
+
+## 6. Version 1.1.1 Refinements (Logo Branding, Webtoon Smooth Scroll, Standalone Series Screen & Add to Series)
+
+1. **Official Website Logo Integration**:
+   - Integrated the official high-resolution branding logo directly from `komik-website/public/app-icon.png` (512x512) into `Assets/Square150x150Logo.scale-200.png`, `Assets/Square44x44Logo.scale-200.png`, `Assets/Square44x44Logo.png`, `Assets/StoreLogo.png`, and `Assets/app-icon.png`.
+   - Configured `Komik.csproj` with `<Content Include="Assets\**\*"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>` to ensure unpackaged WinUI 3 desktop deployments (`ms-appx:///Assets/...`) bundle and deploy all image assets to the output directory and installer.
+   - Updated `SettingsPage.xaml` About section to render `ms-appx:///Assets/Square150x150Logo.scale-200.png` at 36x36 with `Stretch="Uniform"` alongside the Komik header and version tag.
+
+2. **Webtoon Continuous Mode Scroll & Page Change Bugfix**:
+   - **Root Cause**: `ReaderScrollViewer_ViewChanged` in continuous Webtoon mode updated `CurrentPageIndex = estPage`. This fired `ViewModel_PropertyChanged("CurrentPageIndex")` which unconditionally executed `ReaderScrollViewer.ChangeView(null, 0, null)`, forcibly snapping the user's view back to the top of the comic on every scroll tick.
+   - **Fix**: Added scroll state flags (`_isUserScrollingWebtoon`, `_isProgrammaticScroll`) in `MainPage.xaml.cs`.
+   - Guarded `ViewModel_PropertyChanged` so `ChangeView(null, 0, null)` only executes when NOT in Webtoon mode (`if (!ViewModel.IsWebtoonMode)`).
+   - Wrapped `CurrentPageIndex = estPage;` in `ReaderScrollViewer_ViewChanged` with `_isUserScrollingWebtoon = true` and guarded against programmatic scroll events.
+   - Implemented `ScrollToWebtoonPage(int targetIndex)`: computes the exact vertical layout offset of the target page container relative to `PageDisplayContainer` (with proportional height fallback) and smoothly changes the viewport with `disableAnimation: false`.
+
+3. **Standalone Dedicated Series & Volumes Screen**:
+   - Decoupled "Series & Volumes" from the comic filter chip bar into a standalone library feature.
+   - Added a dedicated button beside "Duplicate Comics" in the main Library toolbar with active state styling.
+   - When entering Series & Volumes:
+     - The comic filter pills bar (Favorites, Continue Reading, Completed, Unread, Tags, Collections) is hidden.
+     - A dedicated Series Header is presented containing "← Back to Comics", Series Title + Count badge, "+ New Series" button, series search box, Series Sort picker, and Info flyout.
+   - Decoupled `UpdateSeriesGroupsAsync()`: evaluates all comics in the library independently of comic filter chips, auto-detects series runs with $\ge 90\%$ title match, and filters dynamically by `SeriesSearchText`.
+
+4. **Add Comics to Existing Series**:
+   - Added "+ Add Comics" action button to the `SeriesDetailOverlay` header.
+   - Created `AddComicsToSeriesOverlay` modal picker in `LibraryPage.xaml`:
+     - Live candidate search box.
+     - Quick "Select All" and "Clear Selection" buttons.
+     - Multi-selection candidate card grid displaying comic cover thumbnail, title, and page count with visual checkmark indicators.
+     - Automatically excludes issues already present in the active series.
+   - Added `OpenAddComicsToExistingSeriesCommand`, `CloseAddComicsToSeriesDialogCommand`, and `SaveComicsToExistingSeriesCommand` in `LibraryViewModel.cs`.
+   - If the series is already manual, calls `AddComicsToManualSeriesAsync`. If auto-detected, automatically promotes the series into a persistent manual series via `CreateManualSeriesAsync` so all user additions are preserved in SQLite.
+
+5. **Test Suite, Build & Installer Validation**:
+   - Extended automated test suite in `Komik.Tests/Program.cs` to verify `AddComicsToManualSeriesAsync`.
+   - Ran `dotnet run --project Komik.Tests/Komik.Tests.csproj`: **All 27 unit tests PASSED (27 passed, 0 failed)**.
+   - Compiled full self-contained win-x64 Release build (`dotnet publish Komik.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:WindowsPackageType=None -o publish_selfcontained`).
+   - Verified all logo and branding assets exist in `publish_selfcontained\Assets`.
+   - Compiled Inno Setup installer (`shipping\Komik-Setup.exe`).
+   - Executed silent local install (`shipping\Komik-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART`) with exit code 0.
+

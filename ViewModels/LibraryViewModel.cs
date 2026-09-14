@@ -69,6 +69,19 @@ public partial class LibraryViewModel : ObservableObject
     private bool _isCreateSeriesDialogOpen;
 
     [ObservableProperty]
+    private bool _isAddComicsToSeriesDialogOpen;
+
+    [ObservableProperty]
+    private string _seriesSearchText = string.Empty;
+
+    public string SeriesGroupsCountDisplay => SeriesGroups.Count == 1 ? "1 Series" : $"{SeriesGroups.Count} Series";
+
+    partial void OnSeriesSearchTextChanged(string value)
+    {
+        _ = UpdateSeriesGroupsAsync();
+    }
+
+    [ObservableProperty]
     private string _newSeriesName = string.Empty;
 
     [ObservableProperty]
@@ -217,7 +230,7 @@ public partial class LibraryViewModel : ObservableObject
 
     public bool ShowEmptyFilter => !IsLoading && !IsScanning && !IsConverting &&
         ((!IsSeriesView && !HasComics && (TotalComicCount > 0 || IsFilterOrSearchActive)) ||
-         (IsSeriesView && SeriesGroups.Count == 0 && (TotalComicCount > 0 || IsFilterOrSearchActive)));
+         (IsSeriesView && SeriesGroups.Count == 0 && (TotalComicCount > 0 || !string.IsNullOrWhiteSpace(SeriesSearchText))));
 
     public bool ShowComicsGrid => !IsSeriesView && IsGridView && HasComics && !ShowEmptyFilter && !ShowEmptyLibrary;
     public bool ShowComicsList => !IsSeriesView && IsListView && HasComics && !ShowEmptyFilter && !ShowEmptyLibrary;
@@ -229,20 +242,8 @@ public partial class LibraryViewModel : ObservableObject
         {
             if (IsSeriesView && SeriesGroups.Count == 0)
             {
-                if (!string.IsNullOrWhiteSpace(SearchText))
-                    return $"No series match \"{SearchText}\"";
-                if (FilterFavoritesOnly)
-                    return "No Favorite Series";
-                if (FilterInProgressOnly)
-                    return "No Series in Progress";
-                if (FilterUnreadOnly)
-                    return "No Unread Series";
-                if (FilterCompletedOnly)
-                    return "No Completed Series";
-                if (!string.IsNullOrEmpty(SelectedTag))
-                    return $"No Series Tagged \"{SelectedTag}\"";
-                if (!string.IsNullOrEmpty(SelectedCollection))
-                    return $"No Series in \"{SelectedCollection}\"";
+                if (!string.IsNullOrWhiteSpace(SeriesSearchText))
+                    return $"No series match \"{SeriesSearchText}\"";
                 return "No Series Found";
             }
 
@@ -270,9 +271,9 @@ public partial class LibraryViewModel : ObservableObject
         {
             if (IsSeriesView && SeriesGroups.Count == 0)
             {
-                if (!string.IsNullOrWhiteSpace(SearchText))
-                    return "Try searching with a different title or keyword, or create a new manual series.";
-                return "No series match your current filter criteria. Try clearing filters or create a manual series.";
+                if (!string.IsNullOrWhiteSpace(SeriesSearchText))
+                    return "Try adjusting your search terms or create a new custom series.";
+                return "Create a custom manual series using 'New Series' or add comics that share a title.";
             }
 
             if (!string.IsNullOrWhiteSpace(SearchText))
@@ -298,7 +299,7 @@ public partial class LibraryViewModel : ObservableObject
         get
         {
             if (IsSeriesView && SeriesGroups.Count == 0)
-                return "\uE8B7"; // Books / Series
+                return "\uE8B9";
             if (!string.IsNullOrWhiteSpace(SearchText))
                 return "\uE721"; // Search
             if (FilterFavoritesOnly)
@@ -1021,7 +1022,7 @@ public partial class LibraryViewModel : ObservableObject
     {
         SeriesGroups.Clear();
 
-        // 1. Fetch manual series from the database
+        // 1. Fetch manual series from the database (all issues, independent of comic filter chips)
         var manualSeries = await _repository.GetManualSeriesAsync();
         var manualComicIds = new HashSet<long>();
         var matchingManualGroups = new List<ComicSeriesGroup>();
@@ -1033,39 +1034,17 @@ public partial class LibraryViewModel : ObservableObject
                 manualComicIds.Add(issue.Id);
             }
 
-            if (IsFilterOrSearchActive)
+            if (ms.Issues.Count > 0)
             {
-                var filteredIssues = ms.Issues.Where(issue => Comics.Any(c => c.Id == issue.Id)).ToList();
-                if (filteredIssues.Count > 0)
-                {
-                    var filteredGroup = new ComicSeriesGroup
-                    {
-                        ManualSeriesId = ms.ManualSeriesId,
-                        SeriesName = ms.SeriesName,
-                        IsManual = true,
-                        CoverThumbnailPath = filteredIssues[0].ThumbnailPath
-                    };
-                    foreach (var fi in filteredIssues)
-                    {
-                        filteredGroup.Issues.Add(fi);
-                    }
-                    filteredGroup.RefreshProperties();
-                    matchingManualGroups.Add(filteredGroup);
-                }
-            }
-            else
-            {
-                if (ms.Issues.Count > 0)
-                {
-                    matchingManualGroups.Add(ms);
-                }
+                matchingManualGroups.Add(ms);
             }
         }
 
-        // 2. Auto-detect series from comics not in manual series (matching >= 90% full title)
+        // 2. Auto-detect series from all library comics not in manual series (matching >= 90% full title)
+        var allComics = await _repository.GetComicsAsync();
         var clusters = new List<(string BaseSeriesName, string RepresentativeTitle, List<ComicEntity> Issues)>();
 
-        foreach (var comic in Comics)
+        foreach (var comic in allComics)
         {
             if (manualComicIds.Contains(comic.Id)) continue;
 
@@ -1087,7 +1066,7 @@ public partial class LibraryViewModel : ObservableObject
             }
         }
 
-        int minIssues = IsFilterOrSearchActive ? 1 : 2;
+        int minIssues = !string.IsNullOrWhiteSpace(SeriesSearchText) ? 1 : 2;
         var validClusters = clusters.Where(c => c.Issues.Count >= minIssues).ToList();
 
         var autoGroups = new List<ComicSeriesGroup>();
@@ -1119,6 +1098,16 @@ public partial class LibraryViewModel : ObservableObject
 
         var allGroups = matchingManualGroups.Concat(autoGroups).ToList();
 
+        // Filter by SeriesSearchText if specified
+        if (!string.IsNullOrWhiteSpace(SeriesSearchText))
+        {
+            string query = SeriesSearchText.Trim();
+            allGroups = allGroups.Where(g =>
+                g.SeriesName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                g.Issues.Any(i => i.Title.Contains(query, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
         // Sort series according to selected sort option
         var sortOption = SelectedSortOption?.Option ?? LibrarySortOption.TitleAscending;
         IEnumerable<ComicSeriesGroup> sortedGroups = sortOption switch
@@ -1137,14 +1126,33 @@ public partial class LibraryViewModel : ObservableObject
             SeriesGroups.Add(group);
         }
 
+        OnPropertyChanged(nameof(SeriesGroupsCountDisplay));
         OnPropertyChanged(nameof(ShowSeriesGrid));
         OnPropertyChanged(nameof(ShowEmptyFilter));
+    }
+
+    [RelayCommand]
+    public void OpenSeriesView()
+    {
+        IsSeriesView = true;
+        _ = UpdateSeriesGroupsAsync();
+    }
+
+    [RelayCommand]
+    public void CloseSeriesView()
+    {
+        IsSeriesView = false;
+        SeriesSearchText = string.Empty;
     }
 
     [RelayCommand]
     public void ToggleSeriesView()
     {
         IsSeriesView = !IsSeriesView;
+        if (IsSeriesView)
+        {
+            _ = UpdateSeriesGroupsAsync();
+        }
         _ = Task.Run(async () =>
         {
             try
@@ -1312,6 +1320,92 @@ public partial class LibraryViewModel : ObservableObject
         catch (Exception ex)
         {
             ShowNotification("Remove Failed", ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    [RelayCommand]
+    public async Task OpenAddComicsToExistingSeriesAsync()
+    {
+        if (SelectedSeriesGroup == null) return;
+
+        ManualSeriesSearchQuery = string.Empty;
+        ManualSeriesCandidates.Clear();
+
+        var existingIds = new HashSet<long>(SelectedSeriesGroup.Issues.Select(i => i.Id));
+        var allComics = await _repository.GetComicsAsync();
+        foreach (var comic in allComics)
+        {
+            if (!existingIds.Contains(comic.Id))
+            {
+                var candidate = new ManualSeriesComicItem(comic, isSelected: false);
+                ManualSeriesCandidates.Add(candidate);
+            }
+        }
+        SelectedCandidateCount = 0;
+        IsAddComicsToSeriesDialogOpen = true;
+    }
+
+    [RelayCommand]
+    public void CloseAddComicsToSeriesDialog()
+    {
+        IsAddComicsToSeriesDialogOpen = false;
+        ManualSeriesCandidates.Clear();
+        ManualSeriesSearchQuery = string.Empty;
+        SelectedCandidateCount = 0;
+    }
+
+    [RelayCommand]
+    public async Task SaveComicsToExistingSeriesAsync()
+    {
+        if (SelectedSeriesGroup == null) return;
+
+        var selectedComics = ManualSeriesCandidates.Where(c => c.IsSelected).Select(c => c.Comic).ToList();
+        if (selectedComics.Count == 0)
+        {
+            ShowNotification("No Comics Selected", "Please select at least one comic to add to this series.", InfoBarSeverity.Warning);
+            return;
+        }
+
+        try
+        {
+            long seriesId;
+            if (SelectedSeriesGroup.IsManual && SelectedSeriesGroup.ManualSeriesId > 0)
+            {
+                seriesId = SelectedSeriesGroup.ManualSeriesId;
+                await _repository.AddComicsToManualSeriesAsync(seriesId, selectedComics.Select(c => c.Id));
+            }
+            else
+            {
+                // Upgrade auto-detected series into a persistent manual series
+                var allIds = SelectedSeriesGroup.Issues.Select(i => i.Id).Concat(selectedComics.Select(c => c.Id)).Distinct();
+                seriesId = await _repository.CreateManualSeriesAsync(SelectedSeriesGroup.SeriesName, allIds);
+                SelectedSeriesGroup.ManualSeriesId = seriesId;
+                SelectedSeriesGroup.IsManual = true;
+            }
+
+            foreach (var comic in selectedComics)
+            {
+                if (!SelectedSeriesGroup.Issues.Any(i => i.Id == comic.Id))
+                {
+                    SelectedSeriesGroup.Issues.Add(comic);
+                }
+            }
+
+            var sortedIssues = SelectedSeriesGroup.Issues.OrderBy(i => i.Title, new NaturalSortComparer()).ToList();
+            SelectedSeriesGroup.Issues.Clear();
+            foreach (var issue in sortedIssues)
+            {
+                SelectedSeriesGroup.Issues.Add(issue);
+            }
+            SelectedSeriesGroup.RefreshProperties();
+
+            IsAddComicsToSeriesDialogOpen = false;
+            await UpdateSeriesGroupsAsync();
+            ShowNotification("Comics Added", $"Successfully added {selectedComics.Count} comic(s) to '{SelectedSeriesGroup.SeriesName}'.", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Add Comics Failed", ex.Message, InfoBarSeverity.Error);
         }
     }
 

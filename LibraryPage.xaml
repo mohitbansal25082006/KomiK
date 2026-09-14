@@ -104,8 +104,10 @@
             Margin="0,0,0,12" />
 
         <!-- ==================== 1. TOP HEADER & TOOLBAR ==================== -->
+        <!-- Standard Comics Toolbar -->
         <ScrollViewer
             Grid.Row="1"
+            Visibility="{x:Bind ViewModel.IsSeriesView, Mode=OneWay, Converter={StaticResource InvertedBoolToVisConverter}}"
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Disabled"
             HorizontalScrollMode="Disabled"
@@ -241,6 +243,41 @@
                             </Button.Flyout>
                         </Button>
                     </StackPanel>
+
+                    <!-- Standalone Series & Volumes Button with Info Flyout -->
+                    <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                        <Button
+                            Command="{x:Bind ViewModel.OpenSeriesViewCommand}"
+                            Height="34"
+                            Padding="8,0"
+                            ToolTipService.ToolTip="Browse and manage comic runs, manga volumes, and custom series">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <FontIcon Glyph="&#xE8B9;" FontSize="12" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+                                <TextBlock Text="Series &amp; Volumes" FontSize="12" />
+                                <Border
+                                    Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                    CornerRadius="8"
+                                    Padding="5,0"
+                                    Margin="2,0,0,0">
+                                    <TextBlock Text="{x:Bind ViewModel.SeriesGroups.Count, Mode=OneWay}" FontSize="10" FontWeight="Bold" Foreground="White" />
+                                </Border>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Series &amp; Volumes Info">
+                            <FontIcon Glyph="&#xE946;" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <Button.Flyout>
+                                <Flyout Placement="Bottom">
+                                    <StackPanel Width="270" Spacing="8">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                            <FontIcon Glyph="&#xE8B9;" FontSize="15" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+                                            <TextBlock Text="Series &amp; Volume Grouping" FontWeight="Bold" FontSize="13" />
+                                        </StackPanel>
+                                        <TextBlock Text="Discovers and clusters comic runs, multi-issue runs, and manga volumes when titles match 90% or more. You can also create and manage custom series. Click any series card to view issues in order and read next." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Search, Sort & View Mode Toggles -->
@@ -317,9 +354,96 @@
             </Grid>
         </ScrollViewer>
 
-        <!-- ==================== 2. FILTER PILLS & CHIPS ==================== -->
+        <!-- Dedicated Series & Volumes Standalone Toolbar -->
+        <Grid
+            Grid.Row="1"
+            Visibility="{x:Bind ViewModel.IsSeriesView, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
+            Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: Back to Comics, Title, Badge, New Series, Info -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button
+                    Command="{x:Bind ViewModel.CloseSeriesViewCommand}"
+                    Height="34"
+                    Padding="10,0"
+                    ToolTipService.ToolTip="Return to comics library">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE72B;" FontSize="12" />
+                        <TextBlock Text="Back to Comics" FontWeight="SemiBold" FontSize="12" />
+                    </StackPanel>
+                </Button>
+
+                <Border Width="1" Height="20" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="4,0" />
+
+                <FontIcon Glyph="&#xE8B9;" FontSize="18" Foreground="{ThemeResource AccentFillColorDefaultBrush}" VerticalAlignment="Center" />
+                <TextBlock Text="Series &amp; Volumes" FontSize="22" FontWeight="Bold" VerticalAlignment="Center" />
+                <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="10" Padding="8,2" Margin="2,0,6,0" VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind ViewModel.SeriesGroupsCountDisplay, Mode=OneWay}" FontSize="11" FontWeight="Bold" Foreground="White" />
+                </Border>
+
+                <Button
+                    Command="{x:Bind ViewModel.OpenCreateSeriesDialogCommand}"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Height="34"
+                    Padding="10,0"
+                    ToolTipService.ToolTip="Create a new manual series or reading order from your library comics">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <FontIcon Glyph="&#xE710;" FontSize="12" />
+                        <TextBlock Text="New Series" FontSize="12" FontWeight="SemiBold" />
+                    </StackPanel>
+                </Button>
+
+                <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Series &amp; Volumes Info">
+                    <FontIcon Glyph="&#xE946;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <Button.Flyout>
+                        <Flyout Placement="Bottom">
+                            <StackPanel Width="270" Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE8B9;" FontSize="15" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+                                    <TextBlock Text="Series &amp; Volume Grouping" FontWeight="Bold" FontSize="13" />
+                                </StackPanel>
+                                <TextBlock Text="Discovers and clusters comic runs, multi-issue runs, and manga volumes when titles match 90% or more. You can also create your own custom manual series. Click any series card to view issues in order and read next." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+            </StackPanel>
+
+            <!-- Right: Series Search, Series Sort, Settings -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <AutoSuggestBox
+                    Width="180"
+                    QueryIcon="Find"
+                    PlaceholderText="Search series..."
+                    Text="{x:Bind ViewModel.SeriesSearchText, Mode=TwoWay}" />
+
+                <ComboBox
+                    Width="140"
+                    ItemsSource="{x:Bind ViewModel.SortOptions}"
+                    SelectedItem="{x:Bind ViewModel.SelectedSortOption, Mode=TwoWay}"
+                    DisplayMemberPath="DisplayName"
+                    ToolTipService.ToolTip="Sort series" />
+
+                <Button
+                    Click="SettingsButton_Click"
+                    Height="34"
+                    Width="34"
+                    Padding="0"
+                    CornerRadius="17"
+                    ToolTipService.ToolTip="Settings">
+                    <FontIcon Glyph="&#xE713;" FontSize="14" />
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- ==================== 2. FILTER PILLS & CHIPS (COMICS ONLY) ==================== -->
         <ScrollViewer
             Grid.Row="2"
+            Visibility="{x:Bind ViewModel.IsSeriesView, Mode=OneWay, Converter={StaticResource InvertedBoolToVisConverter}}"
             HorizontalScrollBarVisibility="Hidden"
             VerticalScrollBarVisibility="Disabled"
             HorizontalScrollMode="Auto"
@@ -335,48 +459,6 @@
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock Text="All Comics" FontWeight="SemiBold" FontSize="12" />
                         <TextBlock Text="{x:Bind ViewModel.TotalComicCount, Mode=OneWay}" FontSize="12" Opacity="0.7" />
-                    </StackPanel>
-                </Button>
-
-                <!-- Series & Volumes Grouping Chip -->
-                <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                    <Button
-                        Command="{x:Bind ViewModel.ToggleSeriesViewCommand}"
-                        CornerRadius="16"
-                        Padding="14,6"
-                        Background="{x:Bind FilterSeriesBackground}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xE8B9;" FontSize="11" Foreground="{x:Bind FilterSeriesIconForeground}" />
-                            <TextBlock Text="Series &amp; Volumes" FontWeight="SemiBold" FontSize="12" Foreground="{x:Bind FilterSeriesForeground}" />
-                            <TextBlock Text="{x:Bind ViewModel.SeriesGroups.Count, Mode=OneWay}" FontSize="12" Foreground="{x:Bind FilterSeriesForeground}" Opacity="0.85" />
-                        </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Series &amp; Volumes Info">
-                        <FontIcon Glyph="&#xE946;" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <Button.Flyout>
-                            <Flyout Placement="Bottom">
-                                <StackPanel Width="270" Spacing="8">
-                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                        <FontIcon Glyph="&#xE8B9;" FontSize="15" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
-                                        <TextBlock Text="Series &amp; Volume Grouping" FontWeight="Bold" FontSize="13" />
-                                    </StackPanel>
-                                    <TextBlock Text="Discovers and clusters comic runs, multi-issue runs, and manga volumes when titles match 90% or more. You can also create your own custom manual series. Click any series card to view issues in order and read next." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                </StackPanel>
-                            </Flyout>
-                        </Button.Flyout>
-                    </Button>
-                </StackPanel>
-
-                <!-- New Series Button (Visible in Series View) -->
-                <Button
-                    Command="{x:Bind ViewModel.OpenCreateSeriesDialogCommand}"
-                    CornerRadius="16"
-                    Padding="12,6"
-                    Visibility="{x:Bind ViewModel.IsSeriesView, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
-                    ToolTipService.ToolTip="Create a new manual series or reading order from your library comics">
-                    <StackPanel Orientation="Horizontal" Spacing="5">
-                        <FontIcon Glyph="&#xE710;" FontSize="11" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
-                        <TextBlock Text="New Series" FontSize="12" FontWeight="SemiBold" />
                     </StackPanel>
                 </Button>
 
@@ -1114,6 +1196,15 @@
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Center">
                             <Button
+                                Command="{x:Bind ViewModel.OpenAddComicsToExistingSeriesCommand}"
+                                Style="{StaticResource AccentButtonStyle}"
+                                ToolTipService.ToolTip="Add comics from library to this series">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE710;" FontSize="12" />
+                                    <TextBlock Text="Add Comics" FontSize="12" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Button>
+                            <Button
                                 Visibility="{x:Bind ViewModel.SelectedSeriesGroup.IsManual, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
                                 Command="{x:Bind ViewModel.DeleteManualSeriesCommand}"
                                 CommandParameter="{x:Bind ViewModel.SelectedSeriesGroup, Mode=OneWay}"
@@ -1692,6 +1783,183 @@
                             Content="Create Series"
                             Style="{StaticResource AccentButtonStyle}"
                             Command="{x:Bind ViewModel.SaveManualSeriesCommand}"
+                            HorizontalAlignment="Right" />
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ==================== ADD COMICS TO EXISTING SERIES OVERLAY ==================== -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="5"
+            Canvas.ZIndex="135"
+            Background="{ThemeResource ModalScrimBrush}"
+            Visibility="{x:Bind ViewModel.IsAddComicsToSeriesDialogOpen, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
+            <Border
+                MaxWidth="860"
+                MaxHeight="680"
+                Margin="32"
+                Padding="24"
+                CornerRadius="16"
+                Background="{ThemeResource ModalCardBackgroundBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1.5">
+                <Grid RowSpacing="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Header -->
+                    <Grid Grid.Row="0">
+                        <StackPanel Spacing="3">
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <FontIcon Glyph="&#xE710;" FontSize="18" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+                                <TextBlock Text="Add Comics to Series" FontSize="20" FontWeight="Bold" />
+                            </StackPanel>
+                            <TextBlock Text="{x:Bind ViewModel.SelectedSeriesGroup.SeriesName, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <Button
+                            HorizontalAlignment="Right"
+                            Height="34" Width="34" Padding="0" CornerRadius="17"
+                            Command="{x:Bind ViewModel.CloseAddComicsToSeriesDialogCommand}">
+                            <FontIcon Glyph="&#xE711;" FontSize="12" />
+                        </Button>
+                    </Grid>
+
+                    <!-- Search / Filter Box -->
+                    <Grid Grid.Row="1">
+                        <AutoSuggestBox
+                            QueryIcon="Find"
+                            PlaceholderText="Filter comics to add..."
+                            Text="{x:Bind ViewModel.ManualSeriesSearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <!-- Comics Selection Grid with Thumbnails -->
+                    <Grid Grid.Row="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Selection Summary & Quick Actions -->
+                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind ViewModel.SelectedCandidateCount, Mode=OneWay}" FontWeight="Bold" Foreground="{ThemeResource AccentFillColorDefaultBrush}" FontSize="13" />
+                                <TextBlock Text="comics selected to add" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                <Button
+                                    Content="Select All"
+                                    FontSize="11"
+                                    Padding="10,4"
+                                    Command="{x:Bind ViewModel.SelectAllCandidatesCommand}" />
+                                <Button
+                                    Content="Clear Selection"
+                                    FontSize="11"
+                                    Padding="10,4"
+                                    Command="{x:Bind ViewModel.ClearCandidateSelectionCommand}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Candidates Scroll / ItemsControl -->
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.ManualSeriesCandidates, Mode=OneWay}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="148" ItemHeight="224" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:ManualSeriesComicItem">
+                                        <Border
+                                            Visibility="{x:Bind IsVisible, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
+                                            Width="140"
+                                            Height="216"
+                                            Margin="4"
+                                            CornerRadius="8"
+                                            BorderThickness="1"
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                                            <Button
+                                                Click="CandidateCard_Click"
+                                                Tag="{x:Bind}"
+                                                Padding="0"
+                                                HorizontalAlignment="Stretch"
+                                                VerticalAlignment="Stretch"
+                                                HorizontalContentAlignment="Stretch"
+                                                VerticalContentAlignment="Stretch"
+                                                Background="Transparent"
+                                                BorderThickness="0">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="156" />
+                                                        <RowDefinition Height="*" />
+                                                    </Grid.RowDefinitions>
+
+                                                    <!-- Cover -->
+                                                    <Grid Grid.Row="0">
+                                                        <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" CornerRadius="8,8,0,0">
+                                                            <FontIcon Glyph="&#xE82D;" FontSize="28" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                        </Border>
+                                                        <Image Source="{x:Bind Comic.ThumbnailPath, Mode=OneWay, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
+
+                                                        <!-- Selection Checkbox / Indicator (Top Right) -->
+                                                        <Border
+                                                            HorizontalAlignment="Right"
+                                                            VerticalAlignment="Top"
+                                                            Margin="6"
+                                                            Width="24"
+                                                            Height="24"
+                                                            CornerRadius="12"
+                                                            Background="#CC000000"
+                                                            BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                                                            BorderThickness="1.5">
+                                                            <FontIcon
+                                                                Glyph="&#xE73E;"
+                                                                FontSize="12"
+                                                                Foreground="{ThemeResource AccentFillColorDefaultBrush}"
+                                                                HorizontalAlignment="Center"
+                                                                VerticalAlignment="Center"
+                                                                Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+                                                        </Border>
+                                                    </Grid>
+
+                                                    <!-- Title -->
+                                                    <StackPanel Grid.Row="1" Padding="6,4" VerticalAlignment="Center">
+                                                        <TextBlock Text="{x:Bind Comic.Title}" FontWeight="SemiBold" FontSize="11" MaxLines="2" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" />
+                                                    </StackPanel>
+
+                                                    <!-- Selected Highlight Border Overlay -->
+                                                    <Border
+                                                        Grid.RowSpan="2"
+                                                        BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                                                        BorderThickness="2"
+                                                        CornerRadius="8"
+                                                        IsHitTestVisible="False"
+                                                        Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+                                                </Grid>
+                                            </Button>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+
+                    <!-- Footer Actions -->
+                    <Grid Grid.Row="3">
+                        <Button
+                            Content="Cancel"
+                            Command="{x:Bind ViewModel.CloseAddComicsToSeriesDialogCommand}"
+                            HorizontalAlignment="Left" />
+                        <Button
+                            Content="Add to Series"
+                            Style="{StaticResource AccentButtonStyle}"
+                            Command="{x:Bind ViewModel.SaveComicsToExistingSeriesCommand}"
                             HorizontalAlignment="Right" />
                     </Grid>
                 </Grid>

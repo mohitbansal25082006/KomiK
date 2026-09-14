@@ -30,6 +30,8 @@ public sealed partial class MainPage : Page
     private double _panStartVOffset;
     private bool _hasMovedSignificantly;
     private bool _isScrubbing;
+    private bool _isUserScrollingWebtoon;
+    private bool _isProgrammaticScroll;
 
     public MainPage()
     {
@@ -105,6 +107,14 @@ public sealed partial class MainPage : Page
                  e.PropertyName == nameof(ViewModel.SecondPageImage))
         {
             UpdateLayoutForFitMode();
+            if (ViewModel.IsWebtoonMode && ViewModel.CurrentPageIndex > 0)
+            {
+                DispatcherQueue.TryEnqueue(async () =>
+                {
+                    await Task.Delay(100);
+                    ScrollToWebtoonPage(ViewModel.CurrentPageIndex);
+                });
+            }
         }
         else if (e.PropertyName == nameof(ViewModel.ZoomFactor))
         {
@@ -116,11 +126,21 @@ public sealed partial class MainPage : Page
         }
         else if (e.PropertyName == nameof(ViewModel.CurrentPageIndex))
         {
-            if (ReaderScrollViewer.VerticalOffset > 1)
+            if (!ViewModel.IsWebtoonMode)
             {
-                ReaderScrollViewer.ChangeView(null, 0, null, disableAnimation: false);
+                if (ReaderScrollViewer.VerticalOffset > 1)
+                {
+                    ReaderScrollViewer.ChangeView(null, 0, null, disableAnimation: false);
+                }
+                AnimatePageTransition();
             }
-            AnimatePageTransition();
+            else
+            {
+                if (!_isUserScrollingWebtoon)
+                {
+                    ScrollToWebtoonPage(ViewModel.CurrentPageIndex);
+                }
+            }
             Bindings.Update();
         }
     }
@@ -283,14 +303,59 @@ public sealed partial class MainPage : Page
             ViewModel.ZoomFactor = Math.Round(ReaderScrollViewer.ZoomFactor, 2);
         }
 
+        if (_isProgrammaticScroll) return;
+
         if (ViewModel.IsWebtoonMode && ReaderScrollViewer.ScrollableHeight > 0 && ViewModel.TotalPages > 0)
         {
             double ratio = Math.Clamp(ReaderScrollViewer.VerticalOffset / ReaderScrollViewer.ScrollableHeight, 0.0, 1.0);
             int estPage = Math.Clamp((int)Math.Round(ratio * (ViewModel.TotalPages - 1)), 0, ViewModel.TotalPages - 1);
             if (estPage != ViewModel.CurrentPageIndex)
             {
-                ViewModel.CurrentPageIndex = estPage;
+                try
+                {
+                    _isUserScrollingWebtoon = true;
+                    ViewModel.CurrentPageIndex = estPage;
+                }
+                finally
+                {
+                    _isUserScrollingWebtoon = false;
+                }
             }
+        }
+    }
+
+    private void ScrollToWebtoonPage(int targetIndex)
+    {
+        if (!ViewModel.IsWebtoonMode || targetIndex < 0 || ViewModel.TotalPages <= 0) return;
+
+        try
+        {
+            _isProgrammaticScroll = true;
+
+            if (WebtoonContainer != null && WebtoonContainer.ContainerFromIndex(targetIndex) is FrameworkElement fe)
+            {
+                var transform = fe.TransformToVisual(PageDisplayContainer);
+                var pt = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
+                double targetY = Math.Clamp(pt.Y, 0, Math.Max(0, ReaderScrollViewer.ScrollableHeight));
+                ReaderScrollViewer.ChangeView(null, targetY, null, disableAnimation: false);
+            }
+            else if (ReaderScrollViewer.ScrollableHeight > 0 && ViewModel.TotalPages > 1)
+            {
+                double targetY = ((double)targetIndex / (ViewModel.TotalPages - 1)) * ReaderScrollViewer.ScrollableHeight;
+                ReaderScrollViewer.ChangeView(null, Math.Clamp(targetY, 0, ReaderScrollViewer.ScrollableHeight), null, disableAnimation: false);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainPage] ScrollToWebtoonPage error: {ex.Message}");
+        }
+        finally
+        {
+            DispatcherQueue.TryEnqueue(async () =>
+            {
+                await Task.Delay(200);
+                _isProgrammaticScroll = false;
+            });
         }
     }
 
