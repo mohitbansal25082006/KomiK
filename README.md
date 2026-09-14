@@ -49,41 +49,53 @@ Komik natively supports all standard digital comic book archives, containers, an
 
 ---
 
-## Key Features
+---
 
-### 📖 High-Performance Reading Canvas
-- **Smooth Animated Scroll to Top**: When flipping to any previous or next page, the viewport automatically and smoothly animates scroll position back to the top of the new page.
-- **Vertical / Webtoon Continuous Scroll Mode (`V`)**: Read modern long-strip webcomics and webtoons with an uninterrupted continuous vertical strip and zero panel gaps.
+## Key Features (Version 1.1.0)
+
+### 📖 High-Performance Reading Canvas & Parallel Webtoon Engine
+- **Ultra-Fast Parallel Webtoon Preloader**: Continuous vertical reading mode (`V`) powered by a 6-worker pool (`SemaphoreSlim(6)`) decoding high-resolution pages concurrently off-thread outward from the active viewport index for stutter-free reading.
+- **Smooth Continuous Scroll Navigation**: Restricted navigation to smooth mouse wheel scrolling and keyboard keys (`Up`, `Down`, `PageUp`, `PageDown`), completely eliminating erratic pointer panning jumps.
+- **Seamless Page Jumps**: Animated vertical scroll targeting (`ScrollToWebtoonPage`) with `EntranceThemeTransition` when jumping via the scrubber or next/previous buttons.
+- **Smooth Animated Scroll to Top on Page Flip**: Viewport automatically and smoothly animates scroll position back to the top of the new page when flipping pages in standard and spread modes.
 - **Versatile Fit Modes**:
-  - **Fit to Width** (`W`): Fits page width to the viewport for comfortable vertical webtoon/scrolling reading.
+  - **Fit to Width** (`W`): Fits page width to the viewport for comfortable reading.
   - **Fit to Height** (`H`): Fits the full page height to the viewport for single-screen reading.
   - **Actual Size** (`A`): 1:1 native pixel dimensions with smooth drag panning.
 - **Arbitrary Zoom**: Zoom dynamically with `Ctrl + +` / `Ctrl + -` or mouse scroll, and reset with `Ctrl + 0`.
-- **Reading Modes**: Toggle effortlessly between Single-Page and Two-Page Spread views (`D`).
-- **Reading Direction**: Left-to-Right (Western) and Right-to-Left (Manga) modes (`Ctrl + R`) with intelligent spread page pairing.
-- **Natural Numerical Page Sorting**: Employs `NaturalSortComparer` so numbered files sort intuitively (`1, 2, ... 9, 10` rather than `1, 10, 2`).
-- **Distraction-Free Full-Screen**: Immersive full-screen reading mode (`F11` or double-click) with auto-hiding UI chrome.
+- **Reading Modes & Direction**: Effortlessly toggle Single-Page and Two-Page Spread views (`D`), Western LTR and Manga RTL (`Ctrl + R`) with intelligent cover isolation.
+
+### 📚 Standalone Series & Volume Management & Custom Builder
+- **Dedicated Standalone Series Screen**: Fully decoupled from comic filter chips with its own dedicated toolbar, series search bar, series sort options, and real-time badge counts.
+- **Intelligent Auto-Clustering ($\ge 90\%$ Similarity)**: Evaluates all library comics using Levenshtein distance and structural normalization, grouping multi-issue runs and tankōbon volumes when titles match 90% or higher.
+- **Custom Manual Series Builder**: Create custom reading orders, name series runs, search and select library issues via a visual candidate picker, and reorder comics.
+- **Add Comics to Existing Series**: Interactive `+ Add Comics` action inside the Series Detail overlay allowing readers to search and add any comic from the library directly into existing series.
+
+### 🗂️ Responsive Library Controls & Top Bar
+- **Combined "ADD" DropDown Button**: Merged separate "Add Folder" and "Add Comic" buttons into a single high-contrast Accent "ADD" button with an interactive dropdown flyout, conserving over 100px of toolbar width.
+- **Clean Library Title**: Removed redundant logo image from the Library header next to the title, keeping the official vector crest cleanly featured in the Settings About section.
+- **Horizontal Mouse Wheel Scrolling**: Standard mouse wheel rolling over the Library toolbar and filter pills smoothly scrolls horizontally on compact screens without clipping.
+- **Multiple Layout Views**: Switch between cover card grid view, series grouping view, and detailed table list view.
+- **Instant Search & Real-Time Filtering**: Search titles instantly, or filter by Favorites, In-Progress, Unread, tags, or custom collections.
+- **Rich Sorting Options**: Sort by Title (A-Z / Z-A), Recently Read, Date Added (Newest/Oldest), Page Count, and File Size.
+- **Thumbnail Cache**: Disk-backed cover thumbnail generator and cache in `%LocalAppData%\Komik\Thumbnails` for near-instant rendering.
+
+### 📊 Reading Statistics & Komik Wrapped
+- **Real-Time Tracking**: Every page turn automatically logs active session duration and page progress in SQLite.
+- **Top 20 Rankings**: Displays the Top 20 most-read comics and Top 20 series runs, with right-aligned progress percentages and duration statistics.
+- **Komik Wrapped Dashboard**: View total reading time, total pages read, comics completed, current & longest daily reading streaks, and annual shareable Wrapped card.
+- **Universal Light & Dark Mode Compatibility**: Semantic modal brushes dynamically adapt to Windows system theme changes without background bleed-through.
+
+### 👥 Duplicate Comic Detection & Management
+- **Multi-Factor Detection ($\ge 95\%$ Match)**: Detects duplicate copies across different file formats (e.g. `.cbz` vs. `.pdf` vs. `.cbr`), matching byte counts, page numbers, and normalized title similarity $\ge 95\%$.
+- **Clear Resolution Actions**: Inspect side-by-side file paths, page counts, and sizes; delete unwanted duplicates permanently from disk, or click **Keep All** to dismiss duplicate warnings and preserve both copies.
 
 ### 🔍 100% Offline Windows OCR (Text Search & Selectable Text)
 - **Zero Cloud, 100% Local**: Powered directly by Windows' built-in `Windows.Media.Ocr.OcrEngine` API shipping with Windows 10/11. Zero external network calls or cloud APIs.
 - **Dialogue Search**: Search in-comic spoken dialogue and text, view matching word occurrences, and jump directly to the target page with a single click.
 - **Selectable Text Overlay Layer**: View, highlight, and copy transcribed comic dialogue directly from scanned artwork pages.
 
-### 📚 Local SQLite Library Management & Series Grouping
-- **Series & Volume Grouping**: Clusters issues into series runs with overall progress bars, issue counters, format badges, and a 1-click "Read Next" launcher.
-- **Duplicate Comic Detection & Management**: Identifies cross-format duplicates (e.g. `.cbz` vs. `.pdf`), matching page counts/file sizes, and quality tags. Easily remove redundant copies from disk or dismiss duplicate flags.
-- **Automatic Watched Folders**: Add folders to monitor; Komik scans recursively and indexes comics automatically.
-- **Multiple Layout Views**: Switch between cover card grid view, series grouping view, and detailed table list view.
-- **Instant Search & Real-Time Filtering**: Search titles instantly, or filter by Favorites, In-Progress, Unread, tags, or custom collections.
-- **Rich Sorting Options**: Sort by Title (A-Z / Z-A), Recently Read, Date Added (Newest/Oldest), Page Count, and File Size.
-- **Thumbnail Cache**: Disk-backed cover thumbnail generator and cache in `%LocalAppData%\Komik\Thumbnails` for near-instant rendering.
-- **Non-Destructive Operations**: Removing a folder or comic from the library never deletes the underlying files from disk.
-
-### 📊 Reading Statistics & Komik Wrapped
-- **Automatic Session Tracking**: Automatically logs session durations and pages read in SQLite.
-- **Komik Wrapped Dashboard**: View total reading time, total pages read, comics completed, current & longest daily reading streaks, top 5 most-read comic series, and recent daily activity.
-
-### 🔖 Reading Progress, Bookmarks & Color Correction Presets
+### 🔖 Reading Progress, Bookmarks & Hardware LUT Color Presets
 - **Automatic Progress Tracking**: Remembers your last read page and completion status in SQLite with zero lag.
 - **Resume Reading Toast**: Non-intrusive notification ("Resumed at page X") when reopening any comic.
 - **Visual Scrubber Bar**: Interactive seekbar with page numbers and thumbnail tooltips for easy navigation.
@@ -103,22 +115,18 @@ Komik natively supports all standard digital comic book archives, containers, an
 
 ### 📦 Pure .NET Archive Support & Universal CBZ Conversion
 - **Zero External Dependencies**: Pure managed RAR4/RAR5 and 7Z/CB7 archive extraction powered by SharpCompress—no external command-line tools or native `unrar.dll` needed.
-- **Universal CBZ Converter**: Convert any comic format (image folder, CBR, CB7, or PDF) to a standard `.cbz` archive:
-  - Zero-copy lossless stream repacking for archives and folders.
-  - High-fidelity rasterization for PDFs.
-  - Standardized zero-padded file naming (`0001_Cover.jpg`, `0002_Page_02.png`) for deterministic ordering across third-party readers.
-  - Background asynchronous execution with progress reporting and cancellation.
+- **Universal CBZ Converter**: Convert any comic format (image folder, CBR, CB7, or PDF) to a standard `.cbz` archive with zero-copy lossless stream repacking for archives and high-fidelity rasterization for PDFs.
 
 ### ⚙️ Settings, Window Geometry & Shell Integration
 - **Window Geometry & Ratio Persistence**: Remembers window dimensions, monitor position, and maximized state across application launches.
-- **New Vector Crest Identity**: Fresh branding across the application icon, title bar, taskbar, splash screen, and installer.
+- **Official Vector Crest Identity**: Fresh branding across the application icon, title bar, taskbar, splash screen, settings page, and installer.
 - **Consolidated Settings Screen**:
   - Theme Override: System Default, Force Light, or Force Dark mode.
   - Reading Defaults: Default Fit Mode, Default Reading Direction, and Reading Theme Presets.
   - Library Defaults: Default View Mode and Default Sort Option.
   - Monitored Folders: Manage watched library directories with confirmation prompts.
   - Thumbnail Cache Management: View cache size, clear cache, or pre-cache library covers with one click.
-  - Library Data & Backup: One-click export and import of `.komikbackup` files.
+  - Library Backup & Restore: One-click export and import of `.komikbackup` files with conflict resolution.
 - **Local Comic Details Dialog**:
   - Inspect cover thumbnails, page counts, file sizes, reading status, and file paths.
   - Edit extended local metadata: Title, Series Name, Issue #, Writer(s), Artist(s), Publisher, Release Date, and Summary.

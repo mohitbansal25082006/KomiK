@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
@@ -1187,6 +1188,19 @@ public sealed partial class LibraryPage : Page
             else
             {
                 ViewModel.ShowNotification("Metadata Saved", $"Updated details for '{comic.Title}'.", InfoBarSeverity.Success);
+            }
+        }
+    }
+
+    private void HorizontalScrollViewer_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is ScrollViewer sv && sv.ScrollableWidth > 0)
+        {
+            var delta = e.GetCurrentPoint(sv).Properties.MouseWheelDelta;
+            if (delta != 0)
+            {
+                sv.ChangeView(sv.HorizontalOffset - delta, null, null);
+                e.Handled = true;
             }
         }
     }

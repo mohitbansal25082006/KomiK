@@ -79,7 +79,7 @@ export default function Hero() {
         <div className="relative border-[3px] border-black bg-[#0F0F12] p-6 sm:p-10 lg:p-12 shadow-[8px_8px_0px_#000000]">
           {/* Overlapping Diegetic Caption Box pinned directly to panel frame */}
           <div className="absolute -top-3.5 left-6 sm:left-10 z-20 caption-box px-3.5 py-1 text-xs font-black tracking-wider rotate-[-0.8deg]">
-            SPLASH PAGE · ISSUE #01 · WINDOWS 11 NATIVE
+            SPLASH PAGE · VERSION 1.1.0 · WINDOWS 11 NATIVE
           </div>
 
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-10 items-center">
@@ -99,8 +99,8 @@ export default function Hero() {
 
               <p className="mt-6 text-base sm:text-lg text-newsprint/85 leading-relaxed font-medium">
                 A high-performance Windows desktop app engineered purely for reading
-                comics, manga, and graphic novels. Pure .NET archive loaders, real-time
-                color correction, automatic session progress, and a native Fluent Mica canvas.
+                comics, manga, and graphic novels. Pure .NET archive loaders, parallel
+                continuous Webtoon engine, Series &amp; Volumes manager, reading stats, and a native Fluent Mica canvas.
               </p>
 
               {/* Action Buttons */}

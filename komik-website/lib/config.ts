@@ -1,5 +1,6 @@
 export const APP_CONFIG = {
   name: "Komik",
+  version: "1.1.0",
   tagline: "The Modern Native Windows Comic & Manga Reader",
   oneLiner: "A fast, local-first Windows 11 reader built with WinUI 3 and .NET 8. Zero cloud sync, zero telemetry, zero accounts.",
   author: "Mohit Bansal",
@@ -9,7 +10,7 @@ export const APP_CONFIG = {
   releasesUrl: "https://github.com/mohitbansal25082006/KomiK/releases",
   downloadUrl: "https://github.com/mohitbansal25082006/KomiK/releases/latest/download/Komik-Setup.exe",
   installerName: "Komik-Setup.exe",
-  installerSize: "~72 MB",
+  installerSize: "~60 MB",
   systemRequirements: "Windows 10 version 1809+ or Windows 11 (64-bit)",
   supportedFormats: [
     { ext: ".CBZ", desc: "Comic Book ZIP", badge: "Universal" },

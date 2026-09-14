@@ -1,6 +1,6 @@
 "use client";
 
-import { Database, Bookmark, BookOpen, Search, Moon, Sliders, Zap, CheckCircle, Tag, Eye } from "lucide-react";
+import { Database, Bookmark, BookOpen, Search, Moon, Sliders, Zap, CheckCircle, Tag, Eye, Layers, ScrollText } from "lucide-react";
 
 export default function FeaturePanels() {
   return (
@@ -187,6 +187,75 @@ export default function FeaturePanels() {
                   <div className="text-xs font-mono">
                     <div className="font-black text-black uppercase">Resumed at Page 34</div>
                     <div className="text-black/70 text-[10px]">Session restored in 42ms · 0 network calls</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ASYMMETRIC TIER 3: VERSION 1.1.0 FLAGSHIP ENHANCEMENTS (6 cols vs 6 cols) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Panel 3.4: Standalone Series & Volume Grouping */}
+              <div className="lg:col-span-6 border-[3px] border-black bg-[#121216] p-6 sm:p-8 shadow-[6px_6px_0px_#000000] flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-mono font-black text-amber uppercase tracking-wider">
+                      <Layers className="h-3.5 w-3.5" />
+                      Standalone Series Engine · New in v1.1.0
+                    </span>
+                    <span className="text-xs font-mono font-bold text-muted">
+                      PANEL 3.4
+                    </span>
+                  </div>
+
+                  <h3 className="font-display text-2xl sm:text-3xl font-black text-newsprint mb-3">
+                    Series, Volumes &amp; Manual Stacks
+                  </h3>
+
+                  <p className="text-sm sm:text-base text-newsprint/75 leading-relaxed mb-6 font-medium">
+                    Automatically clusters runs and multi-issue manga when titles match 90% or more. Open a dedicated Series screen with zero filter clutter, build custom series, reorder issues, and add missing comics directly from your library with live picker overlays.
+                  </p>
+                </div>
+
+                <div className="border-2 border-black bg-black p-3.5 shadow-[3px_3px_0px_#000]">
+                  <div className="flex items-center justify-between text-[11px] font-mono font-bold text-newsprint mb-2">
+                    <span className="text-amber">📚 Berserk Deluxe Edition</span>
+                    <span className="bg-amber text-black px-1.5 py-0.5 text-[10px] font-black">14 VOLUMES</span>
+                  </div>
+                  <div className="text-[10px] font-mono text-muted/80">
+                    Auto-grouped · 90%+ similarity match · Sequential reading order
+                  </div>
+                </div>
+              </div>
+
+              {/* Panel 3.5: Webtoon Parallel Streaming & Reading Stats */}
+              <div className="lg:col-span-6 border-[3px] border-black bg-[#121216] p-6 sm:p-8 shadow-[6px_6px_0px_#000000] flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-mono font-black text-cyan uppercase tracking-wider">
+                      <ScrollText className="h-3.5 w-3.5" />
+                      Webtoon &amp; Analytics · New in v1.1.0
+                    </span>
+                    <span className="text-xs font-mono font-bold text-muted">
+                      PANEL 3.5
+                    </span>
+                  </div>
+
+                  <h3 className="font-display text-2xl sm:text-3xl font-black text-newsprint mb-3">
+                    Continuous Webtoon Mode &amp; Reading Stats
+                  </h3>
+
+                  <p className="text-sm sm:text-base text-newsprint/75 leading-relaxed mb-6 font-medium">
+                    Continuous vertical scroll with high-throughput parallel preloading decoded off-thread. Track your lifetime reading progress, streaks, top 20 comics, and generate your annual Komik Wrapped card—all 100% locally with zero analytics beacons.
+                  </p>
+                </div>
+
+                <div className="border-2 border-black bg-black p-3.5 shadow-[3px_3px_0px_#000]">
+                  <div className="flex items-center justify-between text-[11px] font-mono font-bold text-newsprint mb-2">
+                    <span className="text-cyan">⚡ 6-Worker Parallel Decoder</span>
+                    <span className="text-[10px] text-amber font-black">0ms VIEWPORT LAG</span>
+                  </div>
+                  <div className="text-[10px] font-mono text-muted/80">
+                    Real-time position sync · Smooth vertical transitions · Top 20 tracker
                   </div>
                 </div>
               </div>

@@ -199,218 +199,122 @@ This document records the complete manifest of files created for Version 1.0 of 
 
 ---
 
-## 3. Version 1.1.0 Development & Features Delivered
+## 3. Version 1.1.0 — Comprehensive Release Specification & Manifest
 
-### New Files Created in Version 1.1.0:
-- `Models\ReadingPreset.cs` (6-preset reading themes: Original, Night, Sepia, High Contrast, Grayscale, Inverted)
-- `Models\ComicSeriesGroup.cs` (Data model for series & volume groupings, progress tracking, and read-next resolution)
-- `Models\DuplicateComicGroup.cs` (Cross-format duplicate group model with quality tags and file attributes)
-- `Models\ReadingSession.cs` (Reading session models, daily streaks, wrapped statistics summary)
-- `Models\WebtoonPageItem.cs` (Observable continuous vertical scroll page item with dynamic aspect ratios)
-- `Services\DuplicateDetectionService.cs` (Cross-format duplicate detection engine with title normalization and ignored pair filtering)
-- `Services\OcrService.cs` (100% offline Windows Native OCR engine via `Windows.Media.Ocr.OcrEngine`)
-- `Helpers\SeriesParserHelper.cs` (Intelligent regex heuristic parser for series names, volume numbers, and issue numbers)
-
-### 10 Major Features Implemented:
-
-1. **Smooth Animated Scroll to Top on Page Flip**:
-   - When flipping to a previous or next page in single-page, spread, or zoomed modes, the viewport smoothly animates and resets scroll position back to the top (`ChangeView(null, 0, null, disableAnimation: false)`).
-   - Page slide fade-in transition animation applied smoothly on each turn.
-
-2. **Window Size, Position & Aspect Ratio Persistence**:
-   - Remembers exact window dimensions (`WindowWidth`, `WindowHeight`), monitor screen coordinates (`WindowX`, `WindowY`), and maximized state (`IsMaximized`) across application restarts via SQLite `AppSettings`.
-   - Seamless restoration on startup without flickering or resetting window proportions.
-
-3. **Duplicate Comic Detection & Management Screen**:
-   - Detects identical or duplicate comics across different formats (e.g., matching `.cbz` vs. `.pdf` or `.cbr`), matching file sizes and page counts, and quality release tags (e.g. `(Digital)`, `(Webrip)`, `(c2c)`).
-   - Dedicated interactive Duplicate Manager modal overlay in the Library.
-   - Allows users to either permanently delete an unwanted redundant copy from disk, or dismiss the duplicate flag ("Ignore Pair") to keep both without future warning prompts.
-
-4. **Brand New Vector Crest Logo Replacement**:
-   - Replaced all application icons with the modern high-contrast vector crest brand identity.
-   - Rebuilt `Assets/AppIcon.ico` with multi-resolution layers (16px, 24px, 32px, 48px, 64px, 128px, 256px).
-   - Updated `Square44x44Logo`, `Square150x150Logo`, `StoreLogo`, `Wide310x150Logo`, `SplashScreen`, and `LockScreenLogo` across Windows shell taskbar, window title bar, and installer.
-
-5. **Series & Volume Grouping**:
-   - Automatic parsing and clustering of comic runs, chapters, and volumes using `SeriesParserHelper`.
-   - Dedicated "Series & Volumes" view toggle chip in the library filter bar.
-   - Visual series cards featuring overall progress bars, issue counters, format badges, and a 1-click "Read Next" launch button.
-   - Comprehensive Series Detail modal with interactive issue list, individual reading statuses, and issue cover thumbnails.
-
-6. **Vertical / Webtoon Continuous Scroll Mode**:
-   - Dedicated Webtoon continuous vertical reader mode triggered via keyboard shortcut `V` or toolbar button.
-   - Renders entire comic as an uninterrupted vertical strip with zero gaps between panels.
-   - Smooth mouse wheel scrolling, touch drag, and dynamic aspect-ratio sizing.
-
-7. **100% Local Offline Windows OCR (Text Recognition & Dialogue Search)**:
-   - Fully offline text extraction using Windows' built-in `Windows.Media.Ocr.OcrEngine` API (ships with Windows 10/11).
-   - Zero internet access, zero cloud calls, and zero external binary dependencies.
-   - In-comic dialogue search flyout with live search query input, matching words counter, and jump-to-page navigation.
-   - Selectable text overlay layer card allowing readers to highlight, read, and copy dialogue directly from scanned comic panels.
-
-8. **Reading Statistics & Komik Wrapped**:
-   - Automatic reading session tracking (`ReadingSessions` table) recording session timestamp, duration in seconds, and pages read.
-   - Comprehensive statistics dashboard featuring:
-     - Total reading time (hours/minutes)
-     - Total pages read across library
-     - Completed comics count
-     - Current daily reading streak and longest reading streak
-     - Top 5 most-read comic series
-     - 14-day reading activity breakdown
-
-9. **Expanded Color Reading Presets**:
-   - Six high-performance 256-entry Look-Up Table (LUT) presets:
-     - **Original**: Natural scan colors.
-     - **Night Mode**: Amber warmth with dimmed background.
-     - **Sepia Tone**: Classic warm parchment paper effect.
-     - **High Contrast**: Enhanced ink line sharpness and deep blacks.
-     - **Grayscale**: Pure monochrome rendering.
-     - **Inverted**: Dark mode inversion for white backgrounds.
-   - Accessible directly via Reader canvas flyout and configurable in App Settings.
-
-10. **Portable JSON Library Backups (`.komikbackup`)**:
-    - Export complete library database state (reading progress, bookmarks, notes, favorites, tags, monitored folders, and app settings) into a portable JSON backup file (`.komikbackup`).
-    - Safe, non-destructive import with overwrite confirmation.
-    - Zero cloud dependency for true local backup portability between machines.
-
-### Automated Verification & Tests:
-- Added comprehensive unit tests in `Komik.Tests/Program.cs` covering `SeriesParserHelper`, `DuplicateDetectionService`, `ColorCorrectionHelper` presets, `LibraryRepository` window geometry, reading stats/sessions, and library backup export/import.
-- Full test suite passed with **26 passed, 0 failed**.
-- Built self-contained win-x64 Release (`publish_selfcontained`) and compiled Inno Setup installer `shipping/Komik-Setup.exe` (v1.1.0).
+Version 1.1.0 represents a major evolutionary leap for **Komik**, delivering deep library organization, high-throughput reader performance, advanced local analytics, official brand unification, and complete UI responsiveness across all screen sizes.
 
 ---
 
-## 4. Version 1.1.0 Refinements & User Feedback Polish Pass
+### 1. File Manifest & Architecture Additions (Version 1.1.0)
 
-Following the initial v1.1.0 implementation, a comprehensive polish pass was executed addressing 9 specific user-experience items:
+#### Data Models & Entities
+- `Models\ComicSeriesGroup.cs`: Data model for multi-issue series runs, volume groupings, reading order tracking, and 1-click read-next resolution.
+- `Models\ManualSeries.cs`: Entity and DTO models for custom user-created series and reading orders with SQLite relational persistence.
+- `Models\DuplicateComicGroup.cs`: Data structures representing multi-copy comic sets across formats with resolution options (Keep All vs. Remove from Disk).
+- `Models\ReadingSession.cs`: Reading session models tracking timestamps, active duration, page delta, reading streaks, and summary metrics.
+- `Models\ReadingPreset.cs`: Look-Up Table (LUT) preset model powering the 6 hardware-accelerated color themes.
+- `Models\WebtoonPageItem.cs`: Observable item model for continuous vertical Webtoon pages with dynamic aspect ratio calculation and off-thread decoding.
 
-1. **Exact Website Vector Crest Brand Integration**:
-   - Re-rasterized all Windows shell, application, window title bar, and installer icons directly from `komik-website/public/app-icon.png` using PIL Lanczos filtering.
-   - Generated multi-resolution `Assets/AppIcon.ico` (16, 24, 32, 48, 64, 128, 256 px) and all Windows App SDK tile assets (`Square44x44Logo`, `Square150x150Logo`, `StoreLogo`, `Wide310x150Logo`, `SplashScreen`, `LockScreenLogo`).
-   - Replaced empty-state font glyphs with the official crest logo image across both Reader and Library views.
+#### Services & Business Logic
+- `Services\DuplicateDetectionService.cs`: Dual-strategy duplicate engine identifying matching file attributes (size + page count) and normalized string similarity $\ge 95\%$.
+- `Services\OcrService.cs`: 100% local, offline optical character recognition powered by Windows' native `Windows.Media.Ocr.OcrEngine`.
+- `Services\FormatConversionService.cs`: Multi-format comic archive converter transforming CBR, CB7, ZIP, RAR, 7Z, and image folders into standardized CBZ packages.
 
-2. **Series Grouping (>= 90%) & Duplicate Management (>= 95%) Precision**:
-   - Upgraded `SeriesParserHelper` with Levenshtein similarity distance and structural normalization (replacing numeric tokens with `#` placeholders).
-   - **Series Grouping**: Requires full-title evaluation with $\ge 90\%$ similarity and at least 2 issues to prevent false-positive grouping.
-   - **Duplicate Detection**: Requires $\ge 95\%$ normalized title similarity or identical file size and page count across formats (CBZ, CBR, CB7, PDF).
-   - Renamed action button to `"Keep All"` to clearly reflect dismissing flags across multi-copy duplicate sets.
-   - Resolved mutual exclusivity between Comics Grid, Comics List, and Series Grid views, completely eliminating overlapping cards.
+#### Helpers & Utilities
+- `Helpers\SeriesParserHelper.cs`: Heuristic regular expression parser extracting series names, volume indicators, and issue numbers with Levenshtein title distance calculation.
 
-3. **Smooth Webtoon Continuous Mode Navigation**:
-   - Disabled cursor movement / drag panning (`_isPanning`) in Webtoon mode to prevent inadvertent view jumping while moving the pointer.
-   - Restricted navigation strictly to smooth mouse wheel scrolling and keyboard keys (`Up`, `Down`, `PageUp`, `PageDown`).
-   - Integrated compositor-driven animated scroll (`ChangeView(..., disableAnimation: false)`).
+#### Official Branding & Shell Assets
+- `Assets\app-icon.png`: Official high-resolution 512×512 master vector crest branding asset.
+- `Assets\AppIcon.ico`: Multi-layer Windows shell executable icon (16, 24, 32, 48, 64, 128, 256 px).
+- `Assets\Square150x150Logo.scale-200.png`, `Square44x44Logo.png`, `Square44x44Logo.scale-200.png`, `StoreLogo.png`: Windows App SDK shell package assets.
 
-4. **OCR Dialogue Search & Text Layer Dialog Positioning**:
-   - Adjusted `OcrTextOverlayCard` margin to `16,76,20,16` to position the floating transcribed dialogue card cleanly below the reader top toolbar.
+#### Database Migrations & SQLite Schema Updates
+- `ManualSeries` table (`id INTEGER PRIMARY KEY`, `title TEXT NOT NULL`, `description TEXT`, `created_at TEXT`): Persistent storage for manual comic series.
+- `ManualSeriesComics` table (`series_id INTEGER`, `comic_id INTEGER`, `sort_order INTEGER`, `PRIMARY KEY (series_id, comic_id)`): Many-to-many relationship linking library comics to manual series.
+- `ReadingSessions` table (`id INTEGER PRIMARY KEY`, `comic_id INTEGER`, `start_time TEXT`, `duration_seconds INTEGER`, `pages_read INTEGER`): Real-time tracking of reading sessions and daily streaks.
+- `IgnoredDuplicatePairs` table (`comic_id_a INTEGER`, `comic_id_b INTEGER`): Safe storage for dismissed duplicate sets.
 
-5. **Reading Statistics Modal Contrast & Historical Fallbacks**:
-   - Completely resolved background bleed-through by applying a deep opaque scrim (`#F20B0C0E`) and solid layer card brush (`LayerFillColorDefaultBrush`).
-   - Implemented SQLite fallback aggregation for `TotalPagesRead` (`SELECT COALESCE(SUM(last_read_page), 0) FROM Comics WHERE last_read_page > 0;`) and series progress so reading numbers never display 0 for active libraries.
-   - Added clear column headers ("TOP SERIES", "READ PROGRESS", "TIME SPENT") and formatted strings (`FormattedPagesRead`, `FormattedDuration`, `FormattedIssues`).
-
-6. **Informational `ℹ` Tooltip Flyouts**:
-   - Added accessible `ℹ` info icon buttons with rich explanatory flyouts to:
-     - Series & Volumes header
-     - Duplicate Comics Manager header
-     - Webtoon Continuous Scroll reader toolbar button
-     - OCR Dialogue Search reader toolbar button
-     - Library Backup & Restore settings section
-
-7. **Library Header Layout & Overflow Elimination**:
-   - Removed rigid `MinWidth="760"` and disabled horizontal scrolling on the library header `ScrollViewer`.
-   - Compacted button padding and search/sort element widths so the toolbar fits comfortably on any windowed screen ratio without horizontal scrollbars.
-
-8. **Library Backup Import Accuracy**:
-   - Enhanced `ImportLibraryBackupJsonAsync` with title and filename fallback matching when exact absolute paths differ between computers.
-   - Enforced `overwriteExisting: true` on user-confirmed restores and updated notification banner text with exact imported counts.
-
-9. **Consolidated Reading Presets (Removed Redundant Night Mode)**:
-   - Cleaned up obsolete standalone Night Mode toggle switches from the reader toolbar and settings page.
-   - Fully consolidated all color styling into the 6 high-performance hardware LUT reading presets (Original, Night, Sepia, High Contrast, Grayscale, Inverted).
+#### Companion Web Platform (`komik-website/`)
+- Built with **Next.js 15**, **React 19**, **Tailwind CSS**, and **Framer Motion**.
+- Interactive WinUI 3 Canvas Mockup, Format Showcase, Local-First Manifesto, and Keyboard Shortcut Cheat Sheet.
+- Updated for v1.1.0 with dedicated Series & Volumes showcase, Webtoon parallel preloading engine panel, ~60MB self-contained installer specifications, and direct GitHub release links.
 
 ---
 
-## 5. Version 1.1.0 Final Enhancements & Installer Release
+### 2. Flagship Features Delivered in Version 1.1.0
 
-1. **About Komik Vector Crest Branding**:
-   - Added the official vector crest logo directly to the left of the "Komik" title in `SettingsPage.xaml` About section (`ms-appx:///Assets/Square44x44Logo.png` at 30x30 with proper vertical centering).
+#### 1. Standalone Dedicated "Series & Volumes" Screen & Management
+- **Decoupled from Comic Filters**: "Series & Volumes" is fully separated from comic filter chips into an independent, dedicated library mode accessible via a prominent toolbar button.
+- **Dedicated Series Header**: Features "← Back to Comics", series counter badge, "+ New Series" button, series title search bar, and series sorting options (Title A-Z/Z-A, Recently Read, Date Added, Page Count, File Size).
+- **Intelligent Auto-Clustering ($\ge 90\%$ Similarity)**: Evaluates all library comics using Levenshtein distance and structural normalization, grouping multi-issue runs and tankōbon volumes when titles match 90% or higher.
+- **Custom Manual Series Builder**: Allows users to create custom reading orders, name series runs, search and select library issues via a visual candidate picker, and reorder comics.
+- **Add Comics to Existing Series**: Interactive `+ Add Comics` action inside the Series Detail overlay allowing users to search candidates and add any comic from disk directly into existing series (auto-promoting auto-detected runs to permanent SQLite manual series).
 
-2. **Ultra-Fast Webtoon Parallel Preloader & Native Transitions**:
-   - Replaced sequential 4-page loader with a high-throughput parallel loader (`SemaphoreSlim(6)` on background worker threads).
-   - Prioritizes outward decoding from the active viewport index.
-   - Decodes high-resolution image streams off-thread before dispatching to UI.
-   - Integrated native WinUI `EntranceThemeTransition` (vertical offset 24px) and `RepositionThemeTransition` for fluid, instantaneous reading transitions.
-   - Dynamic scroll-ratio position sync in `ReaderScrollViewer_ViewChanged` continuously updating `CurrentPageIndex`.
+#### 2. High-Throughput Parallel Webtoon Continuous Reading Engine
+- **Parallel Worker Preloading**: Replaced sequential decoding with a high-throughput 6-worker pool (`SemaphoreSlim(6)`) decoding high-resolution pages concurrently off the UI thread.
+- **Outward Decoding Priority**: Decodes outward from the active viewport index, ensuring instant responsiveness without blank page stutters.
+- **Smooth Continuous Scroll Navigation**: Restricted navigation to smooth mouse wheel scrolling and keyboard navigation (`Up`, `Down`, `PageUp`, `PageDown`), eliminating erratic pointer panning jumps.
+- **View Reset Bugfix**: Resolved the recursive scroll reset loop where `ViewChanged` fired `CurrentPageIndex` updates that snapped scroll position back to the top. Added `ScrollToWebtoonPage` for fluid animated page jumps when using the scrubber or next/previous buttons.
 
-3. **Reading Statistics Layout, Real-Time Tracking & Top 20 Expansion**:
-   - Fixed text alignment for "READ PROGRESS" (`130px`, right-aligned) and "TIME SPENT" (`110px`, right-aligned) across both column headers and row items.
-   - Page read count accurately tracked on every page advance via `_pagesReadInSession` in `NextPageAsync()` and `GoToPageAsync()`.
-   - SQLite query updated to `MAX(COALESCE(SUM(s.pages_read), 0), COALESCE(SUM(c.last_read_page), 0))` to guarantee accurate historical progress.
-   - Expanded ranking to show Top 20 comics and series (`LIMIT 20`).
+#### 3. Reading Statistics & Komik Wrapped Dashboard
+- **Real-Time Tracking**: Every page turn automatically updates session progress and commits to SQLite.
+- **Comprehensive Analytics**: Tracks total lifetime reading time (hours/minutes), total pages read across the entire library, completed comic count, active daily streak, longest streak, and 14-day reading velocity.
+- **Top 20 Rankings**: Expanded rankings to display the Top 20 most-read comics and Top 20 series runs, with right-aligned progress percentages and duration statistics.
+- **Komik Wrapped Yearly Card**: Shareable end-of-year style statistics card celebrating personal reading achievements.
+- **Universal Light & Dark Mode Compatibility**: Semantic brushes (`ModalScrimBrush`, `ModalCardBackgroundBrush`, `WrappedCardBrush`, `WrappedCardTextBrush`) dynamically adapt to Windows system theme changes without bleed-through.
 
-4. **Complete Light & Dark Mode Compatibility**:
-   - Created semantic theme resources in `App.xaml` (`ModalScrimBrush`, `ModalCardBackgroundBrush`, `WrappedCardBrush`, `WrappedCardTextBrush`, `WrappedCardSubtextBrush`, `WrappedPillBrush`).
-   - Adapted Stats modal, Komik Wrapped yearly card, and Duplicate Comics Manager modal to seamlessly respond to runtime Light and Dark theme changes.
+#### 4. Duplicate Comics Manager & "Keep All" Dismissal
+- **Multi-Factor Detection ($\ge 95\%$ Match)**: Detects duplicate copies across different file formats (e.g. `.cbz` vs. `.pdf` vs. `.cbr`), matching byte counts, page numbers, and normalized title similarity $\ge 95\%$.
+- **Clear Resolution Actions**: Users can inspect side-by-side file paths, page counts, and sizes, delete unwanted duplicates permanently from disk, or click **Keep All** to dismiss duplicate warnings and preserve both copies.
 
-5. **Series & Volumes Visual Active State & Universal Filter Compatibility**:
-   - Implemented high-contrast active state for "Series & Volumes" filter chip: vibrant Accent background (`#F59E0B`), bold dark text, and black icon.
-   - Unified series clustering with all library filters: when filters are active (Favorites, Continue Reading, Completed, Unread, Tags, Collections, or Search), series matching $\ge 1$ filtered comic are seamlessly shown.
-   - Series groups naturally sorted according to the active `SelectedSortOption` (Title A-Z, Title Z-A, Recently Read, Date Added, Page Count, File Size).
-   - Fixed `ShowSeriesGrid` and `ShowEmptyFilter` states so filter results and empty-filter notices render reliably in series mode.
+#### 5. 100% Offline Windows Native OCR Engine
+- **Zero Cloud APIs**: Uses Windows' built-in `Windows.Media.Ocr.OcrEngine` shipping directly with Windows 10 and 11. Completely functional in air-gapped environments.
+- **Dialogue Search Flyout**: Search comic dialogue across scanned pages with live occurrences and 1-click jump to page.
+- **Selectable Text Overlay Layer**: Interactive card positioned cleanly below the toolbar enabling readers to select, highlight, and copy transcribed text directly from artwork panels.
 
-6. **Custom Manual Series Creation & Management**:
-   - Created SQLite tables `ManualSeries` and `ManualSeriesComics` with full relational integrity.
-   - Added interactive "Create New Series" modal with live library search, multi-selection thumbnail grid, select all / clear actions, and real-time selection counts.
-   - Added "+ New Series" button in Series view header.
-   - Added visual "Manual Series" badge, "Delete Series" command, and per-comic "Remove from Series" action buttons in the Series Detail view.
+#### 6. Multi-Format Archive-to-CBZ Lossless Converter
+- Integrated standalone converter accessible from the Library toolbar dropdown.
+- Converts single comic files (CBR, CB7, PDF, etc.) or raw extracted image folders into standard CBZ archives without recompression loss.
 
-7. **Verification & Delivery**:
-   - Added automated unit test: `LibraryRepository Supports Manual Series Creation, Retrieval and Deletion`.
+#### 7. Library Top Bar Usability & Window Responsiveness
+- **Combined "ADD" DropDown Button**: Merged separate "Add Folder" and "Add Comic" buttons into a single high-contrast Accent "ADD" button with an interactive dropdown flyout, conserving over 100px of toolbar width.
+- **Logo Cleanup in Library**: Removed the redundant logo image from the Library header next to the title, keeping the official vector crest cleanly featured in the Settings About section.
+- **Horizontal Mouse Wheel Scrolling**: Added `PointerWheelChanged` handling on both the Library toolbar and Filter Pills `ScrollViewer` elements, allowing smooth horizontal scrolling with the standard mouse wheel on any window size.
+- **Responsive Layout**: Re-proportioned search boxes, sort combos, and stack panels with dynamic `ActualWidth` binding so all library controls remain fully accessible on both maximized widescreen and compact windowed screens without clipping.
+
+#### 8. Official Vector Crest Brand Synchronization
+- Synchronized the official vector crest logo from `komik-website/public/app-icon.png` across:
+  - All Windows App SDK package assets (`Assets/Square150x150Logo.scale-200.png`, `Square44x44Logo.png`, `Square44x44Logo.scale-200.png`, `StoreLogo.png`).
+  - Windows executable and shell icons (`Assets/AppIcon.ico`).
+  - Settings page About section (`ms-appx:///Assets/Square150x150Logo.scale-200.png` at 36×36).
+  - Inno Setup installer branding and uninstaller registration.
+  - Companion website (`komik-website/`) hero badges, navigation branding, and vector logo components.
+
+#### 9. Window Size, Position & State Persistence
+- Automatically persists window width, height, screen coordinates, and maximized state across restarts in SQLite `AppSettings`, seamlessly restoring upon launch.
+
+#### 10. Portable JSON Library Backups (`.komikbackup`)
+- Full export and restore of library metadata, reading history, bookmarks, notes, favorites, tags, and settings with conflict-free import logic.
+
+---
+
+### 3. Automated Verification, Build & Delivery
+
+1. **Automated Unit Test Suite**:
+   - Comprehensive test suite in `Komik.Tests/Program.cs` covering `SeriesParserHelper`, `DuplicateDetectionService`, `ColorCorrectionHelper` LUT presets, `LibraryRepository` geometry persistence, reading stats/sessions, backup export/import, and manual series creation/retrieval/deletion.
    - **All 27 automated unit tests PASSED (27 passed, 0 failed)**.
-   - Compiled full self-contained win-x64 Release build (`publish_selfcontained`).
-   - Built Inno Setup installer: `shipping/Komik-Setup.exe` (v1.1.0).
-   - Installed locally on system for immediate testing.
 
----
+2. **Self-Contained Release Compilation**:
+   - Built self-contained win-x64 binary package bundling .NET 8 runtime and Windows App SDK:
+     `dotnet publish Komik.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:WindowsPackageType=None -o publish_selfcontained`
+   - Preserves all assets in `publish_selfcontained\Assets`.
 
-## 6. Version 1.1.1 Refinements (Logo Branding, Webtoon Smooth Scroll, Standalone Series Screen & Add to Series)
+3. **Inno Setup Windows Installer Package**:
+   - Script: `installer/Komik.iss` (Version 1.1.0, modern wizard style, LZMA2/ultra64 solid compression, admin privileges, file associations for `.cbz`, `.cbr`, `.cb7`, `.zip`, `.rar`, `.7z`, `.pdf`).
+   - Output: `shipping/Komik-Setup.exe` (~60.0 MB).
+   - Silent local installation executed and verified with exit code 0 (`/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`).
 
-1. **Official Website Logo Integration**:
-   - Integrated the official high-resolution branding logo directly from `komik-website/public/app-icon.png` (512x512) into `Assets/Square150x150Logo.scale-200.png`, `Assets/Square44x44Logo.scale-200.png`, `Assets/Square44x44Logo.png`, `Assets/StoreLogo.png`, and `Assets/app-icon.png`.
-   - Configured `Komik.csproj` with `<Content Include="Assets\**\*"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>` to ensure unpackaged WinUI 3 desktop deployments (`ms-appx:///Assets/...`) bundle and deploy all image assets to the output directory and installer.
-   - Updated `SettingsPage.xaml` About section to render `ms-appx:///Assets/Square150x150Logo.scale-200.png` at 36x36 with `Stretch="Uniform"` alongside the Komik header and version tag.
-
-2. **Webtoon Continuous Mode Scroll & Page Change Bugfix**:
-   - **Root Cause**: `ReaderScrollViewer_ViewChanged` in continuous Webtoon mode updated `CurrentPageIndex = estPage`. This fired `ViewModel_PropertyChanged("CurrentPageIndex")` which unconditionally executed `ReaderScrollViewer.ChangeView(null, 0, null)`, forcibly snapping the user's view back to the top of the comic on every scroll tick.
-   - **Fix**: Added scroll state flags (`_isUserScrollingWebtoon`, `_isProgrammaticScroll`) in `MainPage.xaml.cs`.
-   - Guarded `ViewModel_PropertyChanged` so `ChangeView(null, 0, null)` only executes when NOT in Webtoon mode (`if (!ViewModel.IsWebtoonMode)`).
-   - Wrapped `CurrentPageIndex = estPage;` in `ReaderScrollViewer_ViewChanged` with `_isUserScrollingWebtoon = true` and guarded against programmatic scroll events.
-   - Implemented `ScrollToWebtoonPage(int targetIndex)`: computes the exact vertical layout offset of the target page container relative to `PageDisplayContainer` (with proportional height fallback) and smoothly changes the viewport with `disableAnimation: false`.
-
-3. **Standalone Dedicated Series & Volumes Screen**:
-   - Decoupled "Series & Volumes" from the comic filter chip bar into a standalone library feature.
-   - Added a dedicated button beside "Duplicate Comics" in the main Library toolbar with active state styling.
-   - When entering Series & Volumes:
-     - The comic filter pills bar (Favorites, Continue Reading, Completed, Unread, Tags, Collections) is hidden.
-     - A dedicated Series Header is presented containing "← Back to Comics", Series Title + Count badge, "+ New Series" button, series search box, Series Sort picker, and Info flyout.
-   - Decoupled `UpdateSeriesGroupsAsync()`: evaluates all comics in the library independently of comic filter chips, auto-detects series runs with $\ge 90\%$ title match, and filters dynamically by `SeriesSearchText`.
-
-4. **Add Comics to Existing Series**:
-   - Added "+ Add Comics" action button to the `SeriesDetailOverlay` header.
-   - Created `AddComicsToSeriesOverlay` modal picker in `LibraryPage.xaml`:
-     - Live candidate search box.
-     - Quick "Select All" and "Clear Selection" buttons.
-     - Multi-selection candidate card grid displaying comic cover thumbnail, title, and page count with visual checkmark indicators.
-     - Automatically excludes issues already present in the active series.
-   - Added `OpenAddComicsToExistingSeriesCommand`, `CloseAddComicsToSeriesDialogCommand`, and `SaveComicsToExistingSeriesCommand` in `LibraryViewModel.cs`.
-   - If the series is already manual, calls `AddComicsToManualSeriesAsync`. If auto-detected, automatically promotes the series into a persistent manual series via `CreateManualSeriesAsync` so all user additions are preserved in SQLite.
-
-5. **Test Suite, Build & Installer Validation**:
-   - Extended automated test suite in `Komik.Tests/Program.cs` to verify `AddComicsToManualSeriesAsync`.
-   - Ran `dotnet run --project Komik.Tests/Komik.Tests.csproj`: **All 27 unit tests PASSED (27 passed, 0 failed)**.
-   - Compiled full self-contained win-x64 Release build (`dotnet publish Komik.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:WindowsPackageType=None -o publish_selfcontained`).
-   - Verified all logo and branding assets exist in `publish_selfcontained\Assets`.
-   - Compiled Inno Setup installer (`shipping\Komik-Setup.exe`).
-   - Executed silent local install (`shipping\Komik-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART`) with exit code 0.
+4. **Next.js Companion Website Production Build**:
+   - Built with `npm run build` in `komik-website/`:
+   - 4/4 static pages generated with 0 errors and full TypeScript type validation.
 

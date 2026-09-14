@@ -523,11 +523,11 @@ public sealed class LibraryRepository : ILibraryRepository
             ON CONFLICT(file_path) DO UPDATE SET
                 title = excluded.title,
                 page_count = excluded.page_count,
-                thumbnail_path = COALESCE(excluded.thumbnail_path, Comics.thumbnail_path),
+                thumbnail_path = COALESCE(excluded.thumbnail_path, thumbnail_path),
                 last_modified = excluded.last_modified,
-                parent_folder = COALESCE(excluded.parent_folder, Comics.parent_folder),
+                parent_folder = COALESCE(excluded.parent_folder, parent_folder),
                 file_size = excluded.file_size,
-                is_completed = CASE WHEN excluded.is_completed = 1 THEN 1 ELSE Comics.is_completed END,
+                is_completed = CASE WHEN excluded.is_completed = 1 THEN 1 ELSE is_completed END,
                 is_missing = 0
             RETURNING id;
         ";
