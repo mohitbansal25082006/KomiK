@@ -38,7 +38,7 @@ function SpreadDemo() {
               setAuto(false);
               setRtl(d === "rtl");
             }}
-            className={`border-2 border-black px-2.5 py-1 font-mono text-[11px] font-black uppercase shadow-[2px_2px_0_#000] ${(d === "rtl") === rtl ? "bg-amber text-black" : "bg-[#23232b] text-newsprint"}`}
+            className={`border-2 border-black px-2.5 py-1 font-mono text-[11px] font-black uppercase shadow-[2px_2px_0_#000] ${(d === "rtl") === rtl ? "bg-amber text-black" : "bg-panel-card text-newsprint"}`}
           >
             {d === "ltr" ? "Western LTR" : "Manga RTL"}
           </button>
@@ -54,7 +54,7 @@ function SpreadDemo() {
                 <div className="flex gap-0.5 border-[3px] border-black bg-black p-1 shadow-[4px_4px_0_#000]">
                   {ordered.map((n, i) =>
                     n === null ? (
-                      <motion.div layout key={`blank-${pi}`} className="h-[84px] w-[56px] bg-[#1b1b22] sm:h-[108px] sm:w-[72px] xl:h-[150px] xl:w-[100px]" />
+                      <motion.div layout key={`blank-${pi}`} className="h-[84px] w-[56px] bg-panel-card sm:h-[108px] sm:w-[72px] xl:h-[150px] xl:w-[100px]" />
                     ) : (
                       <motion.div layout key={n} transition={{ type: "spring", stiffness: 300, damping: 26 }} className="relative h-[84px] w-[56px] overflow-hidden bg-white sm:h-[108px] sm:w-[72px] xl:h-[150px] xl:w-[100px]">
                         <ComicPage n={n} />
@@ -111,7 +111,7 @@ function WebtoonDemo() {
           return (
             <div key={w} className="flex items-center gap-2">
               <span className="w-16 shrink-0 font-bold text-muted">worker {w + 1}</span>
-              <div className="relative h-5 flex-1 overflow-hidden border-2 border-black bg-[#1b1b22]">
+              <div className="relative h-5 flex-1 overflow-hidden border-2 border-black bg-panel-card">
                 <motion.div
                   key={`${tick}-${w}`}
                   initial={{ width: "0%" }}
@@ -181,7 +181,7 @@ function LutDemo() {
             key={x.id}
             type="button"
             onClick={() => setPreset(x.id)}
-            className={`flex items-center gap-1.5 border-2 border-black px-1.5 py-1.5 text-[11px] font-bold shadow-[2px_2px_0_#000] ${preset === x.id ? "bg-amber text-black" : "bg-[#23232b] text-newsprint"}`}
+            className={`flex items-center gap-1.5 border-2 border-black px-1.5 py-1.5 text-[11px] font-bold shadow-[2px_2px_0_#000] ${preset === x.id ? "bg-amber text-black" : "bg-panel-card text-newsprint"}`}
           >
             <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-black" style={{ background: x.swatch }} />
             {x.label}
@@ -431,7 +431,7 @@ export default function ReadingEngine() {
             <article
               key={p.no}
               data-strip-panel
-              className="relative flex flex-col border-[3px] border-black bg-[#131318] shadow-[8px_8px_0_#000] lg:h-[min(640px,78vh)] lg:w-[min(880px,78vw)] lg:flex-row"
+              className="relative flex flex-col border-[3px] border-black bg-panel shadow-[8px_8px_0_#000] lg:h-[min(640px,78vh)] lg:w-[min(880px,78vw)] lg:flex-row"
             >
               <div className={`${p.tone} relative flex flex-col justify-between border-b-[3px] border-black p-5 text-black sm:p-7 lg:w-[42%] lg:border-b-0 lg:border-r-[3px]`}>
                 <div className="bg-halftone-paper pointer-events-none absolute inset-0 opacity-50" />

@@ -49,7 +49,7 @@ export default function KeyboardSection() {
   }, [inView]);
 
   return (
-    <section ref={sectionRef} id="shortcuts" className="relative scroll-mt-16 overflow-hidden border-b-[3px] border-black bg-[#0B0B10] py-20 sm:py-28">
+    <section ref={sectionRef} id="shortcuts" className="relative scroll-mt-16 overflow-hidden border-b-[3px] border-black bg-ink-deep py-20 sm:py-28">
       <div className="bg-halftone pointer-events-none absolute inset-0 opacity-25" />
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeading

@@ -84,6 +84,9 @@ export const metadata: Metadata = {
   },
 };
 
+// Runs before paint: saved choice, otherwise the visitor's system preference.
+const THEME_BOOT = `try{var t=localStorage.getItem("komik-theme");if(!t){t=window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}var d=document.documentElement;d.classList.toggle("light",t==="light");d.classList.toggle("dark",t!=="light")}catch(e){}`;
+
 const INTRO_ONCE = `try{if(sessionStorage.getItem("komik-intro")){document.documentElement.classList.add("intro-seen")}else{sessionStorage.setItem("komik-intro","1")}}catch(e){}`;
 
 export default function RootLayout({
@@ -95,12 +98,13 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${spaceGrotesk.variable} ${jakarta.variable} ${jetbrainsMono.variable} ${bangers.variable} ${comicNeue.variable} bg-ink text-newsprint dark`}
+      className={`${spaceGrotesk.variable} ${jakarta.variable} ${jetbrainsMono.variable} ${bangers.variable} ${comicNeue.variable} bg-ink text-newsprint`}
     >
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         <script dangerouslySetInnerHTML={{ __html: INTRO_ONCE }} />
       </head>
-      <body className="min-h-screen bg-ink text-newsprint antialiased selection:bg-amber selection:text-ink">
+      <body className="min-h-screen bg-ink text-newsprint antialiased selection:bg-amber selection:text-black">
         <div className="intro-curtain" aria-hidden>
           <div className="intro-half intro-top" />
           <div className="intro-half intro-bottom" />

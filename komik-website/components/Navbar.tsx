@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useScroll, useSpring } from "framer-motion";
 import { Download, Github, Menu, X } from "lucide-react";
 import { APP_CONFIG } from "@/lib/config";
+import ThemeToggle from "@/components/ThemeToggle";
 import KomikLogo from "@/components/KomikLogo";
 
 const LINKS = [
@@ -75,7 +76,7 @@ export default function Navbar() {
 
         <nav className="hidden items-center gap-1 lg:flex">
           {LINKS.map((l) => (
-            <a key={l.id} href={l.href} className="relative px-3 py-1.5 text-sm font-bold text-newsprint/85 transition-colors hover:text-white">
+            <a key={l.id} href={l.href} className="relative px-3 py-1.5 text-sm font-bold text-newsprint/85 transition-colors hover:text-magenta">
               {active === l.id && (
                 <motion.span
                   layoutId="nav-pill"
@@ -89,11 +90,12 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeToggle />
           <a
             href={APP_CONFIG.repoUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden h-10 w-10 items-center justify-center border-2 border-black bg-[#242630] text-white shadow-[2px_2px_0_#000] transition-colors hover:bg-cyan hover:text-black sm:inline-flex"
+            className="hidden h-10 w-10 items-center justify-center border-2 border-black bg-panel-card text-newsprint shadow-[2px_2px_0_#000] transition-colors hover:bg-cyan hover:text-black sm:inline-flex"
             aria-label="GitHub repository"
           >
             <Github className="h-4 w-4" />

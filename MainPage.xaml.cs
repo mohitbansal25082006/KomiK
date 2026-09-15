@@ -33,6 +33,11 @@ public sealed partial class MainPage : Page
     private bool _isUserScrollingWebtoon;
     private bool _isProgrammaticScroll;
 
+    /// <summary>Where the reader's Back button returns to (set by the Library before opening a comic).</summary>
+    public static string ReturnLabel { get; set; } = "Library";
+
+    public string BackButtonText => string.IsNullOrWhiteSpace(ReturnLabel) ? "Back" : ReturnLabel;
+
     public MainPage()
     {
         InitializeComponent();
@@ -49,6 +54,15 @@ public sealed partial class MainPage : Page
     protected override async void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
+
+        // Full screen is owned by the window (it can be toggled from any page), so mirror it here.
+        if (MainWindow.Instance is { } window)
+        {
+            ViewModel.IsFullscreen = window.IsFullscreen;
+            window.FullscreenChanged += Window_FullscreenChanged;
+            window.ClosingAsync += Window_ClosingAsync;
+        }
+
         await ViewModel.ApplyDefaultSettingsAsync();
         UpdateLayoutForFitMode();
         if (e.Parameter is string filePath && !string.IsNullOrWhiteSpace(filePath))
@@ -60,11 +74,90 @@ public sealed partial class MainPage : Page
     protected override void OnNavigatingFrom(NavigatingCancelEventArgs e)
     {
         base.OnNavigatingFrom(e);
+        if (MainWindow.Instance is { } window)
+        {
+            window.FullscreenChanged -= Window_FullscreenChanged;
+            window.ClosingAsync -= Window_ClosingAsync;
+        }
+        ViewModel.StopSessionTracking();
         _ = ViewModel.FlushReadingProgressAsync();
+    }
+
+    private void Window_FullscreenChanged(bool isFullscreen)
+    {
+        if (ViewModel.IsFullscreen != isFullscreen)
+        {
+            ViewModel.IsFullscreen = isFullscreen;
+        }
+    }
+
+    private System.Threading.Tasks.Task Window_ClosingAsync() => ViewModel.FlushReadingProgressAsync();
+
+    /// <summary>Back to exactly where the comic was opened (series detail, series section or library).</summary>
+    private async void ReaderBack_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.FlushReadingProgressAsync();
+        if (Frame.CanGoBack)
+        {
+            Frame.GoBack();
+        }
+        else
+        {
+            Frame.Navigate(typeof(LibraryPage));
+        }
+    }
+
+    /// <summary>Keeps the floating toolbar inside the window on any screen size by dropping labels as it narrows.</summary>
+    private void MainPage_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        double w = e.NewSize.Width;
+        TopToolbar.MaxWidth = Math.Max(320, w - 24);
+        ReaderTitleBox.Visibility = w >= 1480 ? Visibility.Visible : Visibility.Collapsed;
+        ReaderTitleBox.MaxWidth = w >= 1700 ? 360 : 240;
+        var labels = w >= 1180 ? Visibility.Visible : Visibility.Collapsed;
+        SpreadLabel.Visibility = labels;
+        WebtoonLabel.Visibility = labels;
+        ReaderBackLabel.Visibility = w >= 760 ? Visibility.Visible : Visibility.Collapsed;
+        BottomOverlay.Margin = w >= 700 ? new Thickness(24, 0, 24, 18) : new Thickness(8, 0, 8, 10);
+    }
+
+    private void SpreadToggle_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ToggleViewModeCommand.Execute(null);
+        SyncReaderToggles();
+    }
+
+    private void WebtoonToggle_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ToggleWebtoonModeCommand.Execute(null);
+        SyncReaderToggles();
+    }
+
+    /// <summary>Toggle buttons flip themselves on click; put them back in step with the real reader state.</summary>
+    private void SyncReaderToggles()
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            FitHeightToggle.IsChecked = ViewModel.IsFitHeight;
+            FitWidthToggle.IsChecked = ViewModel.IsFitWidth;
+            FitActualToggle.IsChecked = ViewModel.IsFitActual;
+            SpreadToggle.IsChecked = ViewModel.IsDoublePageMode;
+            WebtoonToggle.IsChecked = ViewModel.IsWebtoonMode;
+        });
+    }
+
+    /// <summary>Shows or hides the floating toolbars with a fade and a short slide.</summary>
+    private void SetChromeVisible(bool visible)
+    {
+        TopToolbar.Opacity = visible ? 1 : 0;
+        BottomOverlay.Opacity = visible ? 1 : 0;
+        TopToolbar.Translation = visible ? System.Numerics.Vector3.Zero : new System.Numerics.Vector3(0, -18, 0);
+        BottomOverlay.Translation = visible ? System.Numerics.Vector3.Zero : new System.Numerics.Vector3(0, 18, 0);
     }
 
     private async void BackToLibrary_Click(object sender, RoutedEventArgs e)
     {
+        LibraryPage.ReturnToLibraryHome = true;
         await ViewModel.FlushReadingProgressAsync();
         if (Frame.CanGoBack)
         {
@@ -298,6 +391,7 @@ public sealed partial class MainPage : Page
 
     private void ReaderScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
+        ViewModel.NotifyReadingActivity();
         if (Math.Abs(ViewModel.ZoomFactor - ReaderScrollViewer.ZoomFactor) > 0.05)
         {
             ViewModel.ZoomFactor = Math.Round(ReaderScrollViewer.ZoomFactor, 2);
@@ -361,6 +455,7 @@ public sealed partial class MainPage : Page
 
     private void FitHeight_Click(object sender, RoutedEventArgs e)
     {
+        SyncReaderToggles();
         ViewModel.SetFitMode(FitMode.FitToHeight);
         UpdateLayoutForFitMode();
         ReaderScrollViewer.ChangeView(0, 0, 1.0f, true);
@@ -373,6 +468,7 @@ public sealed partial class MainPage : Page
 
     private void FitWidth_Click(object sender, RoutedEventArgs e)
     {
+        SyncReaderToggles();
         ViewModel.SetFitMode(FitMode.FitToWidth);
         UpdateLayoutForFitMode();
         ReaderScrollViewer.ChangeView(0, 0, 1.0f, true);
@@ -385,6 +481,7 @@ public sealed partial class MainPage : Page
 
     private void FitActual_Click(object sender, RoutedEventArgs e)
     {
+        SyncReaderToggles();
         ViewModel.SetFitMode(FitMode.ActualSize);
         UpdateLayoutForFitMode();
         ReaderScrollViewer.ChangeView(0, 0, 1.0f, true);
@@ -401,6 +498,7 @@ public sealed partial class MainPage : Page
 
     private void Page_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
+        ViewModel.NotifyReadingActivity();
         var pt = e.GetCurrentPoint(this).Position;
         if (pt.Y <= 65 || pt.Y >= ActualHeight - 65)
         {
@@ -412,8 +510,7 @@ public sealed partial class MainPage : Page
     {
         if (!ViewModel.HasComic) return;
 
-        TopToolbar.Opacity = 1;
-        BottomOverlay.Opacity = 1;
+        SetChromeVisible(true);
 
         if (!_isPointerOverToolbar)
         {
@@ -428,8 +525,7 @@ public sealed partial class MainPage : Page
 
         if (!_isPointerOverToolbar && !_isScrubbing)
         {
-            TopToolbar.Opacity = 0;
-            BottomOverlay.Opacity = 0;
+            SetChromeVisible(false);
             ViewModel.IsPageOverlayVisible = false;
         }
     }
@@ -438,8 +534,7 @@ public sealed partial class MainPage : Page
     {
         _isPointerOverToolbar = true;
         _autoHideTimer.Stop();
-        TopToolbar.Opacity = 1;
-        BottomOverlay.Opacity = 1;
+        SetChromeVisible(true);
     }
 
     private void Toolbar_PointerExited(object sender, PointerRoutedEventArgs e)
@@ -616,8 +711,7 @@ public sealed partial class MainPage : Page
     {
         if (TopToolbar.Opacity > 0 || BottomOverlay.Opacity > 0)
         {
-            TopToolbar.Opacity = 0;
-            BottomOverlay.Opacity = 0;
+            SetChromeVisible(false);
             _autoHideTimer.Stop();
             ViewModel.IsPageOverlayVisible = false;
         }
@@ -685,7 +779,7 @@ public sealed partial class MainPage : Page
         switch (e.Key)
         {
             case VirtualKey.Back:
-                BackToLibrary_Click(this, new RoutedEventArgs());
+                ReaderBack_Click(this, new RoutedEventArgs());
                 e.Handled = true;
                 break;
 
@@ -760,7 +854,7 @@ public sealed partial class MainPage : Page
             case VirtualKey.Left:
                 if (isAlt)
                 {
-                    BackToLibrary_Click(this, new RoutedEventArgs());
+                    ReaderBack_Click(this, new RoutedEventArgs());
                     e.Handled = true;
                 }
                 else

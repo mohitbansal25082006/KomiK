@@ -9,26 +9,141 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+                <!-- Comic look for every standard control (merged after the defaults so it wins) -->
+                <ResourceDictionary Source="ms-appx:///Themes/ComicControls.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
+            <!--
+                ═══════════════════════════════════════════════════════════════════
+                KOMIK DESIGN SYSTEM · "Living Comic Book"
+                The same CMYK palette as the website: Komik Yellow #FFD700,
+                Komik Cyan #00C2FF (accent), Komik Magenta #FF1F6D, ink panels,
+                Bangers display lettering, halftone textures and hard offset shadows.
+                ═══════════════════════════════════════════════════════════════════
+            -->
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Default">
-                    <SolidColorBrush x:Key="ModalScrimBrush" Color="#D80B0C0E" />
-                    <SolidColorBrush x:Key="WrappedCardBrush" Color="#1E293B" />
+                    <!-- Accent: Komik Cyan -->
+                    <Color x:Key="SystemAccentColor">#00C2FF</Color>
+                    <Color x:Key="SystemAccentColorLight1">#33CFFF</Color>
+                    <Color x:Key="SystemAccentColorLight2">#5CD9FF</Color>
+                    <Color x:Key="SystemAccentColorLight3">#99E7FF</Color>
+                    <Color x:Key="SystemAccentColorDark1">#009BD0</Color>
+                    <Color x:Key="SystemAccentColorDark2">#0077A3</Color>
+                    <Color x:Key="SystemAccentColorDark3">#005675</Color>
+
+                    <SolidColorBrush x:Key="KomikYellowBrush" Color="#FFD700" />
+                    <SolidColorBrush x:Key="KomikCyanBrush" Color="#00C2FF" />
+                    <SolidColorBrush x:Key="KomikMagentaBrush" Color="#FF1F6D" />
+                    <SolidColorBrush x:Key="KomikGreenBrush" Color="#2EE59D" />
+                    <SolidColorBrush x:Key="KomikOrangeBrush" Color="#FF9F1C" />
+                    <SolidColorBrush x:Key="KomikInkBrush" Color="#0B0B12" />
+                    <SolidColorBrush x:Key="KomikOnYellowBrush" Color="#0B0B12" />
+
+                    <SolidColorBrush x:Key="KomikPanelBrush" Color="#17171F" />
+                    <SolidColorBrush x:Key="KomikPanelRaisedBrush" Color="#1F1F2A" />
+                    <SolidColorBrush x:Key="KomikPanelSunkenBrush" Color="#101017" />
+                    <SolidColorBrush x:Key="KomikPanelStrokeBrush" Color="#33334A" />
+                    <SolidColorBrush x:Key="KomikShadowBrush" Color="#E6000000" />
+                    <SolidColorBrush x:Key="KomikSubtleTextBrush" Color="#A6A6BD" />
+                    <SolidColorBrush x:Key="KomikChartTrackBrush" Color="#262633" />
+
+                    <SolidColorBrush x:Key="ModalScrimBrush" Color="#D9050509" />
+                    <SolidColorBrush x:Key="ModalCardBackgroundBrush" Color="#15151D" />
+                    <SolidColorBrush x:Key="WrappedCardBrush" Color="#1B1230" />
                     <SolidColorBrush x:Key="WrappedCardTextBrush" Color="#FFFFFF" />
-                    <SolidColorBrush x:Key="WrappedCardSubtextBrush" Color="#CBD5E1" />
-                    <SolidColorBrush x:Key="WrappedPillBrush" Color="#33FFFFFF" />
-                    <SolidColorBrush x:Key="ModalCardBackgroundBrush" Color="#1C1E24" />
+                    <SolidColorBrush x:Key="WrappedCardSubtextBrush" Color="#C9C3E6" />
+                    <SolidColorBrush x:Key="WrappedPillBrush" Color="#26FFFFFF" />
+                    <SolidColorBrush x:Key="KomikInkStrokeBrush" Color="#4A4A66" />
+                    <SolidColorBrush x:Key="KomikHoverBrush" Color="#2A2A38" />
+                    <SolidColorBrush x:Key="KomikSelectedChipBrush" Color="#FFD700" />
+                    <LinearGradientBrush x:Key="KomikHeroBrush" StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#1B0F2E" Offset="0" />
+                        <GradientStop Color="#15123A" Offset="0.45" />
+                        <GradientStop Color="#062238" Offset="1" />
+                    </LinearGradientBrush>
+                    <SolidColorBrush x:Key="KomikHeroTextBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="KomikHeroTaglineBrush" Color="#00C2FF" />
+                    <SolidColorBrush x:Key="KomikWordmarkShadowBrush" Color="#000000" />
+                    <SolidColorBrush x:Key="KomikWordmarkBrush" Color="#FFD700" />
+                    <SolidColorBrush x:Key="KomikReaderChromeBrush" Color="#F2141419" />
+                    <SolidColorBrush x:Key="KomikReaderChromeStrokeBrush" Color="#FF000000" />
+
                 </ResourceDictionary>
+
                 <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="ModalScrimBrush" Color="#70000000" />
-                    <SolidColorBrush x:Key="WrappedCardBrush" Color="#F1F5F9" />
-                    <SolidColorBrush x:Key="WrappedCardTextBrush" Color="#0F172A" />
-                    <SolidColorBrush x:Key="WrappedCardSubtextBrush" Color="#475569" />
-                    <SolidColorBrush x:Key="WrappedPillBrush" Color="#E2E8F0" />
-                    <SolidColorBrush x:Key="ModalCardBackgroundBrush" Color="#FFFFFF" />
+                    <Color x:Key="SystemAccentColor">#0096D6</Color>
+                    <Color x:Key="SystemAccentColorLight1">#00A8E8</Color>
+                    <Color x:Key="SystemAccentColorLight2">#33BDEF</Color>
+                    <Color x:Key="SystemAccentColorLight3">#66D0F5</Color>
+                    <Color x:Key="SystemAccentColorDark1">#0080BA</Color>
+                    <Color x:Key="SystemAccentColorDark2">#006A9C</Color>
+                    <Color x:Key="SystemAccentColorDark3">#004F75</Color>
+
+                    <SolidColorBrush x:Key="KomikYellowBrush" Color="#FFD000" />
+                    <SolidColorBrush x:Key="KomikCyanBrush" Color="#0096D6" />
+                    <SolidColorBrush x:Key="KomikMagentaBrush" Color="#E0105A" />
+                    <SolidColorBrush x:Key="KomikGreenBrush" Color="#0E9F6E" />
+                    <SolidColorBrush x:Key="KomikOrangeBrush" Color="#E07B00" />
+                    <SolidColorBrush x:Key="KomikInkBrush" Color="#111118" />
+                    <SolidColorBrush x:Key="KomikOnYellowBrush" Color="#111118" />
+
+                    <SolidColorBrush x:Key="KomikPanelBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="KomikPanelRaisedBrush" Color="#FFFDF6" />
+                    <SolidColorBrush x:Key="KomikPanelSunkenBrush" Color="#F4F1E8" />
+                    <SolidColorBrush x:Key="KomikPanelStrokeBrush" Color="#1A1A22" />
+                    <SolidColorBrush x:Key="KomikShadowBrush" Color="#1A1A22" />
+                    <SolidColorBrush x:Key="KomikSubtleTextBrush" Color="#5B5B6E" />
+                    <SolidColorBrush x:Key="KomikChartTrackBrush" Color="#ECE8DC" />
+
+                    <SolidColorBrush x:Key="ModalScrimBrush" Color="#8C0B0B12" />
+                    <SolidColorBrush x:Key="ModalCardBackgroundBrush" Color="#FFFDF7" />
+                    <SolidColorBrush x:Key="WrappedCardBrush" Color="#1B1230" />
+                    <SolidColorBrush x:Key="WrappedCardTextBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="WrappedCardSubtextBrush" Color="#C9C3E6" />
+                    <SolidColorBrush x:Key="WrappedPillBrush" Color="#26FFFFFF" />
+                    <SolidColorBrush x:Key="KomikInkStrokeBrush" Color="#111118" />
+                    <SolidColorBrush x:Key="KomikHoverBrush" Color="#FFF6C2" />
+                    <SolidColorBrush x:Key="KomikSelectedChipBrush" Color="#FFD000" />
+                    <LinearGradientBrush x:Key="KomikHeroBrush" StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#FFF3B0" Offset="0" />
+                        <GradientStop Color="#FFE066" Offset="0.45" />
+                        <GradientStop Color="#9BE7FF" Offset="1" />
+                    </LinearGradientBrush>
+                    <SolidColorBrush x:Key="KomikHeroTextBrush" Color="#111118" />
+                    <SolidColorBrush x:Key="KomikHeroTaglineBrush" Color="#111118" />
+                    <SolidColorBrush x:Key="KomikWordmarkShadowBrush" Color="#FF1F6D" />
+                    <SolidColorBrush x:Key="KomikWordmarkBrush" Color="#111118" />
+                    <SolidColorBrush x:Key="KomikReaderChromeBrush" Color="#F7FFFDF6" />
+                    <SolidColorBrush x:Key="KomikReaderChromeStrokeBrush" Color="#FF111118" />
+
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+
+            <!-- Geometry: slightly rounder, chunkier controls -->
+            <CornerRadius x:Key="OverlayCornerRadius">12</CornerRadius>
+
+            <!-- Lettering -->
+            <FontFamily x:Key="KomikDisplayFont">ms-appx:///Assets/Fonts/Bangers-Regular.ttf#Bangers</FontFamily>
+
+            <!-- Hero art (theme-independent, always ink + neon like the website's covers) -->
+            <LinearGradientBrush x:Key="KomikWrappedBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#2A0B3D" Offset="0" />
+                <GradientStop Color="#3A0B2B" Offset="0.55" />
+                <GradientStop Color="#0B2440" Offset="1" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="KomikCoverFadeBrush" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#00000000" Offset="0.45" />
+                <GradientStop Color="#E6000000" Offset="1" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="KomikSeriesBannerFadeBrush" StartPoint="0,0" EndPoint="1,0">
+                <GradientStop Color="#F20B0B12" Offset="0" />
+                <GradientStop Color="#B30B0B12" Offset="0.55" />
+                <GradientStop Color="#590B0B12" Offset="1" />
+            </LinearGradientBrush>
+            <ImageBrush x:Key="KomikHalftoneBrush" ImageSource="ms-appx:///Assets/Textures/halftone.png" Stretch="UniformToFill" AlignmentX="Right" AlignmentY="Top" />
+            <ImageBrush x:Key="KomikHalftoneCornerBrush" ImageSource="ms-appx:///Assets/Textures/halftone-corner.png" Stretch="None" AlignmentX="Left" AlignmentY="Top" />
+            <ImageBrush x:Key="KomikSpeedLinesBrush" ImageSource="ms-appx:///Assets/Textures/speedlines.png" Stretch="UniformToFill" />
 
             <helpers:BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
             <helpers:BooleanToVisibilityConverter x:Key="InvertedBoolToVisConverter" IsInverted="True" />
@@ -36,6 +151,33 @@
             <helpers:ViewModeTextConverter x:Key="ViewModeTextConverter" />
             <helpers:StringToImageSourceConverter x:Key="StringToImageSourceConverter" />
             <helpers:OcrButtonTextConverter x:Key="OcrButtonTextConverter" />
+
+            <!-- Every standard button, toggle and drop-down squashes when pressed and pops on hover -->
+            <Style TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
+            </Style>
+            <Style TargetType="ToggleButton" BasedOn="{StaticResource DefaultToggleButtonStyle}">
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
+            </Style>
+            <Style TargetType="DropDownButton">
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
+            </Style>
+            <Style TargetType="ComboBox">
+                <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
+            </Style>
+
+            <!-- Comic filter chip: pill with an ink outline that turns yellow when active -->
+            <Style x:Key="ComicChipToggleStyle" TargetType="ToggleButton" BasedOn="{StaticResource DefaultToggleButtonStyle}">
+                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="Padding" Value="14,6" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="BorderThickness" Value="2,2,3,3" />
+                <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
+            </Style>
 
             <Style x:Key="InfoButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="Transparent" />
@@ -47,6 +189,205 @@
                 <Setter Property="CornerRadius" Value="12" />
                 <Setter Property="VerticalAlignment" Value="Center" />
                 <Setter Property="helpers:InstantToolTipHelper.IsInstant" Value="True" />
+            </Style>
+
+            <!-- Big comic lettering (page titles, hero numbers) -->
+            <Style x:Key="ComicDisplayTextStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource KomikDisplayFont}" />
+                <Setter Property="FontSize" Value="34" />
+                <Setter Property="CharacterSpacing" Value="30" />
+                <Setter Property="LineHeight" Value="36" />
+                <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
+                <Setter Property="TextLineBounds" Value="Tight" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
+            <Style x:Key="ComicSectionTitleStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource KomikDisplayFont}" />
+                <Setter Property="FontSize" Value="24" />
+                <Setter Property="CharacterSpacing" Value="40" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
+            <Style x:Key="ComicCaptionTextStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="10" />
+                <Setter Property="FontWeight" Value="Bold" />
+                <Setter Property="CharacterSpacing" Value="120" />
+                <Setter Property="Foreground" Value="{ThemeResource KomikSubtleTextBrush}" />
+            </Style>
+
+            <!-- A comic panel: ink stroke + hard offset shadow (like the website's panels) -->
+            <Style x:Key="ComicPanelStyle" TargetType="ContentControl">
+                <Setter Property="Background" Value="{ThemeResource KomikPanelBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource KomikPanelStrokeBrush}" />
+                <Setter Property="BorderThickness" Value="2" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Padding" Value="16" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                <Setter Property="IsTabStop" Value="False" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ContentControl">
+                            <Grid>
+                                <Border
+                                    Margin="5,5,0,0"
+                                    CornerRadius="{TemplateBinding CornerRadius}"
+                                    Background="{ThemeResource KomikShadowBrush}" />
+                                <Border
+                                    Margin="0,0,5,5"
+                                    Padding="{TemplateBinding Padding}"
+                                    CornerRadius="{TemplateBinding CornerRadius}"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}">
+                                    <ContentPresenter
+                                        HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                        VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                </Border>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Modal dialog panel -->
+            <Style x:Key="ComicModalPanelStyle" TargetType="ContentControl" BasedOn="{StaticResource ComicPanelStyle}">
+                <Setter Property="Background" Value="{ThemeResource ModalCardBackgroundBrush}" />
+                <Setter Property="CornerRadius" Value="18" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="helpers:MotionHelper.RevealOnShow" Value="True" />
+            </Style>
+
+            <!-- Yellow "sticker" badge -->
+            <Style x:Key="ComicStickerStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource KomikYellowBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource KomikInkBrush}" />
+                <Setter Property="BorderThickness" Value="2" />
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="Padding" Value="8,2" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
+            <Style x:Key="ComicStickerTextStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource KomikDisplayFont}" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="CharacterSpacing" Value="60" />
+                <Setter Property="Foreground" Value="{ThemeResource KomikOnYellowBrush}" />
+            </Style>
+
+            <!-- Small rounded pill used for metadata -->
+            <Style x:Key="ComicPillStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource KomikPanelSunkenBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource KomikPanelStrokeBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="11" />
+                <Setter Property="Padding" Value="9,3" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
+            <!-- Comic button template: hard offset shadow that "presses" flat, highlight on hover -->
+            <ControlTemplate x:Key="ComicButtonTemplate" TargetType="Button">
+                <Grid x:Name="RootGrid" Background="Transparent">
+                    <VisualStateManager.VisualStateGroups>
+                        <VisualStateGroup x:Name="CommonStates">
+                            <VisualState x:Name="Normal" />
+                            <VisualState x:Name="PointerOver">
+                                <VisualState.Setters>
+                                    <Setter Target="HoverOverlay.Opacity" Value="1" />
+                                    <Setter Target="Face.Margin" Value="0,0,4,4" />
+                                    <Setter Target="Shadow.Margin" Value="4,4,0,0" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Pressed">
+                                <VisualState.Setters>
+                                    <Setter Target="HoverOverlay.Opacity" Value="1" />
+                                    <Setter Target="Face.Margin" Value="2,2,1,1" />
+                                    <Setter Target="Shadow.Margin" Value="3,3,0,0" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Disabled">
+                                <VisualState.Setters>
+                                    <Setter Target="RootGrid.Opacity" Value="0.45" />
+                                </VisualState.Setters>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateManager.VisualStateGroups>
+                    <Border
+                        x:Name="Shadow"
+                        Margin="3,3,0,0"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Background="{ThemeResource KomikShadowBrush}" />
+                    <Border
+                        x:Name="Face"
+                        Margin="0,0,3,3"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}">
+                        <Grid>
+                            <Border x:Name="HoverOverlay" Opacity="0" Background="#1FFFFFFF" CornerRadius="{TemplateBinding CornerRadius}" />
+                            <ContentPresenter
+                                x:Name="ContentPresenter"
+                                Padding="{TemplateBinding Padding}"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                Foreground="{TemplateBinding Foreground}"
+                                FontWeight="{TemplateBinding FontWeight}"
+                                FontSize="{TemplateBinding FontSize}"
+                                AutomationProperties.AccessibilityView="Raw" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </ControlTemplate>
+
+            <!-- Chunky yellow call-to-action button -->
+            <Style x:Key="ComicPrimaryButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{ThemeResource KomikYellowBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource KomikOnYellowBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource KomikInkBrush}" />
+                <Setter Property="BorderThickness" Value="2" />
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="FontWeight" Value="Bold" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Padding" Value="14,7" />
+                <Setter Property="MinHeight" Value="36" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
+                <Setter Property="Template" Value="{StaticResource ComicButtonTemplate}" />
+            </Style>
+
+            <!-- Cyan secondary action -->
+            <Style x:Key="ComicAccentButtonStyle" TargetType="Button" BasedOn="{StaticResource ComicPrimaryButtonStyle}">
+                <Setter Property="Background" Value="{ThemeResource KomikCyanBrush}" />
+                <Setter Property="Foreground" Value="#0B0B12" />
+            </Style>
+
+            <!-- Danger button -->
+            <Style x:Key="ComicDangerButtonStyle" TargetType="Button" BasedOn="{StaticResource ComicPrimaryButtonStyle}">
+                <Setter Property="Background" Value="{ThemeResource KomikMagentaBrush}" />
+                <Setter Property="Foreground" Value="White" />
+            </Style>
+
+            <!-- Quiet outlined button matching the panels -->
+            <Style x:Key="ComicGhostButtonStyle" TargetType="Button" BasedOn="{StaticResource ComicPrimaryButtonStyle}">
+                <Setter Property="Background" Value="{ThemeResource KomikPanelRaisedBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource KomikInkStrokeBrush}" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+            </Style>
+
+            <!-- Round icon button for dialog headers -->
+            <Style x:Key="ComicIconButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
+                <Setter Property="Width" Value="36" />
+                <Setter Property="Height" Value="36" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="CornerRadius" Value="18" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>

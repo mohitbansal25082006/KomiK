@@ -30,6 +30,13 @@ public sealed class ThumbnailService : IThumbnailService
 
     public static string ResolveThumbnailDirectory()
     {
+        if (LibraryRepository.DataDirectoryOverride is { } overrideDir)
+        {
+            string dir = Path.Combine(overrideDir, "Thumbnails");
+            Directory.CreateDirectory(dir);
+            return dir;
+        }
+
         string durableThumbDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".komik", "Thumbnails");
         string localThumbDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Komik", "Thumbnails");
 

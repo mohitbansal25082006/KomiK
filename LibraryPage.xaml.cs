@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -40,29 +41,38 @@ public sealed partial class LibraryPage : Page
     private static readonly Windows.UI.Color FallbackTextTertiary = Windows.UI.Color.FromArgb(110, 255, 255, 255);
     private static readonly Windows.UI.Color FallbackCardSecondary = Windows.UI.Color.FromArgb(20, 255, 255, 255);
 
+    private static readonly Brush ChipIdle = new SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
+
+    private static Brush Chip(byte r, byte g, byte b) => new SolidColorBrush(Windows.UI.Color.FromArgb(255, r, g, b));
+
+    private static readonly Brush ChipInk = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 0x0B, 0x0B, 0x12));
+
+    private Brush ChipText(bool active) => active ? ChipInk : GetPageForeground();
+
+    private Brush GetPageForeground() => ActualTheme == ElementTheme.Light
+        ? ChipInk
+        : new SolidColorBrush(Windows.UI.Color.FromArgb(255, 0xF2, 0xF2, 0xF7));
+
+    private bool IsFilterAllActive => !ViewModel.FilterFavoritesOnly && !ViewModel.FilterInProgressOnly && !ViewModel.FilterUnreadOnly && !ViewModel.FilterCompletedOnly && string.IsNullOrEmpty(ViewModel.SelectedTag);
+
+    public Brush FilterAllForeground => ChipText(IsFilterAllActive);
+    public Brush FilterFavoritesForeground => ViewModel.FilterFavoritesOnly ? new SolidColorBrush(Microsoft.UI.Colors.White) : ChipText(false);
+    public Brush FilterContinueReadingForeground => ChipText(ViewModel.FilterInProgressOnly);
+    public Brush FilterCompletedForeground => ChipText(ViewModel.FilterCompletedOnly);
+    public Brush FilterUnreadForeground => ChipText(ViewModel.FilterUnreadOnly);
+
     public Brush FilterAllBackground => (!ViewModel.FilterFavoritesOnly && !ViewModel.FilterInProgressOnly && !ViewModel.FilterUnreadOnly && !ViewModel.FilterCompletedOnly && string.IsNullOrEmpty(ViewModel.SelectedTag))
-        ? GetThemeBrush("ControlFillColorSecondaryBrush", FallbackControlSecondary)
-        : GetThemeBrush("ControlFillColorDefaultBrush", FallbackControlDefault);
+        ? Chip(0xFF, 0xD7, 0x00) : ChipIdle;
 
-    public Brush FilterFavoritesBackground => ViewModel.FilterFavoritesOnly
-        ? new SolidColorBrush(Windows.UI.Color.FromArgb(60, 255, 69, 96))
-        : GetThemeBrush("ControlFillColorDefaultBrush", FallbackControlDefault);
+    public Brush FilterFavoritesBackground => ViewModel.FilterFavoritesOnly ? Chip(0xFF, 0x1F, 0x6D) : ChipIdle;
 
-    public Brush FilterContinueReadingBackground => ViewModel.FilterInProgressOnly
-        ? new SolidColorBrush(Windows.UI.Color.FromArgb(60, 245, 158, 11))
-        : GetThemeBrush("ControlFillColorDefaultBrush", FallbackControlDefault);
+    public Brush FilterContinueReadingBackground => ViewModel.FilterInProgressOnly ? Chip(0x00, 0xC2, 0xFF) : ChipIdle;
 
-    public Brush FilterCompletedBackground => ViewModel.FilterCompletedOnly
-        ? new SolidColorBrush(Windows.UI.Color.FromArgb(60, 76, 175, 80))
-        : GetThemeBrush("ControlFillColorDefaultBrush", FallbackControlDefault);
+    public Brush FilterCompletedBackground => ViewModel.FilterCompletedOnly ? Chip(0x2E, 0xE5, 0x9D) : ChipIdle;
 
-    public Brush FilterUnreadBackground => ViewModel.FilterUnreadOnly
-        ? new SolidColorBrush(Windows.UI.Color.FromArgb(60, 59, 130, 246))
-        : GetThemeBrush("ControlFillColorDefaultBrush", FallbackControlDefault);
+    public Brush FilterUnreadBackground => ViewModel.FilterUnreadOnly ? Chip(0xFF, 0x9F, 0x1C) : ChipIdle;
 
-    public Brush FilterSeriesBackground => ViewModel.IsSeriesView
-        ? GetThemeBrush("AccentFillColorDefaultBrush", Windows.UI.Color.FromArgb(255, 245, 158, 11))
-        : GetThemeBrush("ControlFillColorDefaultBrush", FallbackControlDefault);
+    public Brush FilterSeriesBackground => ViewModel.IsSeriesView ? new SolidColorBrush(Windows.UI.Color.FromArgb(255, 0xFF, 0xD7, 0x00)) : ChipIdle;
 
     public Brush FilterSeriesForeground => ViewModel.IsSeriesView
         ? new SolidColorBrush(Microsoft.UI.Colors.Black)
@@ -70,33 +80,73 @@ public sealed partial class LibraryPage : Page
 
     public Brush FilterSeriesIconForeground => ViewModel.IsSeriesView
         ? new SolidColorBrush(Microsoft.UI.Colors.Black)
-        : GetThemeBrush("AccentFillColorDefaultBrush", Windows.UI.Color.FromArgb(255, 245, 158, 11));
+        : new SolidColorBrush(Windows.UI.Color.FromArgb(255, 0x00, 0xC2, 0xFF));
 
-    public Brush GridModeBackground => ViewModel.IsGridView
-        ? GetThemeBrush("ControlFillColorSecondaryBrush", FallbackControlSecondary)
-        : new SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
+    public Brush GridModeBackground => ViewModel.IsGridView ? Chip(0xFF, 0xD7, 0x00) : ChipIdle;
 
-    public Brush ListModeBackground => ViewModel.IsListView
-        ? GetThemeBrush("ControlFillColorSecondaryBrush", FallbackControlSecondary)
-        : new SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
+    public Brush ListModeBackground => ViewModel.IsListView ? Chip(0xFF, 0xD7, 0x00) : ChipIdle;
 
     public LibraryPage()
     {
         InitializeComponent();
         NavigationCacheMode = NavigationCacheMode.Required;
+        ActualThemeChanged += (_, _) => { UpdateViewModeUi(); Bindings.Update(); };
 
         ViewModel.ComicSelectedForReading += OnComicSelectedForReading;
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
     }
 
+    /// <summary>Set by the reader's "Library" button: come back to the plain comics grid instead of where you were.</summary>
+    public static bool ReturnToLibraryHome { get; set; }
+
     protected override async void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
         MainWindow.Instance?.UpdateTitle("Library");
-        await ViewModel.InitializeAsync();
+        AttachHeroToTitleBar();
+
+        if (ReturnToLibraryHome)
+        {
+            ReturnToLibraryHome = false;
+            if (ViewModel.IsSeriesDetailOpen) ViewModel.CloseSeriesDetail();
+            if (ViewModel.IsSeriesView) ViewModel.CloseSeriesView();
+        }
+
+        // Coming back from the reader keeps the series view, section and open series exactly as they were.
+        await ViewModel.InitializeAsync(refreshOnly: e.NavigationMode == NavigationMode.Back);
         UpdateFlyoutMenus();
         UpdateViewModeUi();
         Bindings.Update();
+        ApplyResponsiveLayout(ActualWidth);
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+        MainWindow.Instance?.SetTitleBarContent(null);
+    }
+
+    private void AttachHeroToTitleBar()
+    {
+        if (MainWindow.Instance is not { } window) return;
+        TopBarStack.Children.Remove(LibraryHero);
+        window.SetTitleBarContent(LibraryHero, HeroChipComics, HeroChipReading, HeroChipFinished, HeroChipSeries);
+    }
+
+    private void LibraryPage_SizeChanged(object sender, SizeChangedEventArgs e) => ApplyResponsiveLayout(e.NewSize.Width);
+
+    /// <summary>Trims the title-bar banner on narrow windows so it never collides with the caption buttons.</summary>
+    private void ApplyResponsiveLayout(double width)
+    {
+        if (width <= 0) return;
+        HeroTagline.Visibility = width >= 1180 ? Visibility.Visible : Visibility.Collapsed;
+        var labels = width >= 900 ? Visibility.Visible : Visibility.Collapsed;
+        HeroChipComicsLabel.Visibility = labels;
+        HeroChipReadingLabel.Visibility = labels;
+        HeroChipFinishedLabel.Visibility = labels;
+        HeroChipSeriesLabel.Visibility = labels;
+        HeroChipFinished.Visibility = width >= 640 ? Visibility.Visible : Visibility.Collapsed;
+        HeroChipReading.Visibility = width >= 560 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void UpdateViewModeUi()
@@ -174,6 +224,9 @@ public sealed partial class LibraryPage : Page
 
     private void OnComicSelectedForReading(string filePath)
     {
+        MainPage.ReturnLabel = ViewModel.IsSeriesDetailOpen && ViewModel.SelectedSeriesGroup != null
+            ? ViewModel.SelectedSeriesGroup.SeriesName
+            : ViewModel.IsSeriesView ? (ViewModel.IsCreatorSection ? "Creators" : "Series") : "Library";
         Frame.Navigate(typeof(MainPage), filePath);
     }
 
@@ -193,9 +246,28 @@ public sealed partial class LibraryPage : Page
         }
     }
 
+    /// <summary>Esc closes the top-most Library overlay (full screen is handled window-wide before this).</summary>
+    private void LibraryPage_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != Windows.System.VirtualKey.Escape || e.Handled) return;
+
+        if (ViewModel.IsAddComicsToSeriesDialogOpen) ViewModel.CloseAddComicsToSeriesDialog();
+        else if (ViewModel.IsCreateSeriesDialogOpen) ViewModel.CloseCreateSeriesDialog();
+        else if (ViewModel.IsStatsDialogOpen) ViewModel.CloseReadingStats();
+        else if (ViewModel.IsDuplicateManagerOpen) ViewModel.CloseDuplicateManager();
+        else if (ViewModel.IsSeriesDetailOpen) ViewModel.CloseSeriesDetail();
+        else return;
+
+        e.Handled = true;
+    }
+
     private void SeriesIssue_Click(object sender, ItemClickEventArgs e)
     {
-        if (e.ClickedItem is ComicEntity comic)
+        if (e.ClickedItem is SeriesIssueItem item)
+        {
+            ViewModel.OpenComic(item.Comic);
+        }
+        else if (e.ClickedItem is ComicEntity comic)
         {
             ViewModel.OpenComic(comic);
         }
@@ -209,29 +281,126 @@ public sealed partial class LibraryPage : Page
         }
     }
 
-    private async void DeleteDuplicate_Click(object sender, RoutedEventArgs e)
+    private async void ResolveDuplicateGroup_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button { Tag: ComicEntity copy })
-        {
-            var dialog = new ContentDialog
-            {
-                Title = "Delete Duplicate Copy?",
-                Content = new TextBlock
-                {
-                    Text = $"Are you sure you want to permanently delete this duplicate copy from your library and disk?\n\n{copy.Title} ({copy.Format})\nPath: {copy.FilePath}",
-                    TextWrapping = TextWrapping.Wrap
-                },
-                PrimaryButtonText = "Delete Permanently",
-                CloseButtonText = "Cancel",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = this.XamlRoot
-            };
+        if (sender is not FrameworkElement { Tag: DuplicateComicGroup group } || group.RecommendedKeep is not { } keep) return;
 
-            var result = await dialog.ShowAsync();
-            if (result == ContentDialogResult.Primary)
+        var extras = group.CopyItems.Where(c => !c.IsRecommended).ToList();
+        var recycle = new CheckBox { Content = "Move the extra files to the Recycle Bin", IsChecked = true, Margin = new Thickness(0, 12, 0, 0) };
+        var body = new StackPanel { Spacing = 6 };
+        body.Children.Add(new TextBlock { Text = "Keep this copy:", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        body.Children.Add(new TextBlock { Text = $"{keep.Title} ({keep.FormatBadge}, {keep.PageCountFormatted}, {keep.FileSizeFormatted})\n{keep.FilePath}", TextWrapping = TextWrapping.Wrap, Opacity = 0.85 });
+        body.Children.Add(new TextBlock { Text = extras.Count == 1 ? "Remove 1 extra copy:" : $"Remove {extras.Count} extra copies:", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 0) });
+        foreach (var extra in extras)
+        {
+            body.Children.Add(new TextBlock { Text = $"• {extra.Title} ({extra.FormatBadge}, {extra.FileSizeFormatted})\n   {extra.FilePath}", TextWrapping = TextWrapping.Wrap, Opacity = 0.85 });
+        }
+        body.Children.Add(new TextBlock { Text = "Reading progress and favorites from the removed copies carry over to the kept copy.", TextWrapping = TextWrapping.Wrap, Opacity = 0.7, Margin = new Thickness(0, 8, 0, 0) });
+        body.Children.Add(recycle);
+
+        var dialog = new ContentDialog
+        {
+            Title = "Keep the best copy?",
+            Content = new ScrollViewer { Content = body, MaxHeight = 380 },
+            PrimaryButtonText = "Keep Best Copy",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            await ViewModel.ResolveDuplicateGroupAsync(group, recycle.IsChecked == true);
+        }
+    }
+
+    private async void ResolveAllDuplicates_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ViewModel.HasDuplicates) return;
+
+        int high = ViewModel.DuplicateGroups.Count(g => g.IsHighConfidence);
+        int total = ViewModel.DuplicateGroups.Count;
+        var onlyHigh = new RadioButton { Content = $"Only identical files and same-issue matches ({high} group{(high == 1 ? "" : "s")})", IsChecked = true, GroupName = "dupscope" };
+        var everything = new RadioButton { Content = $"Every group, including possible matches ({total})", GroupName = "dupscope" };
+        var recycle = new CheckBox { Content = "Move the extra files to the Recycle Bin", IsChecked = true, Margin = new Thickness(0, 10, 0, 0) };
+
+        var body = new StackPanel { Spacing = 8 };
+        body.Children.Add(new TextBlock { Text = "Komik keeps the best copy in each group (reading progress, favorites, page count and format decide) and removes the rest.", TextWrapping = TextWrapping.Wrap });
+        body.Children.Add(onlyHigh);
+        body.Children.Add(everything);
+        body.Children.Add(recycle);
+
+        var dialog = new ContentDialog
+        {
+            Title = "Clean up duplicates?",
+            Content = body,
+            PrimaryButtonText = "Clean Up",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            await ViewModel.ResolveAllDuplicatesAsync(recycle.IsChecked == true, highConfidenceOnly: onlyHigh.IsChecked == true);
+        }
+    }
+
+    private async void RemoveDuplicateCopy_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: DuplicateCopyItem item }) return;
+
+        var dialog = new ContentDialog
+        {
+            Title = "Remove this copy?",
+            Content = new TextBlock
             {
-                await ViewModel.DeleteDuplicateCopyAsync(copy);
-            }
+                Text = $"{item.Title} ({item.FormatBadge}, {item.PageCountFormatted}, {item.FileSizeFormatted})\n{item.FilePath}\n\nIts reading progress and favorite carry over to the best remaining copy.",
+                TextWrapping = TextWrapping.Wrap
+            },
+            PrimaryButtonText = "Move to Recycle Bin",
+            SecondaryButtonText = "Remove from Library Only",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = XamlRoot
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            await ViewModel.RemoveDuplicateCopyAsync(item.Comic, deleteFile: true);
+        }
+        else if (result == ContentDialogResult.Secondary)
+        {
+            await ViewModel.RemoveDuplicateCopyAsync(item.Comic, deleteFile: false);
+        }
+    }
+
+    private void ReadDuplicateCopy_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: DuplicateCopyItem item })
+        {
+            ViewModel.CloseDuplicateManager();
+            ViewModel.OpenComic(item.Comic);
+        }
+    }
+
+    private void ShowDuplicateCopy_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: DuplicateCopyItem item })
+        {
+            ViewModel.ShowInExplorer(item.Comic);
+        }
+    }
+
+    private async void RecentlyRead_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: long comicId }) return;
+        var comic = await ViewModel.Repository.GetComicByIdAsync(comicId);
+        if (comic != null)
+        {
+            ViewModel.CloseReadingStats();
+            ViewModel.OpenComic(comic);
         }
     }
 
@@ -287,6 +456,67 @@ public sealed partial class LibraryPage : Page
     }
 
     #region Filters
+
+    private void HeroChipComics_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        if (ViewModel.IsSeriesView) ViewModel.CloseSeriesView();
+        ViewModel.FilterAll();
+    }
+
+    private void HeroChipReading_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        if (ViewModel.IsSeriesView) ViewModel.CloseSeriesView();
+        ViewModel.FilterContinueReading();
+    }
+
+    private void HeroChipFinished_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        if (ViewModel.IsSeriesView) ViewModel.CloseSeriesView();
+        ViewModel.FilterCompleted();
+    }
+
+    private void HeroChipSeries_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        ViewModel.IsCreatorSection = false;
+        if (!ViewModel.IsSeriesView) ViewModel.OpenSeriesView();
+    }
+
+    private void NewKindStory_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.NewSeriesIsCreator = false;
+        NewKindStoryToggle.IsChecked = true;
+        NewKindCreatorToggle.IsChecked = false;
+    }
+
+    private void NewKindCreator_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.NewSeriesIsCreator = true;
+        NewKindStoryToggle.IsChecked = false;
+        NewKindCreatorToggle.IsChecked = true;
+    }
+
+    private async void DetailAutoUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        var group = ViewModel.SelectedSeriesGroup;
+        if (group == null) return;
+        DetailAutoUpdateToggle.IsChecked = group.IsAutoUpdate; // the command flips it and the binding follows
+        await ViewModel.ToggleSeriesAutoUpdateAsync(group);
+        DetailAutoUpdateToggle.IsChecked = ViewModel.SelectedSeriesGroup?.IsAutoUpdate ?? false;
+    }
+
+    private void StorySection_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.IsCreatorSection = false;
+        StorySectionToggle.IsChecked = true;
+        CreatorSectionToggle.IsChecked = false;
+    }
+
+    private void CreatorSection_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.IsCreatorSection = true;
+        StorySectionToggle.IsChecked = false;
+        CreatorSectionToggle.IsChecked = true;
+    }
 
     private void FilterAll_Click(object sender, RoutedEventArgs e)
     {
@@ -521,7 +751,7 @@ public sealed partial class LibraryPage : Page
                 {
                     Text = "No tags created yet. Create one below!",
                     FontSize = 12,
-                    Foreground = GetThemeBrush("TextFillColorSecondaryBrush", FallbackTextSecondary),
+                    Opacity = 0.75,
                     Margin = new Thickness(0, 4, 0, 4)
                 });
             }
@@ -602,7 +832,7 @@ public sealed partial class LibraryPage : Page
         {
             Text = "Categorize comics by genre, publisher, format, or theme.",
             FontSize = 12,
-            Foreground = GetThemeBrush("TextFillColorSecondaryBrush", FallbackTextSecondary),
+            Opacity = 0.75,
             Margin = new Thickness(0, -6, 0, 4)
         };
 
@@ -622,7 +852,7 @@ public sealed partial class LibraryPage : Page
                 {
                     Text = "No tags created yet. Add your first tag below.",
                     FontSize = 12,
-                    Foreground = GetThemeBrush("TextFillColorSecondaryBrush", FallbackTextSecondary),
+                    Opacity = 0.75,
                     Margin = new Thickness(4)
                 });
             }
@@ -751,7 +981,7 @@ public sealed partial class LibraryPage : Page
         {
             Text = "Removes original entry from library index. Original file/folder on disk will NOT be deleted.",
             FontSize = 11,
-            Foreground = GetThemeBrush("TextFillColorSecondaryBrush", FallbackTextSecondary),
+            Opacity = 0.75,
             Margin = new Thickness(28, 0, 0, 8),
             TextWrapping = TextWrapping.Wrap
         };
@@ -945,7 +1175,7 @@ public sealed partial class LibraryPage : Page
             {
                 Glyph = "\uE82D",
                 FontSize = 36,
-                Foreground = GetThemeBrush("TextFillColorSecondaryBrush", FallbackTextSecondary),
+                Opacity = 0.75,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             }
@@ -985,7 +1215,7 @@ public sealed partial class LibraryPage : Page
         {
             Text = $"Size: {comic.FileSizeFormatted}",
             FontSize = 11,
-            Foreground = GetThemeBrush("TextFillColorSecondaryBrush", FallbackTextSecondary),
+            Opacity = 0.75,
             HorizontalAlignment = HorizontalAlignment.Center
         });
 
@@ -1127,7 +1357,7 @@ public sealed partial class LibraryPage : Page
             Text = comic.FilePath,
             IsReadOnly = true,
             FontSize = 11,
-            Foreground = GetThemeBrush("TextFillColorSecondaryBrush", FallbackTextSecondary),
+            Opacity = 0.75,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         rightPanel.Children.Add(pathBox);

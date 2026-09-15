@@ -90,8 +90,12 @@ public partial class MainViewModel : ObservableObject
     private bool _isCurrentPageBookmarked;
 
     private readonly IOcrService _ocrService;
-    private DateTime _sessionStartTime = DateTime.UtcNow;
-    private int _pagesReadInSession;
+
+    // Live reading-session tracking (active time + distinct pages), checkpointed so stats stay current.
+    private readonly ReadingSessionTracker _sessionTracker = new();
+    private readonly SemaphoreSlim _sessionSaveLock = new(1, 1);
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _sessionCheckpointTimer;
+    private static readonly TimeSpan SessionCheckpointInterval = TimeSpan.FromSeconds(45);
 
     [ObservableProperty]
     private bool _isOcrLayerVisible;
@@ -221,6 +225,17 @@ public partial class MainViewModel : ObservableObject
 
     public string BookmarkGlyph => IsCurrentPageBookmarked ? "\uE8A4" : "\uE74E";
 
+    public bool IsFitHeight => FitMode == FitMode.FitToHeight;
+    public bool IsFitWidth => FitMode == FitMode.FitToWidth;
+    public bool IsFitActual => FitMode == FitMode.ActualSize;
+
+    partial void OnFitModeChanged(FitMode value)
+    {
+        OnPropertyChanged(nameof(IsFitHeight));
+        OnPropertyChanged(nameof(IsFitWidth));
+        OnPropertyChanged(nameof(IsFitActual));
+    }
+
     public string ReadingDirectionDisplay => ReadingDirection == ReadingDirection.LeftToRight ? "LTR" : "RTL";
 
     public string PageDisplayString
@@ -294,8 +309,6 @@ public partial class MainViewModel : ObservableObject
 
             _currentComicPath = path;
             CurrentComic = comic;
-            _sessionStartTime = DateTime.UtcNow;
-            _pagesReadInSession = 0;
             _ocrService.ClearCache();
             CurrentPageOcrResult = null;
             IsOcrLayerVisible = false;
@@ -343,6 +356,13 @@ public partial class MainViewModel : ObservableObject
 
             CurrentPageIndex = resumePage;
 
+            if (_currentComicEntity != null)
+            {
+                _sessionTracker.Start(_currentComicEntity.Id, resumePage);
+                if (IsDoublePageMode && resumePage + 1 < comic.PageCount) _sessionTracker.RecordPageView(resumePage + 1);
+                StartSessionCheckpoints();
+            }
+
             NotifyStateChanged();
             await CheckIsCurrentPageBookmarkedAsync();
             await RenderCurrentPageAsync();
@@ -381,11 +401,6 @@ public partial class MainViewModel : ObservableObject
         if (target >= TotalPages)
         {
             target = TotalPages - 1;
-        }
-
-        if (target > CurrentPageIndex)
-        {
-            _pagesReadInSession += (target - CurrentPageIndex);
         }
 
         CurrentPageIndex = target;
@@ -448,11 +463,6 @@ public partial class MainViewModel : ObservableObject
         if (pageIndex >= TotalPages) pageIndex = TotalPages - 1;
 
         if (pageIndex == CurrentPageIndex) return;
-
-        if (pageIndex > CurrentPageIndex)
-        {
-            _pagesReadInSession += (pageIndex - CurrentPageIndex);
-        }
 
         CurrentPageIndex = pageIndex;
         NotifyStateChanged();
@@ -947,21 +957,76 @@ public partial class MainViewModel : ObservableObject
             try
             {
                 await _repository.UpdateReadingProgressAsync(_currentComicPath, CurrentPageIndex, TotalPages);
-                if (_currentComicEntity != null)
-                {
-                    int durationSec = (int)(DateTime.UtcNow - _sessionStartTime).TotalSeconds;
-                    if (durationSec >= 3 || _pagesReadInSession > 0)
-                    {
-                        await _repository.RecordReadingSessionAsync(_currentComicEntity.Id, _sessionStartTime, DateTime.UtcNow, durationSec, _pagesReadInSession);
-                        _sessionStartTime = DateTime.UtcNow;
-                        _pagesReadInSession = 0;
-                    }
-                }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[MainViewModel] Progress flush error: {ex.Message}");
             }
+        }
+
+        // Final save of the active session, then close it (switching comics, leaving the reader or closing the app).
+        StopSessionTracking();
+        await SaveSessionCheckpointAsync();
+        _sessionTracker.Stop();
+    }
+
+    partial void OnCurrentPageIndexChanged(int value)
+    {
+        if (!_sessionTracker.IsActive) return;
+        _sessionTracker.RecordPageView(value);
+        if (IsDoublePageMode && value + 1 < TotalPages)
+        {
+            _sessionTracker.RecordPageView(value + 1);
+        }
+    }
+
+    /// <summary>Counts reading time while the user interacts without turning pages (zooming, panning, scrolling a long page).</summary>
+    public void NotifyReadingActivity() => _sessionTracker.RecordActivity();
+
+    private void StartSessionCheckpoints()
+    {
+        var queue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        if (queue == null) return;
+
+        if (_sessionCheckpointTimer == null)
+        {
+            _sessionCheckpointTimer = queue.CreateTimer();
+            _sessionCheckpointTimer.Interval = SessionCheckpointInterval;
+            _sessionCheckpointTimer.IsRepeating = true;
+            _sessionCheckpointTimer.Tick += async (_, _) => await SaveSessionCheckpointAsync();
+        }
+
+        _sessionCheckpointTimer.Start();
+    }
+
+    /// <summary>Stops periodic checkpoints (the session itself stays open until it is flushed).</summary>
+    public void StopSessionTracking() => _sessionCheckpointTimer?.Stop();
+
+    private async Task SaveSessionCheckpointAsync()
+    {
+        if (!_sessionTracker.HasMeaningfulData) return;
+
+        await _sessionSaveLock.WaitAsync();
+        try
+        {
+            if (!_sessionTracker.HasMeaningfulData) return;
+            long id = await _repository.SaveReadingSessionAsync(
+                _sessionTracker.SessionId,
+                _sessionTracker.ComicId,
+                _sessionTracker.StartUtc,
+                _sessionTracker.EndUtc,
+                _sessionTracker.ActiveSeconds,
+                _sessionTracker.PagesRead);
+            _sessionTracker.SessionId = id;
+            ReadingStatsNotifier.NotifyChanged();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainViewModel] Session checkpoint error: {ex.Message}");
+        }
+        finally
+        {
+            _sessionSaveLock.Release();
         }
     }
 

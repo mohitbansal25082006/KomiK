@@ -34,6 +34,10 @@
     <Compile Include="..\Helpers\NaturalSortComparer.cs" Link="Helpers\%(Filename)%(Extension)" />
     <Compile Include="..\Helpers\ColorCorrectionHelper.cs" Link="Helpers\%(Filename)%(Extension)" />
     <Compile Include="..\Helpers\SeriesParserHelper.cs" Link="Helpers\%(Filename)%(Extension)" />
+    <Compile Include="..\Helpers\ComicIdentityParser.cs" Link="Helpers\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\SeriesDetectionService.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\ReadingSessionTracker.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\ReadingStatsCalculator.cs" Link="Services\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

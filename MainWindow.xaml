@@ -12,17 +12,39 @@
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid>
+    <Grid x:Name="WindowRoot">
+        <Grid.Resources>
+            <Storyboard x:Name="FullscreenHintShow">
+                <DoubleAnimation Storyboard.TargetName="FullscreenHint" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.22" />
+                <DoubleAnimation Storyboard.TargetName="FullscreenHintTranslate" Storyboard.TargetProperty="Y" From="-24" To="0" Duration="0:0:0.32">
+                    <DoubleAnimation.EasingFunction>
+                        <BackEase EasingMode="EaseOut" Amplitude="0.4" />
+                    </DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+            </Storyboard>
+            <Storyboard x:Name="FullscreenHintHide" Completed="FullscreenHintHide_Completed">
+                <DoubleAnimation Storyboard.TargetName="FullscreenHint" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3" />
+                <DoubleAnimation Storyboard.TargetName="FullscreenHintTranslate" Storyboard.TargetProperty="Y" To="-16" Duration="0:0:0.3" />
+            </Storyboard>
+        </Grid.Resources>
+
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid x:Name="AppTitleBar" Height="36" Padding="12,0,0,0" VerticalAlignment="Top" Background="Transparent">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
-                <Image Source="ms-appx:///Assets/Square44x44Logo.png" Width="16" Height="16" />
+        <!-- Tall title bar: pages can host content in it (the Library puts its banner here to free up reading space) -->
+        <Grid x:Name="AppTitleBar" Height="48" Padding="12,0,0,0" VerticalAlignment="Top" Background="Transparent" SizeChanged="AppTitleBar_SizeChanged">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="CaptionButtonsColumn" Width="140" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8" Margin="0,0,10,0">
+                <Image Source="ms-appx:///Assets/Square44x44Logo.png" Width="18" Height="18" />
                 <TextBlock x:Name="TitleTextBlock" Text="Komik" VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
             </StackPanel>
+            <ContentPresenter x:Name="TitleBarHost" Grid.Column="1" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" />
         </Grid>
 
         <!--
@@ -30,6 +52,54 @@
             MainPage.xaml rather than here so you can use Page features such as
             navigation events and the Loaded lifecycle.
         -->
-        <Frame x:Name="RootFrame" Grid.Row="1" />
+        <Frame x:Name="RootFrame" Grid.Row="1">
+            <Frame.ContentTransitions>
+                <TransitionCollection>
+                    <NavigationThemeTransition>
+                        <NavigationThemeTransition.DefaultNavigationTransitionInfo>
+                            <DrillInNavigationTransitionInfo />
+                        </NavigationThemeTransition.DefaultNavigationTransitionInfo>
+                    </NavigationThemeTransition>
+                </TransitionCollection>
+            </Frame.ContentTransitions>
+        </Frame>
+
+        <!-- Full screen hint (shown briefly on every page when entering full screen) -->
+        <Border
+            x:Name="FullscreenHint"
+            Grid.Row="0"
+            Grid.RowSpan="2"
+            Visibility="Collapsed"
+            Opacity="0"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Top"
+            Margin="0,18,0,0"
+            Padding="16,8,8,8"
+            CornerRadius="20"
+            Background="{ThemeResource KomikInkBrush}"
+            BorderBrush="{ThemeResource KomikYellowBrush}"
+            BorderThickness="2"
+            Canvas.ZIndex="1000">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="FullscreenHintTranslate" />
+            </Border.RenderTransform>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <FontIcon Glyph="&#xE740;" FontSize="14" Foreground="{ThemeResource KomikYellowBrush}" VerticalAlignment="Center" />
+                <TextBlock VerticalAlignment="Center" FontSize="13" Foreground="White">
+                    <Run Text="Press" /> <Run Text="Esc" FontWeight="Bold" /> <Run Text="or" /> <Run Text="F11" FontWeight="Bold" /> <Run Text="to exit full screen" />
+                </TextBlock>
+                <Button
+                    Click="ExitFullscreenHint_Click"
+                    Height="28"
+                    Padding="10,0"
+                    CornerRadius="14"
+                    Background="{ThemeResource KomikYellowBrush}"
+                    Foreground="Black"
+                    BorderThickness="0"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Content="Exit" />
+            </StackPanel>
+        </Border>
     </Grid>
 </Window>

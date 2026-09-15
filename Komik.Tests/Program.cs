@@ -1498,6 +1498,9 @@ public static class Program
                 allSeries = await repo.GetManualSeriesAsync();
                 if (allSeries.Count != 0) throw new Exception("Expected 0 manual series after deletion");
             });
+
+            // Tests 31-36: series detection, duplicate detection and live reading statistics
+            await LibraryIntelligenceTests.RunAllAsync(RunTestAsync, tempDir);
         }
         finally
         {

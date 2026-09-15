@@ -6,23 +6,25 @@ const config: Config = {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
-        ink: "#08080A",
-        "ink-deep": "#040405",
-        panel: "#121215",
-        "panel-card": "#18181D",
+        // Surfaces and text swap between the night (ink) and day (newsprint) themes via CSS variables.
+        ink: "rgb(var(--c-ink) / <alpha-value>)",
+        "ink-deep": "rgb(var(--c-ink-deep) / <alpha-value>)",
+        panel: "rgb(var(--c-panel) / <alpha-value>)",
+        "panel-card": "rgb(var(--c-panel-card) / <alpha-value>)",
         gutter: "#000000",
-        "gutter-border": "#27272A",
+        "gutter-border": "rgb(var(--c-gutter-border) / <alpha-value>)",
         paper: {
           DEFAULT: "#F5EFEB",
           pure: "#FAF6F0",
           muted: "#E4DCD3",
           dark: "#16161A",
         },
-        newsprint: "#F4EFEA",
-        muted: "#949BA6",
+        newsprint: "rgb(var(--c-newsprint) / <alpha-value>)",
+        muted: "rgb(var(--c-muted) / <alpha-value>)",
         cmyk: {
           cyan: "#00C2FF",
           magenta: "#FF1F6D",

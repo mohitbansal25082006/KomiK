@@ -7,6 +7,8 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:Komik.Models"
     xmlns:vm="using:Komik.ViewModels"
+    xmlns:controls="using:Komik.Controls"
+    xmlns:helpers="using:Komik.Helpers"
     mc:Ignorable="d"
     RequestedTheme="{x:Bind ViewModel.RequestedTheme, Mode=OneWay}"
     AllowDrop="True"
@@ -14,6 +16,7 @@
     Drop="Page_Drop"
     KeyDown="Page_KeyDown"
     PointerMoved="Page_PointerMoved"
+    SizeChanged="MainPage_SizeChanged"
     IsTabStop="True">
 
     <Page.Resources>
@@ -36,19 +39,67 @@
             <Style x:Key="FloatingPillCardStyle" TargetType="Border">
                 <Setter Property="Background" Value="{ThemeResource FloatingPillBackgroundBrush}" />
                 <Setter Property="BorderBrush" Value="{ThemeResource FloatingPillBorderBrush}" />
-                <Setter Property="BorderThickness" Value="2" />
+                <Setter Property="BorderThickness" Value="2,2,4,4" />
                 <Setter Property="CornerRadius" Value="22" />
                 <Setter Property="Padding" Value="8,4" />
             </Style>
 
-            <Style x:Key="EdgeNavButtonStyle" TargetType="Button">
-                <Setter Property="Width" Value="52" />
-                <Setter Property="Height" Value="80" />
-                <Setter Property="CornerRadius" Value="26" />
-                <Setter Property="Background" Value="{ThemeResource FloatingPillBackgroundBrush}" />
-                <Setter Property="BorderBrush" Value="{ThemeResource FloatingPillBorderBrush}" />
-                <Setter Property="BorderThickness" Value="1.5" />
+            <Style x:Key="EdgeNavButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                <Setter Property="Width" Value="54" />
+                <Setter Property="Height" Value="84" />
+                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="Background" Value="{ThemeResource KomikReaderChromeBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource KomikReaderChromeStrokeBrush}" />
+                <Setter Property="BorderThickness" Value="2.5,2.5,4,4" />
                 <Setter Property="Padding" Value="0" />
+                <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
+            </Style>
+
+            <!-- Reader chrome controls: chunky, inked and bouncy -->
+            <Style x:Key="ReaderGroupStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource KomikPanelSunkenBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource KomikInkStrokeBrush}" />
+                <Setter Property="BorderThickness" Value="1.5" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Padding" Value="3" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="ReaderIconButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                <Setter Property="Width" Value="36" />
+                <Setter Property="Height" Value="36" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
+            </Style>
+            <Style x:Key="ReaderTextButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                <Setter Property="Height" Value="36" />
+                <Setter Property="Padding" Value="10,0" />
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
+            </Style>
+            <Style x:Key="ReaderIconToggleStyle" TargetType="ToggleButton" BasedOn="{StaticResource DefaultToggleButtonStyle}">
+                <Setter Property="Width" Value="36" />
+                <Setter Property="Height" Value="36" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
+            </Style>
+            <Style x:Key="ReaderTextToggleStyle" TargetType="ToggleButton" BasedOn="{StaticResource DefaultToggleButtonStyle}">
+                <Setter Property="Height" Value="36" />
+                <Setter Property="Padding" Value="10,0" />
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
+            </Style>
+            <Style x:Key="ReaderDropDownStyle" TargetType="DropDownButton">
+                <Setter Property="Height" Value="36" />
+                <Setter Property="MinWidth" Value="36" />
+                <Setter Property="Padding" Value="8,0" />
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
             </Style>
         </ResourceDictionary>
     </Page.Resources>
@@ -147,9 +198,9 @@
                     VerticalAlignment="Top"
                     Margin="16,76,20,16"
                     Padding="16"
-                    Background="{ThemeResource FloatingPillBackgroundBrush}"
-                    BorderBrush="{ThemeResource FloatingPillBorderBrush}"
-                    BorderThickness="1.5"
+                    Background="{ThemeResource KomikReaderChromeBrush}"
+                    BorderBrush="{ThemeResource KomikReaderChromeStrokeBrush}"
+                    BorderThickness="2.5,2.5,4,4"
                     CornerRadius="14"
                     Canvas.ZIndex="50">
                     <Grid RowSpacing="8">
@@ -205,10 +256,10 @@
             <Border
                 Width="540"
                 Padding="36,40"
-                CornerRadius="16"
-                Background="{ThemeResource LayerFillColorDefaultBrush}"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="1">
+                CornerRadius="18"
+                Background="{ThemeResource KomikPanelBrush}"
+                BorderBrush="{ThemeResource KomikInkStrokeBrush}"
+                BorderThickness="2.5,2.5,6,6">
 
                 <StackPanel Spacing="24" HorizontalAlignment="Center">
                     <!-- App Logo Crest -->
@@ -220,12 +271,10 @@
 
                     <!-- App Title and Tagline -->
                     <StackPanel Spacing="8" HorizontalAlignment="Center">
-                        <TextBlock
-                            Text="Komik"
-                            FontSize="32"
-                            FontWeight="Bold"
-                            HorizontalAlignment="Center"
-                            Style="{StaticResource TitleLargeTextBlockStyle}" />
+                        <Grid HorizontalAlignment="Center">
+                            <TextBlock Text="KOMIK" Style="{StaticResource ComicDisplayTextStyle}" FontSize="64" LineHeight="64" Foreground="{ThemeResource KomikShadowBrush}" Margin="4,4,0,0" />
+                            <TextBlock Text="KOMIK" Style="{StaticResource ComicDisplayTextStyle}" FontSize="64" LineHeight="64" Foreground="{ThemeResource KomikYellowBrush}" />
+                        </Grid>
                         <TextBlock
                             Text="A modern, distraction-free comic reader for Windows"
                             FontSize="14"
@@ -239,8 +288,8 @@
                     <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
                         <Button
                             Command="{x:Bind ViewModel.OpenFileCommand}"
-                            Style="{StaticResource AccentButtonStyle}"
-                            Height="40"
+                            Style="{StaticResource ComicPrimaryButtonStyle}"
+                            Height="44"
                             Padding="20,0">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon Glyph="&#xE8E5;" FontSize="16" />
@@ -365,611 +414,510 @@
             </Button>
         </Grid>
 
-        <!-- ==================== FLOATING TOP TOOLBAR ==================== -->
-        <Border
+        <!-- ==================== FLOATING TOP TOOLBAR (comic panel) ==================== -->
+        <Grid
             x:Name="TopToolbar"
-            Style="{StaticResource FloatingPillCardStyle}"
             HorizontalAlignment="Center"
             VerticalAlignment="Top"
-            Margin="12,16,12,0"
+            Margin="12,12,12,0"
+            MaxWidth="1500"
             PointerEntered="Toolbar_PointerEntered"
             PointerExited="Toolbar_PointerExited"
+            Canvas.ZIndex="60"
             Visibility="{x:Bind ViewModel.HasComic, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
+            <Grid.OpacityTransition>
+                <ScalarTransition Duration="0:0:0.22" />
+            </Grid.OpacityTransition>
+            <Grid.TranslationTransition>
+                <Vector3Transition Duration="0:0:0.28" />
+            </Grid.TranslationTransition>
 
-            <ScrollViewer
-                HorizontalScrollBarVisibility="Hidden"
-                VerticalScrollBarVisibility="Disabled"
-                HorizontalScrollMode="Auto"
-                VerticalScrollMode="Disabled">
+            <Border Margin="5,5,0,0" CornerRadius="18" Background="{ThemeResource KomikShadowBrush}" />
+            <Border Margin="0,0,5,5" CornerRadius="18" Background="{ThemeResource KomikReaderChromeBrush}" BorderBrush="{ThemeResource KomikReaderChromeStrokeBrush}" BorderThickness="2.5">
+                <Grid>
+                    <Border CornerRadius="16" Background="{StaticResource KomikHalftoneBrush}" Opacity="0.06" IsHitTestVisible="False" />
+                    <ScrollViewer
+                        HorizontalScrollBarVisibility="Hidden"
+                        VerticalScrollBarVisibility="Disabled"
+                        HorizontalScrollMode="Auto"
+                        VerticalScrollMode="Disabled"
+                        Padding="8,6">
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
 
-                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                    <!-- Back to Library Button -->
-                    <Button
-                        Height="32"
-                        Padding="8,0"
-                        Click="BackToLibrary_Click"
-                        ToolTipService.ToolTip="Back to Library (Backspace / Alt+Left)">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xE8B9;" FontSize="12" />
-                            <TextBlock Text="Library" FontSize="12" FontWeight="SemiBold" />
-                        </StackPanel>
-                    </Button>
-
-                    <Rectangle Width="1" Height="18" Fill="{ThemeResource CardStrokeColorDefaultBrush}" Margin="2,0" />
-
-                    <!-- Open Button with Menu -->
-                    <DropDownButton Height="32" Padding="10,0" ToolTipService.ToolTip="Open Comic or Folder">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xE8E5;" FontSize="13" />
-                            <TextBlock Text="Open" FontSize="12" FontWeight="SemiBold" />
-                        </StackPanel>
-                        <DropDownButton.Flyout>
-                            <MenuFlyout Placement="Bottom">
-                                <MenuFlyoutItem Text="Open Comic File... (Ctrl+O)" Command="{x:Bind ViewModel.OpenFileCommand}">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE8E5;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                                <MenuFlyoutItem Text="Open Image Folder... (Ctrl+Shift+O)" Command="{x:Bind ViewModel.OpenFolderCommand}">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xED25;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                            </MenuFlyout>
-                        </DropDownButton.Flyout>
-                    </DropDownButton>
-
-                    <!-- Comic Title -->
-                    <TextBlock
-                        Text="{x:Bind ViewModel.ComicTitle, Mode=OneWay}"
-                        FontSize="12"
-                        FontWeight="SemiBold"
-                        MaxWidth="150"
-                        TextTrimming="CharacterEllipsis"
-                        VerticalAlignment="Center"
-                        Margin="4,0"
-                        ToolTipService.ToolTip="{x:Bind ViewModel.ComicTitle, Mode=OneWay}" />
-
-                <Rectangle Width="1" Height="18" Fill="{ThemeResource CardStrokeColorDefaultBrush}" Margin="2,0" />
-
-                <!-- Fit Mode Buttons -->
-                <Button
-                    Height="32"
-                    Width="34"
-                    Padding="0"
-                    Click="FitHeight_Click"
-                    ToolTipService.ToolTip="Fit to Height: Scales comic page vertically to fit screen height (ideal for reading)">
-                    <FontIcon Glyph="&#xE740;" FontSize="13" />
-                </Button>
-
-                <Button
-                    Height="32"
-                    Width="34"
-                    Padding="0"
-                    Click="FitWidth_Click"
-                    ToolTipService.ToolTip="Fit to Width: Scales comic page to screen width (great for webtoons and wide screens)">
-                    <FontIcon Glyph="&#xE784;" FontSize="13" />
-                </Button>
-
-                <Button
-                    Height="32"
-                    Width="34"
-                    Padding="0"
-                    Click="FitActual_Click"
-                    ToolTipService.ToolTip="Actual Size: Displays 1:1 original scanned image resolution">
-                    <FontIcon Glyph="&#xE799;" FontSize="13" />
-                </Button>
-
-                <Rectangle Width="1" Height="18" Fill="{ThemeResource CardStrokeColorDefaultBrush}" Margin="2,0" />
-
-                <!-- Single / Double Page Mode Toggle -->
-                <Button
-                    Height="32"
-                    Padding="10,0"
-                    Command="{x:Bind ViewModel.ToggleViewModeCommand}"
-                    ToolTipService.ToolTip="Two-Page Spread: Displays adjacent comic pages side-by-side like a physical comic book (D)">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon Glyph="&#xE898;" FontSize="13" />
-                        <TextBlock
-                            Text="{x:Bind ViewModel.IsDoublePageMode, Mode=OneWay, Converter={StaticResource ViewModeTextConverter}}"
-                            FontSize="12" />
-                    </StackPanel>
-                </Button>
-
-                <!-- Webtoon Continuous Mode Toggle with Info -->
-                <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                    <Button
-                        Height="32"
-                        Padding="10,0"
-                        Command="{x:Bind ViewModel.ToggleWebtoonModeCommand}"
-                        ToolTipService.ToolTip="Webtoon Mode: Continuous vertical scroll (V)">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xE896;" FontSize="13" />
-                            <TextBlock Text="Webtoon" FontSize="12" />
-                        </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Webtoon Continuous Scroll Info">
-                        <FontIcon Glyph="&#xE946;" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <Button.Flyout>
-                            <Flyout Placement="Bottom">
-                                <StackPanel Width="270" Spacing="8">
-                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                        <FontIcon Glyph="&#xE896;" FontSize="15" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
-                                        <TextBlock Text="Webtoon Continuous Mode" FontWeight="Bold" FontSize="13" />
-                                    </StackPanel>
-                                    <TextBlock Text="Reads comics as a continuous vertical strip without page turning. Scroll smoothly using the mouse wheel or Up/Down arrow keys." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <!-- Back to wherever the comic was opened from -->
+                            <Button
+                                x:Name="ReaderBackButton"
+                                Style="{StaticResource ComicPrimaryButtonStyle}"
+                                MinHeight="36"
+                                Padding="10,4,12,4"
+                                Click="ReaderBack_Click"
+                                AutomationProperties.Name="Back"
+                                ToolTipService.ToolTip="Go back to where you opened this comic (Backspace / Alt+Left)">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE72B;" FontSize="13" />
+                                    <TextBlock x:Name="ReaderBackLabel" Text="{x:Bind BackButtonText}" FontFamily="{StaticResource KomikDisplayFont}" FontSize="16" CharacterSpacing="40" MaxWidth="160" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
-                            </Flyout>
-                        </Button.Flyout>
-                    </Button>
-                </StackPanel>
+                            </Button>
 
-                <!-- Reading Direction Toggle (LTR/RTL) -->
-                <Button
-                    Height="32"
-                    Padding="8,0"
-                    Command="{x:Bind ViewModel.ToggleReadingDirectionCommand}"
-                    ToolTipService.ToolTip="Reading Direction: Switch between Western (Left-to-Right) and Japanese Manga (Right-to-Left, inverting page turns) (Ctrl+R)">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <FontIcon Glyph="&#xE8AB;" FontSize="11" />
-                        <TextBlock Text="{x:Bind ViewModel.ReadingDirectionDisplay, Mode=OneWay}" FontSize="11" FontWeight="SemiBold" />
-                    </StackPanel>
-                </Button>
+                            <Button
+                                Style="{StaticResource ReaderIconButtonStyle}"
+                                Click="BackToLibrary_Click"
+                                AutomationProperties.Name="Library"
+                                ToolTipService.ToolTip="Library home (all comics)">
+                                <FontIcon Glyph="&#xE80F;" FontSize="14" />
+                            </Button>
 
-                <Rectangle Width="1" Height="18" Fill="{ThemeResource CardStrokeColorDefaultBrush}" Margin="2,0" />
+                            <DropDownButton Style="{StaticResource ReaderDropDownStyle}" ToolTipService.ToolTip="Open Comic or Folder" AutomationProperties.Name="Open">
+                                <FontIcon Glyph="&#xE8E5;" FontSize="14" />
+                                <DropDownButton.Flyout>
+                                    <MenuFlyout Placement="Bottom">
+                                        <MenuFlyoutItem Text="Open Comic File... (Ctrl+O)" Command="{x:Bind ViewModel.OpenFileCommand}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE8E5;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem Text="Open Image Folder... (Ctrl+Shift+O)" Command="{x:Bind ViewModel.OpenFolderCommand}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xED25;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                    </MenuFlyout>
+                                </DropDownButton.Flyout>
+                            </DropDownButton>
 
-                <!-- Offline Local OCR & Search Dropdown Button -->
-                <DropDownButton
-                    x:Name="OcrDropDownButton"
-                    Height="32"
-                    Padding="8,0"
-                    ToolTipService.ToolTip="Offline OCR &amp; Dialogue Search (Windows Native)">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon Glyph="&#xE8C1;" FontSize="13" />
-                        <TextBlock Text="OCR" FontSize="12" FontWeight="SemiBold" />
-                    </StackPanel>
-                    <DropDownButton.Flyout>
-                        <Flyout Placement="Bottom">
-                            <StackPanel Width="310" Spacing="10" Padding="4">
-                                <Grid>
-                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                        <TextBlock Text="Comic OCR (Local Offline)" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" />
-                                        <Button
-                                            Style="{StaticResource InfoButtonStyle}"
-                                            ToolTipService.ToolTip="OCR Info">
-                                            <FontIcon Glyph="&#xE946;" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                            <Button.Flyout>
-                                                <Flyout Placement="Bottom">
-                                                    <StackPanel Width="260" Spacing="8">
-                                                        <TextBlock Text="Offline On-Device OCR" FontWeight="Bold" FontSize="13" />
-                                                        <TextBlock Text="100% private, offline speech bubble detection using Windows OCR. Copy detected dialogue or search keywords across all comic pages." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                    </StackPanel>
-                                                </Flyout>
-                                            </Button.Flyout>
-                                        </Button>
-                                    </StackPanel>
-                                </Grid>
+                            <!-- Title caption box -->
+                            <Border x:Name="ReaderTitleBox" CornerRadius="8" Background="#FFD700" BorderBrush="#0B0B12" BorderThickness="2,2,3,3" Padding="10,2,12,1" VerticalAlignment="Center" MaxWidth="260">
+                                <Border.RenderTransform>
+                                    <RotateTransform Angle="-1.5" />
+                                </Border.RenderTransform>
+                                <TextBlock
+                                    Text="{x:Bind ViewModel.ComicTitle, Mode=OneWay}"
+                                    FontFamily="{StaticResource KomikDisplayFont}"
+                                    FontSize="17"
+                                    MaxLines="1"
+                                    CharacterSpacing="30"
+                                    Foreground="#0B0B12"
+                                    TextTrimming="CharacterEllipsis"
+                                    ToolTipService.ToolTip="{x:Bind ViewModel.ComicTitle, Mode=OneWay}" />
+                            </Border>
 
-                                <!-- Detect Current Page Text -->
-                                <Button
-                                    HorizontalAlignment="Stretch"
-                                    Command="{x:Bind ViewModel.ToggleOcrLayerCommand}"
-                                    IsEnabled="{x:Bind ViewModel.IsOcrLoading, Mode=OneWay, Converter={StaticResource InvertedBoolConverter}}"
-                                    ToolTipService.ToolTip="Recognize dialogue and text on current page">
-                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-                                        <FontIcon Glyph="&#xE8C1;" FontSize="13" />
-                                        <TextBlock Text="{x:Bind ViewModel.IsOcrLayerVisible, Mode=OneWay, Converter={StaticResource OcrButtonTextConverter}}" />
-                                    </StackPanel>
-                                </Button>
+                            <!-- VIEW group -->
+                            <Border Style="{StaticResource ReaderGroupStyle}">
+                                <StackPanel Orientation="Horizontal" Spacing="3">
+                                    <ToggleButton x:Name="FitHeightToggle" Style="{StaticResource ReaderIconToggleStyle}" IsChecked="{x:Bind ViewModel.IsFitHeight, Mode=OneWay}" Click="FitHeight_Click" AutomationProperties.Name="Fit to height" ToolTipService.ToolTip="Fit to Height: whole page on screen">
+                                        <FontIcon Glyph="&#xE740;" FontSize="13" />
+                                    </ToggleButton>
+                                    <ToggleButton x:Name="FitWidthToggle" Style="{StaticResource ReaderIconToggleStyle}" IsChecked="{x:Bind ViewModel.IsFitWidth, Mode=OneWay}" Click="FitWidth_Click" AutomationProperties.Name="Fit to width" ToolTipService.ToolTip="Fit to Width: page fills the screen width (great for webtoons)">
+                                        <FontIcon Glyph="&#xE784;" FontSize="13" />
+                                    </ToggleButton>
+                                    <ToggleButton x:Name="FitActualToggle" Style="{StaticResource ReaderIconToggleStyle}" IsChecked="{x:Bind ViewModel.IsFitActual, Mode=OneWay}" Click="FitActual_Click" AutomationProperties.Name="Actual size" ToolTipService.ToolTip="Actual Size: 1:1 original pixels">
+                                        <FontIcon Glyph="&#xE799;" FontSize="13" />
+                                    </ToggleButton>
+                                </StackPanel>
+                            </Border>
 
-                                <ProgressBar
-                                    IsIndeterminate="{x:Bind ViewModel.IsOcrLoading, Mode=OneWay}"
-                                    Visibility="{x:Bind ViewModel.IsOcrLoading, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
-
-                                <Rectangle Height="1" Fill="{ThemeResource CardStrokeColorDefaultBrush}" Margin="0,2" />
-
-                                <!-- Search Dialogue in Comic -->
-                                <TextBlock Text="Search Dialogue in Comic" FontWeight="SemiBold" FontSize="12" />
-                                <Grid ColumnSpacing="6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox
-                                        x:Name="OcrSearchBox"
-                                        Grid.Column="0"
-                                        PlaceholderText="Search dialogue or text..."
-                                        Text="{x:Bind ViewModel.OcrSearchQuery, Mode=TwoWay}"
-                                        KeyDown="OcrSearchBox_KeyDown" />
+                            <Border Style="{StaticResource ReaderGroupStyle}">
+                                <StackPanel Orientation="Horizontal" Spacing="3">
+                                    <ToggleButton
+                                        x:Name="SpreadToggle"
+                                        Style="{StaticResource ReaderTextToggleStyle}"
+                                        IsChecked="{x:Bind ViewModel.IsDoublePageMode, Mode=OneWay}"
+                                        Click="SpreadToggle_Click"
+                                        ToolTipService.ToolTip="Two-Page Spread: adjacent pages side by side like a printed comic (D)">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE898;" FontSize="13" />
+                                            <TextBlock x:Name="SpreadLabel" Text="{x:Bind ViewModel.IsDoublePageMode, Mode=OneWay, Converter={StaticResource ViewModeTextConverter}}" />
+                                        </StackPanel>
+                                    </ToggleButton>
+                                    <ToggleButton
+                                        x:Name="WebtoonToggle"
+                                        Style="{StaticResource ReaderTextToggleStyle}"
+                                        IsChecked="{x:Bind ViewModel.IsWebtoonMode, Mode=OneWay}"
+                                        Click="WebtoonToggle_Click"
+                                        ToolTipService.ToolTip="Webtoon Mode: continuous vertical scroll without page turns (V)">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE896;" FontSize="13" />
+                                            <TextBlock x:Name="WebtoonLabel" Text="Webtoon" />
+                                        </StackPanel>
+                                    </ToggleButton>
                                     <Button
-                                        Grid.Column="1"
-                                        Content="Search"
-                                        Click="OcrSearch_Click" />
-                                </Grid>
-
-                                <ProgressBar
-                                    IsIndeterminate="{x:Bind ViewModel.IsSearchingOcr, Mode=OneWay}"
-                                    Visibility="{x:Bind ViewModel.IsSearchingOcr, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
-
-                                <!-- Search Results -->
-                                <ListView
-                                    ItemsSource="{x:Bind ViewModel.OcrSearchResults, Mode=OneWay}"
-                                    MaxHeight="160"
-                                    SelectionMode="None">
-                                    <ListView.ItemTemplate>
-                                        <DataTemplate x:DataType="models:OcrSearchResultItem">
-                                            <Button
-                                                HorizontalAlignment="Stretch"
-                                                HorizontalContentAlignment="Left"
-                                                Background="Transparent"
-                                                BorderThickness="0"
-                                                Padding="4,3"
-                                                Click="OcrSearchResult_Click"
-                                                Tag="{x:Bind}">
-                                                <StackPanel Spacing="2">
-                                                    <TextBlock Text="{x:Bind PageDisplay}" FontWeight="SemiBold" FontSize="11" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
-                                                    <TextBlock Text="{x:Bind Snippet}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
-                                                </StackPanel>
-                                            </Button>
-                                        </DataTemplate>
-                                    </ListView.ItemTemplate>
-                                </ListView>
-                            </StackPanel>
-                        </Flyout>
-                    </DropDownButton.Flyout>
-                </DropDownButton>
-
-                <Rectangle Width="1" Height="18" Fill="{ThemeResource CardStrokeColorDefaultBrush}" Margin="2,0" />
-
-                <!-- Bookmark Current Page Button -->
-                <Button
-                    Height="32"
-                    Width="34"
-                    Padding="0"
-                    Command="{x:Bind ViewModel.ToggleBookmarkCurrentPageCommand}"
-                    ToolTipService.ToolTip="Bookmark Page (Ctrl+D / Ctrl+B)">
-                    <FontIcon Glyph="{x:Bind ViewModel.BookmarkGlyph, Mode=OneWay}" FontSize="13" Foreground="#F59E0B" />
-                </Button>
-
-                <!-- Bookmarks List Dropdown Flyout -->
-                <DropDownButton Height="32" Width="34" Padding="0" ToolTipService.ToolTip="View Bookmarks">
-                    <FontIcon Glyph="&#xE8F1;" FontSize="13" />
-                    <DropDownButton.Flyout>
-                        <Flyout Placement="Bottom">
-                            <StackPanel Width="280" Spacing="8">
-                                <Grid>
-                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                        <TextBlock Text="Bookmarks" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" />
-                                        <Button
-                                            Style="{StaticResource InfoButtonStyle}"
-                                            ToolTipService.ToolTip="Save favorite panels and scenes with notes to quickly jump back to them at any time.">
-                                            <FontIcon
-                                                Glyph="&#xE946;"
-                                                FontSize="11"
-                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        </Button>
-                                    </StackPanel>
-                                    <Button
-                                        HorizontalAlignment="Right"
-                                        Height="28"
-                                        Padding="8,0"
-                                        Click="AddBookmarkNote_Click"
-                                        ToolTipService.ToolTip="Add Bookmark with Note">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <FontIcon Glyph="&#xE710;" FontSize="10" />
-                                            <TextBlock Text="Note" FontSize="11" />
+                                        Style="{StaticResource ReaderTextButtonStyle}"
+                                        Command="{x:Bind ViewModel.ToggleReadingDirectionCommand}"
+                                        ToolTipService.ToolTip="Reading Direction: Western left-to-right or manga right-to-left (Ctrl+R)">
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <FontIcon Glyph="&#xE8AB;" FontSize="12" />
+                                            <TextBlock Text="{x:Bind ViewModel.ReadingDirectionDisplay, Mode=OneWay}" FontFamily="{StaticResource KomikDisplayFont}" FontSize="15" CharacterSpacing="40" />
                                         </StackPanel>
                                     </Button>
-                                </Grid>
+                                </StackPanel>
+                            </Border>
 
-                                <ListView
-                                    ItemsSource="{x:Bind ViewModel.Bookmarks}"
-                                    SelectionMode="None"
-                                    MaxHeight="260">
-                                    <ListView.ItemTemplate>
-                                        <DataTemplate x:DataType="models:BookmarkEntity">
-                                            <Grid Padding="4,2" Margin="0,2">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <Button
-                                                    Grid.Column="0"
-                                                    HorizontalAlignment="Stretch"
-                                                    HorizontalContentAlignment="Left"
-                                                    Background="Transparent"
-                                                    BorderThickness="0"
-                                                    Padding="4,2"
-                                                    Click="JumpToBookmark_Click"
-                                                    Tag="{x:Bind}">
-                                                    <StackPanel Spacing="2">
-                                                        <TextBlock Text="{x:Bind DisplayTitle}" FontWeight="SemiBold" FontSize="12" />
-                                                        <TextBlock Text="{x:Bind DisplaySubtitle}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                            <!-- TOOLS group -->
+                            <Border Style="{StaticResource ReaderGroupStyle}">
+                                <StackPanel Orientation="Horizontal" Spacing="3">
+                                    <DropDownButton x:Name="OcrDropDownButton" Style="{StaticResource ReaderDropDownStyle}" ToolTipService.ToolTip="Offline OCR &amp; Dialogue Search" AutomationProperties.Name="OCR">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE8C1;" FontSize="13" />
+                                            <TextBlock Text="OCR" FontFamily="{StaticResource KomikDisplayFont}" FontSize="15" CharacterSpacing="40" />
+                                        </StackPanel>
+                                        <DropDownButton.Flyout>
+                                            <Flyout Placement="Bottom">
+                                                <StackPanel Width="310" Spacing="10" Padding="4">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                        <TextBlock Text="COMIC OCR" Style="{StaticResource ComicSectionTitleStyle}" FontSize="20" />
+                                                        <Border Style="{StaticResource ComicStickerStyle}" Padding="6,0">
+                                                            <TextBlock Text="OFFLINE" Style="{StaticResource ComicStickerTextStyle}" FontSize="12" />
+                                                        </Border>
                                                     </StackPanel>
-                                                </Button>
-                                                <Button
-                                                    Grid.Column="1"
-                                                    Width="26"
-                                                    Height="26"
-                                                    Padding="0"
-                                                    Background="Transparent"
-                                                    BorderThickness="0"
-                                                    Click="DeleteBookmark_Click"
-                                                    Tag="{x:Bind}"
-                                                    ToolTipService.ToolTip="Remove Bookmark">
-                                                    <FontIcon Glyph="&#xE74D;" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                </Button>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ListView.ItemTemplate>
-                                </ListView>
-                            </StackPanel>
-                        </Flyout>
-                    </DropDownButton.Flyout>
-                </DropDownButton>
+                                                    <TextBlock Text="Private, on-device text detection using Windows OCR. Copy dialogue or search every page." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" />
 
-                <!-- Color Correction & Night Mode Flyout -->
-                <DropDownButton Height="32" Width="34" Padding="0" ToolTipService.ToolTip="Color Correction &amp; Night Mode">
-                    <FontIcon Glyph="&#xE790;" FontSize="13" />
-                    <DropDownButton.Flyout>
-                        <Flyout Placement="Bottom">
-                            <StackPanel Width="260" Spacing="12" Padding="4">
-                                <Grid>
-                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                        <TextBlock Text="Display &amp; Colors" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" />
-                                        <Button
-                                            Style="{StaticResource InfoButtonStyle}"
-                                            ToolTipService.ToolTip="Non-destructive GPU display shaders. Adjust brightness, contrast, and paper warmth without modifying original comic files.">
-                                            <FontIcon
-                                                Glyph="&#xE946;"
-                                                FontSize="11"
-                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        </Button>
-                                    </StackPanel>
+                                                    <Button
+                                                        HorizontalAlignment="Stretch"
+                                                        Style="{StaticResource ComicAccentButtonStyle}"
+                                                        Command="{x:Bind ViewModel.ToggleOcrLayerCommand}"
+                                                        IsEnabled="{x:Bind ViewModel.IsOcrLoading, Mode=OneWay, Converter={StaticResource InvertedBoolConverter}}"
+                                                        ToolTipService.ToolTip="Recognize dialogue and text on current page">
+                                                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                                            <FontIcon Glyph="&#xE8C1;" FontSize="13" />
+                                                            <TextBlock Text="{x:Bind ViewModel.IsOcrLayerVisible, Mode=OneWay, Converter={StaticResource OcrButtonTextConverter}}" />
+                                                        </StackPanel>
+                                                    </Button>
+
+                                                    <ProgressBar
+                                                        IsIndeterminate="{x:Bind ViewModel.IsOcrLoading, Mode=OneWay}"
+                                                        Visibility="{x:Bind ViewModel.IsOcrLoading, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+
+                                                    <Rectangle Height="2" Fill="{ThemeResource KomikInkStrokeBrush}" Margin="0,2" RadiusX="1" RadiusY="1" />
+
+                                                    <TextBlock Text="Search Dialogue in Comic" FontWeight="SemiBold" FontSize="12" />
+                                                    <Grid ColumnSpacing="6">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBox
+                                                            x:Name="OcrSearchBox"
+                                                            Grid.Column="0"
+                                                            PlaceholderText="Search dialogue or text..."
+                                                            Text="{x:Bind ViewModel.OcrSearchQuery, Mode=TwoWay}"
+                                                            KeyDown="OcrSearchBox_KeyDown" />
+                                                        <Button Grid.Column="1" Click="OcrSearch_Click" AutomationProperties.Name="Search dialogue">
+                                                            <FontIcon Glyph="&#xE721;" FontSize="13" />
+                                                        </Button>
+                                                    </Grid>
+
+                                                    <ProgressBar
+                                                        IsIndeterminate="{x:Bind ViewModel.IsSearchingOcr, Mode=OneWay}"
+                                                        Visibility="{x:Bind ViewModel.IsSearchingOcr, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+
+                                                    <ListView
+                                                        ItemsSource="{x:Bind ViewModel.OcrSearchResults, Mode=OneWay}"
+                                                        MaxHeight="160"
+                                                        SelectionMode="None">
+                                                        <ListView.ItemTemplate>
+                                                            <DataTemplate x:DataType="models:OcrSearchResultItem">
+                                                                <Button
+                                                                    HorizontalAlignment="Stretch"
+                                                                    HorizontalContentAlignment="Left"
+                                                                    Background="Transparent"
+                                                                    BorderThickness="0"
+                                                                    Padding="4,3"
+                                                                    Click="OcrSearchResult_Click"
+                                                                    Tag="{x:Bind}">
+                                                                    <StackPanel Spacing="2">
+                                                                        <TextBlock Text="{x:Bind PageDisplay}" FontWeight="SemiBold" FontSize="11" Foreground="{ThemeResource KomikCyanBrush}" />
+                                                                        <TextBlock Text="{x:Bind Snippet}" FontSize="10" Foreground="{ThemeResource KomikSubtleTextBrush}" TextTrimming="CharacterEllipsis" />
+                                                                    </StackPanel>
+                                                                </Button>
+                                                            </DataTemplate>
+                                                        </ListView.ItemTemplate>
+                                                    </ListView>
+                                                </StackPanel>
+                                            </Flyout>
+                                        </DropDownButton.Flyout>
+                                    </DropDownButton>
+
                                     <Button
-                                        HorizontalAlignment="Right"
-                                        Height="26"
-                                        Padding="6,0"
-                                        Click="ResetColorSettings_Click"
-                                        ToolTipService.ToolTip="Reset all adjustments">
-                                        <TextBlock Text="Reset" FontSize="11" />
+                                        Style="{StaticResource ReaderIconButtonStyle}"
+                                        Command="{x:Bind ViewModel.ToggleBookmarkCurrentPageCommand}"
+                                        AutomationProperties.Name="Bookmark page"
+                                        ToolTipService.ToolTip="Bookmark Page (Ctrl+D / Ctrl+B)">
+                                        <FontIcon Glyph="{x:Bind ViewModel.BookmarkGlyph, Mode=OneWay}" FontSize="14" Foreground="{ThemeResource KomikOrangeBrush}" />
                                     </Button>
-                                </Grid>
 
-                                <!-- Reading Theme Presets -->
-                                <TextBlock Text="Reading Theme Presets" FontWeight="SemiBold" FontSize="12" />
-                                <Grid ColumnSpacing="6" RowSpacing="6">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Button Grid.Row="0" Grid.Column="0" Content="Original" HorizontalAlignment="Stretch" Padding="2,4" FontSize="11" Click="PresetOriginal_Click" />
-                                    <Button Grid.Row="0" Grid.Column="1" Content="Night" HorizontalAlignment="Stretch" Padding="2,4" FontSize="11" Click="PresetNight_Click" />
-                                    <Button Grid.Row="0" Grid.Column="2" Content="Sepia" HorizontalAlignment="Stretch" Padding="2,4" FontSize="11" Click="PresetSepia_Click" />
-                                    <Button Grid.Row="1" Grid.Column="0" Content="Contrast" HorizontalAlignment="Stretch" Padding="2,4" FontSize="11" Click="PresetHighContrast_Click" />
-                                    <Button Grid.Row="1" Grid.Column="1" Content="Grayscale" HorizontalAlignment="Stretch" Padding="2,4" FontSize="11" Click="PresetGrayscale_Click" />
-                                    <Button Grid.Row="1" Grid.Column="2" Content="Invert" HorizontalAlignment="Stretch" Padding="2,4" FontSize="11" Click="PresetInverted_Click" />
-                                </Grid>
+                                    <DropDownButton Style="{StaticResource ReaderDropDownStyle}" ToolTipService.ToolTip="View Bookmarks" AutomationProperties.Name="Bookmarks">
+                                        <FontIcon Glyph="&#xE8F1;" FontSize="14" />
+                                        <DropDownButton.Flyout>
+                                            <Flyout Placement="Bottom">
+                                                <StackPanel Width="280" Spacing="8">
+                                                    <Grid>
+                                                        <TextBlock Text="BOOKMARKS" Style="{StaticResource ComicSectionTitleStyle}" FontSize="20" ToolTipService.ToolTip="Save favorite panels and scenes with notes to jump back to them at any time." />
+                                                        <Button
+                                                            HorizontalAlignment="Right"
+                                                            Padding="8,3"
+                                                            Click="AddBookmarkNote_Click"
+                                                            ToolTipService.ToolTip="Add Bookmark with Note">
+                                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                <FontIcon Glyph="&#xE710;" FontSize="10" />
+                                                                <TextBlock Text="Note" FontSize="11" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                    </Grid>
 
-                                <Rectangle Height="1" Fill="{ThemeResource CardStrokeColorDefaultBrush}" Margin="0,2" />
+                                                    <ListView
+                                                        ItemsSource="{x:Bind ViewModel.Bookmarks}"
+                                                        SelectionMode="None"
+                                                        MaxHeight="260">
+                                                        <ListView.ItemTemplate>
+                                                            <DataTemplate x:DataType="models:BookmarkEntity">
+                                                                <Grid Padding="4,2" Margin="0,2">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <Button
+                                                                        Grid.Column="0"
+                                                                        HorizontalAlignment="Stretch"
+                                                                        HorizontalContentAlignment="Left"
+                                                                        Background="Transparent"
+                                                                        BorderThickness="0"
+                                                                        Padding="4,2"
+                                                                        Click="JumpToBookmark_Click"
+                                                                        Tag="{x:Bind}">
+                                                                        <StackPanel Spacing="2">
+                                                                            <TextBlock Text="{x:Bind DisplayTitle}" FontWeight="SemiBold" FontSize="12" />
+                                                                            <TextBlock Text="{x:Bind DisplaySubtitle}" FontSize="10" Foreground="{ThemeResource KomikSubtleTextBrush}" TextTrimming="CharacterEllipsis" />
+                                                                        </StackPanel>
+                                                                    </Button>
+                                                                    <Button
+                                                                        Grid.Column="1"
+                                                                        Width="26"
+                                                                        Height="26"
+                                                                        Padding="0"
+                                                                        Background="Transparent"
+                                                                        BorderThickness="0"
+                                                                        Click="DeleteBookmark_Click"
+                                                                        Tag="{x:Bind}"
+                                                                        ToolTipService.ToolTip="Remove Bookmark">
+                                                                        <FontIcon Glyph="&#xE74D;" FontSize="11" Foreground="{ThemeResource KomikMagentaBrush}" />
+                                                                    </Button>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ListView.ItemTemplate>
+                                                    </ListView>
+                                                </StackPanel>
+                                            </Flyout>
+                                        </DropDownButton.Flyout>
+                                    </DropDownButton>
 
-                                <!-- Brightness Slider -->
-                                <StackPanel Spacing="2">
-                                    <Grid>
-                                        <TextBlock Text="Brightness" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        <TextBlock Text="{x:Bind ViewModel.ColorSettings.Brightness, Mode=OneWay}" FontSize="11" HorizontalAlignment="Right" Opacity="0.8" />
-                                    </Grid>
-                                    <Slider
-                                        Minimum="-80"
-                                        Maximum="80"
-                                        StepFrequency="1"
-                                        Value="{x:Bind ViewModel.ColorSettings.Brightness, Mode=TwoWay}" />
+                                    <DropDownButton Style="{StaticResource ReaderDropDownStyle}" ToolTipService.ToolTip="Color Correction &amp; Night Mode" AutomationProperties.Name="Colors">
+                                        <FontIcon Glyph="&#xE790;" FontSize="14" />
+                                        <DropDownButton.Flyout>
+                                            <Flyout Placement="Bottom">
+                                                <StackPanel Width="270" Spacing="12" Padding="4">
+                                                    <Grid>
+                                                        <TextBlock Text="DISPLAY &amp; COLORS" Style="{StaticResource ComicSectionTitleStyle}" FontSize="20" ToolTipService.ToolTip="Non-destructive display filters. Your comic files are never changed." />
+                                                        <Button HorizontalAlignment="Right" Padding="8,3" Click="ResetColorSettings_Click" ToolTipService.ToolTip="Reset all adjustments">
+                                                            <TextBlock Text="Reset" FontSize="11" />
+                                                        </Button>
+                                                    </Grid>
+
+                                                    <TextBlock Text="Reading Theme Presets" FontWeight="SemiBold" FontSize="12" />
+                                                    <Grid ColumnSpacing="6" RowSpacing="6">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Button Grid.Row="0" Grid.Column="0" Content="Original" HorizontalAlignment="Stretch" Padding="2,5" FontSize="11" Click="PresetOriginal_Click" />
+                                                        <Button Grid.Row="0" Grid.Column="1" Content="Night" HorizontalAlignment="Stretch" Padding="2,5" FontSize="11" Click="PresetNight_Click" />
+                                                        <Button Grid.Row="0" Grid.Column="2" Content="Sepia" HorizontalAlignment="Stretch" Padding="2,5" FontSize="11" Click="PresetSepia_Click" />
+                                                        <Button Grid.Row="1" Grid.Column="0" Content="Contrast" HorizontalAlignment="Stretch" Padding="2,5" FontSize="11" Click="PresetHighContrast_Click" />
+                                                        <Button Grid.Row="1" Grid.Column="1" Content="Grayscale" HorizontalAlignment="Stretch" Padding="2,5" FontSize="11" Click="PresetGrayscale_Click" />
+                                                        <Button Grid.Row="1" Grid.Column="2" Content="Invert" HorizontalAlignment="Stretch" Padding="2,5" FontSize="11" Click="PresetInverted_Click" />
+                                                    </Grid>
+
+                                                    <Rectangle Height="2" Fill="{ThemeResource KomikInkStrokeBrush}" Margin="0,2" RadiusX="1" RadiusY="1" />
+
+                                                    <StackPanel Spacing="2">
+                                                        <Grid>
+                                                            <TextBlock Text="Brightness" FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" />
+                                                            <TextBlock Text="{x:Bind ViewModel.ColorSettings.Brightness, Mode=OneWay}" FontSize="11" HorizontalAlignment="Right" FontWeight="Bold" />
+                                                        </Grid>
+                                                        <Slider Minimum="-80" Maximum="80" StepFrequency="1" Value="{x:Bind ViewModel.ColorSettings.Brightness, Mode=TwoWay}" />
+                                                    </StackPanel>
+                                                    <StackPanel Spacing="2">
+                                                        <Grid>
+                                                            <TextBlock Text="Contrast" FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" />
+                                                            <TextBlock Text="{x:Bind ViewModel.ColorSettings.Contrast, Mode=OneWay}" FontSize="11" HorizontalAlignment="Right" FontWeight="Bold" />
+                                                        </Grid>
+                                                        <Slider Minimum="0.6" Maximum="1.8" StepFrequency="0.05" Value="{x:Bind ViewModel.ColorSettings.Contrast, Mode=TwoWay}" />
+                                                    </StackPanel>
+                                                    <StackPanel Spacing="2">
+                                                        <Grid>
+                                                            <TextBlock Text="Warmth (De-yellowing)" FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" />
+                                                            <TextBlock Text="{x:Bind ViewModel.ColorSettings.Warmth, Mode=OneWay}" FontSize="11" HorizontalAlignment="Right" FontWeight="Bold" />
+                                                        </Grid>
+                                                        <Slider Minimum="-80" Maximum="80" StepFrequency="1" Value="{x:Bind ViewModel.ColorSettings.Warmth, Mode=TwoWay}" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Flyout>
+                                        </DropDownButton.Flyout>
+                                    </DropDownButton>
                                 </StackPanel>
+                            </Border>
 
-                                <!-- Contrast Slider -->
-                                <StackPanel Spacing="2">
-                                    <Grid>
-                                        <TextBlock Text="Contrast" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        <TextBlock Text="{x:Bind ViewModel.ColorSettings.Contrast, Mode=OneWay}" FontSize="11" HorizontalAlignment="Right" Opacity="0.8" />
-                                    </Grid>
-                                    <Slider
-                                        Minimum="0.6"
-                                        Maximum="1.8"
-                                        StepFrequency="0.05"
-                                        Value="{x:Bind ViewModel.ColorSettings.Contrast, Mode=TwoWay}" />
+                            <!-- ZOOM group -->
+                            <Border Style="{StaticResource ReaderGroupStyle}">
+                                <StackPanel Orientation="Horizontal" Spacing="3">
+                                    <Button Style="{StaticResource ReaderIconButtonStyle}" Command="{x:Bind ViewModel.ZoomOutCommand}" AutomationProperties.Name="Zoom out" ToolTipService.ToolTip="Zoom Out (Ctrl -)">
+                                        <FontIcon Glyph="&#xE71F;" FontSize="13" />
+                                    </Button>
+                                    <Button Style="{StaticResource ReaderTextButtonStyle}" MinWidth="58" Command="{x:Bind ViewModel.ResetZoomCommand}" ToolTipService.ToolTip="Reset Zoom (Ctrl 0)">
+                                        <TextBlock Text="{x:Bind ViewModel.ZoomDisplayString, Mode=OneWay}" FontFamily="{StaticResource KomikDisplayFont}" FontSize="16" CharacterSpacing="30" />
+                                    </Button>
+                                    <Button Style="{StaticResource ReaderIconButtonStyle}" Command="{x:Bind ViewModel.ZoomInCommand}" AutomationProperties.Name="Zoom in" ToolTipService.ToolTip="Zoom In (Ctrl +)">
+                                        <FontIcon Glyph="&#xE8A3;" FontSize="13" />
+                                    </Button>
                                 </StackPanel>
+                            </Border>
 
-                                <!-- Warmth / De-yellowing Slider -->
-                                <StackPanel Spacing="2">
-                                    <Grid>
-                                        <TextBlock Text="Warmth (De-yellowing)" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        <TextBlock Text="{x:Bind ViewModel.ColorSettings.Warmth, Mode=OneWay}" FontSize="11" HorizontalAlignment="Right" Opacity="0.8" />
-                                    </Grid>
-                                    <Slider
-                                        Minimum="-80"
-                                        Maximum="80"
-                                        StepFrequency="1"
-                                        Value="{x:Bind ViewModel.ColorSettings.Warmth, Mode=TwoWay}" />
+                            <Border Style="{StaticResource ReaderGroupStyle}">
+                                <StackPanel Orientation="Horizontal" Spacing="3">
+                                    <Button Style="{StaticResource ReaderIconButtonStyle}" Command="{x:Bind ViewModel.ToggleThemeCommand}" AutomationProperties.Name="Toggle theme" ToolTipService.ToolTip="Toggle Dark / Light Reader Theme">
+                                        <FontIcon Glyph="&#xE708;" FontSize="14" />
+                                    </Button>
+                                    <Button Style="{StaticResource ReaderIconButtonStyle}" Command="{x:Bind ViewModel.ToggleFullscreenCommand}" AutomationProperties.Name="Toggle full screen" ToolTipService.ToolTip="Toggle Full Screen (F11)">
+                                        <FontIcon Glyph="&#xE740;" FontSize="14" />
+                                    </Button>
                                 </StackPanel>
-                            </StackPanel>
-                        </Flyout>
-                    </DropDownButton.Flyout>
-                </DropDownButton>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
 
-                <Rectangle Width="1" Height="18" Fill="{ThemeResource CardStrokeColorDefaultBrush}" Margin="2,0" />
-
-                <!-- Zoom Controls -->
-                <Button
-                    Height="32"
-                    Width="32"
-                    Padding="0"
-                    Command="{x:Bind ViewModel.ZoomOutCommand}"
-                    ToolTipService.ToolTip="Zoom Out (Ctrl -)">
-                    <FontIcon Glyph="&#xE738;" FontSize="12" />
-                </Button>
-
-                <Button
-                    Height="32"
-                    Padding="8,0"
-                    Command="{x:Bind ViewModel.ResetZoomCommand}"
-                    ToolTipService.ToolTip="Reset Zoom (Ctrl 0)">
-                    <TextBlock Text="{x:Bind ViewModel.ZoomDisplayString, Mode=OneWay}" FontSize="11" FontWeight="SemiBold" />
-                </Button>
-
-                <Button
-                    Height="32"
-                    Width="32"
-                    Padding="0"
-                    Command="{x:Bind ViewModel.ZoomInCommand}"
-                    ToolTipService.ToolTip="Zoom In (Ctrl +)">
-                    <FontIcon Glyph="&#xE710;" FontSize="12" />
-                </Button>
-
-                <Rectangle Width="1" Height="18" Fill="{ThemeResource CardStrokeColorDefaultBrush}" Margin="2,0" />
-
-                <!-- Theme Toggle -->
-                <Button
-                    Height="32"
-                    Width="34"
-                    Padding="0"
-                    Command="{x:Bind ViewModel.ToggleThemeCommand}"
-                    ToolTipService.ToolTip="Toggle Dark / Light Theme">
-                    <FontIcon Glyph="&#xE708;" FontSize="13" />
-                </Button>
-
-                <!-- Fullscreen Toggle -->
-                <Button
-                    Height="32"
-                    Width="34"
-                    Padding="0"
-                    Command="{x:Bind ViewModel.ToggleFullscreenCommand}"
-                    ToolTipService.ToolTip="Toggle Fullscreen (F11)">
-                    <FontIcon Glyph="&#xE740;" FontSize="13" />
-                </Button>
-            </StackPanel>
-        </ScrollViewer>
-    </Border>
-
-        <!-- ==================== FLOATING BOTTOM PAGE OVERLAY & SCRUBBER ==================== -->
-        <Border
+        <!-- ==================== FLOATING BOTTOM PAGE BAR ==================== -->
+        <Grid
             x:Name="BottomOverlay"
-            Style="{StaticResource FloatingPillCardStyle}"
-            HorizontalAlignment="Center"
+            HorizontalAlignment="Stretch"
             VerticalAlignment="Bottom"
-            Margin="0,0,0,24"
+            MaxWidth="860"
+            Margin="24,0,24,18"
             PointerEntered="Toolbar_PointerEntered"
             PointerExited="Toolbar_PointerExited"
+            Canvas.ZIndex="60"
             Visibility="{x:Bind ViewModel.HasComic, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
+            <Grid.OpacityTransition>
+                <ScalarTransition Duration="0:0:0.22" />
+            </Grid.OpacityTransition>
+            <Grid.TranslationTransition>
+                <Vector3Transition Duration="0:0:0.28" />
+            </Grid.TranslationTransition>
 
-            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                <!-- Jump First -->
-                <Button
-                    Height="28"
-                    Width="28"
-                    Padding="0"
-                    Command="{x:Bind ViewModel.FirstPageCommand}"
-                    IsEnabled="{x:Bind ViewModel.CanGoPrevious, Mode=OneWay}"
-                    ToolTipService.ToolTip="First Page (Home)">
-                    <FontIcon Glyph="&#xEB9D;" FontSize="11" />
-                </Button>
+            <Border Margin="5,5,0,0" CornerRadius="20" Background="{ThemeResource KomikShadowBrush}" />
+            <Border Margin="0,0,5,5" CornerRadius="20" Background="{ThemeResource KomikReaderChromeBrush}" BorderBrush="{ThemeResource KomikReaderChromeStrokeBrush}" BorderThickness="2.5">
+                <Grid Padding="10,8,10,6" RowSpacing="4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-                <!-- Previous Page -->
-                <Button
-                    Height="28"
-                    Width="28"
-                    Padding="0"
-                    Command="{x:Bind ViewModel.PreviousPageCommand}"
-                    IsEnabled="{x:Bind ViewModel.CanGoPrevious, Mode=OneWay}"
-                    ToolTipService.ToolTip="Previous Page (Left Arrow)">
-                    <FontIcon Glyph="&#xE76B;" FontSize="11" />
-                </Button>
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
 
-                <!-- Page Scrubber Slider -->
-                <Slider
-                    x:Name="PageScrubber"
-                    Width="240"
-                    Minimum="1"
-                    Maximum="{x:Bind ViewModel.TotalPages, Mode=OneWay}"
-                    Value="{x:Bind ViewModel.CurrentPageNumber, Mode=OneWay}"
-                    ValueChanged="PageScrubber_ValueChanged"
-                    VerticalAlignment="Center"
-                    Margin="4,0"
-                    ToolTipService.ToolTip="Scrub Pages" />
+                        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                            <Button Style="{StaticResource ReaderIconButtonStyle}" Command="{x:Bind ViewModel.FirstPageCommand}" IsEnabled="{x:Bind ViewModel.CanGoPrevious, Mode=OneWay}" AutomationProperties.Name="First page" ToolTipService.ToolTip="First Page (Home)">
+                                <FontIcon Glyph="&#xEB9D;" FontSize="12" />
+                            </Button>
+                            <Button Style="{StaticResource ComicAccentButtonStyle}" MinHeight="36" MinWidth="44" Padding="8,4" Command="{x:Bind ViewModel.PreviousPageCommand}" IsEnabled="{x:Bind ViewModel.CanGoPrevious, Mode=OneWay}" AutomationProperties.Name="Previous page" ToolTipService.ToolTip="Previous Page (Left Arrow)">
+                                <FontIcon Glyph="&#xE76B;" FontSize="13" />
+                            </Button>
+                        </StackPanel>
 
-                <!-- Page Counter Label (e.g. 12 / 87) -->
-                <TextBlock
-                    Text="{x:Bind ViewModel.PageDisplayString, Mode=OneWay}"
-                    FontSize="12"
-                    FontWeight="SemiBold"
-                    VerticalAlignment="Center"
-                    MinWidth="60"
-                    TextAlignment="Center" />
+                        <!-- Scrubber with the page bubble -->
+                        <Grid Grid.Column="1" ColumnSpacing="10" VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Slider
+                                x:Name="PageScrubber"
+                                Minimum="1"
+                                Maximum="{x:Bind ViewModel.TotalPages, Mode=OneWay}"
+                                Value="{x:Bind ViewModel.CurrentPageNumber, Mode=OneWay}"
+                                ValueChanged="PageScrubber_ValueChanged"
+                                VerticalAlignment="Center"
+                                MinWidth="120"
+                                Margin="6,0"
+                                AutomationProperties.Name="Page scrubber"
+                                ToolTipService.ToolTip="Drag to jump to any page" />
+                            <Border Grid.Column="1" CornerRadius="10" Background="#FFD700" BorderBrush="#0B0B12" BorderThickness="2,2,3,3" Padding="10,1,12,0" VerticalAlignment="Center" MinWidth="86">
+                                <Border.RenderTransform>
+                                    <RotateTransform Angle="-2" />
+                                </Border.RenderTransform>
+                                <TextBlock
+                                    Text="{x:Bind ViewModel.PageDisplayString, Mode=OneWay}"
+                                    FontFamily="{StaticResource KomikDisplayFont}"
+                                    FontSize="19"
+                                    CharacterSpacing="40"
+                                    Foreground="#0B0B12"
+                                    HorizontalAlignment="Center" />
+                            </Border>
+                        </Grid>
 
-                <!-- Next Page -->
-                <Button
-                    Height="28"
-                    Width="28"
-                    Padding="0"
-                    Command="{x:Bind ViewModel.NextPageCommand}"
-                    IsEnabled="{x:Bind ViewModel.CanGoNext, Mode=OneWay}"
-                    ToolTipService.ToolTip="Next Page (Right Arrow / Space)">
-                    <FontIcon Glyph="&#xE76C;" FontSize="11" />
-                </Button>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                            <Button Style="{StaticResource ComicAccentButtonStyle}" MinHeight="36" MinWidth="44" Padding="8,4" Command="{x:Bind ViewModel.NextPageCommand}" IsEnabled="{x:Bind ViewModel.CanGoNext, Mode=OneWay}" AutomationProperties.Name="Next page" ToolTipService.ToolTip="Next Page (Right Arrow / Space)">
+                                <FontIcon Glyph="&#xE76C;" FontSize="13" />
+                            </Button>
+                            <Button Style="{StaticResource ReaderIconButtonStyle}" Command="{x:Bind ViewModel.LastPageCommand}" IsEnabled="{x:Bind ViewModel.CanGoNext, Mode=OneWay}" AutomationProperties.Name="Last page" ToolTipService.ToolTip="Last Page (End)">
+                                <FontIcon Glyph="&#xEB9E;" FontSize="12" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
 
-                <!-- Jump Last -->
-                <Button
-                    Height="28"
-                    Width="28"
-                    Padding="0"
-                    Command="{x:Bind ViewModel.LastPageCommand}"
-                    IsEnabled="{x:Bind ViewModel.CanGoNext, Mode=OneWay}"
-                    ToolTipService.ToolTip="Last Page (End)">
-                    <FontIcon Glyph="&#xEB9E;" FontSize="11" />
-                </Button>
-            </StackPanel>
-        </Border>
+                    <!-- Reading progress strip -->
+                    <ProgressBar
+                        Grid.Row="1"
+                        Margin="6,0"
+                        MinHeight="5"
+                        Height="5"
+                        CornerRadius="3"
+                        Minimum="0"
+                        Maximum="{x:Bind ViewModel.TotalPages, Mode=OneWay}"
+                        Value="{x:Bind ViewModel.CurrentPageNumber, Mode=OneWay}"
+                        Background="{ThemeResource KomikChartTrackBrush}"
+                        Foreground="{ThemeResource KomikCyanBrush}" />
+                </Grid>
+            </Border>
+        </Grid>
 
-        <!-- ==================== NOTIFICATION / RESUME TOAST ==================== -->
-        <Border
-            x:Name="NotificationToastCard"
-            Visibility="{x:Bind ViewModel.IsToastVisible, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Top"
-            Margin="0,68,0,0"
-            CornerRadius="20"
-            Background="#E61A1C20"
-            BorderBrush="#99FFFFFF"
-            BorderThickness="1.5"
-            Padding="18,8"
-            Canvas.ZIndex="100">
-            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <FontIcon Glyph="&#xE946;" FontSize="14" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
-                <TextBlock
-                    Text="{x:Bind ViewModel.ToastMessage, Mode=OneWay}"
-                    Foreground="White"
-                    FontWeight="SemiBold"
-                    FontSize="12" />
-            </StackPanel>
-        </Border>
+        <!-- ==================== FLOATING NOTIFICATIONS ==================== -->
+        <controls:ComicToast
+            x:Name="ReaderToast"
+            Margin="0,72,0,0"
+            DurationSeconds="3"
+            IsOpen="{x:Bind ViewModel.IsToastVisible, Mode=TwoWay}"
+            Message="{x:Bind ViewModel.ToastMessage, Mode=OneWay}"
+            Severity="Informational" />
 
-        <!-- ==================== ERROR INFO BAR ==================== -->
-        <InfoBar
-            x:Name="ErrorInfoBar"
+        <controls:ComicToast
+            x:Name="ErrorToast"
+            Margin="0,72,0,0"
+            DurationSeconds="8"
             IsOpen="{x:Bind ViewModel.IsError, Mode=TwoWay}"
-            Severity="Error"
-            Title="Error Opening Comic"
+            Title="Couldn't open this comic"
             Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
-            IsClosable="True"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Top"
-            Margin="0,70,0,0"
-            MaxWidth="600"
-            CloseButtonClick="ErrorInfoBar_CloseButtonClick" />
+            Severity="Error" />
 
         <!-- ==================== LOADING PROGRESS RING ==================== -->
         <ProgressRing

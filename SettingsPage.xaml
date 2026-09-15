@@ -8,541 +8,620 @@
     xmlns:models="using:Komik.Models"
     xmlns:vm="using:Komik.ViewModels"
     xmlns:helpers="using:Komik.Helpers"
+    xmlns:controls="using:Komik.Controls"
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <Page.Resources>
-        <Style x:Key="SettingsSectionCard" TargetType="Border">
-            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
-            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Padding" Value="20,16" />
-            <Setter Property="Margin" Value="0,0,0,16" />
+        <!-- One settings group: a comic panel with an inked edge and a hard shadow -->
+        <Style x:Key="SettingsSectionPanel" TargetType="ContentControl" BasedOn="{StaticResource ComicPanelStyle}">
+            <Setter Property="Padding" Value="20,16,20,18" />
+            <Setter Property="Margin" Value="0,0,0,24" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="BorderBrush" Value="{ThemeResource KomikInkStrokeBrush}" />
+            <Setter Property="helpers:MotionHelper.RevealOnShow" Value="True" />
         </Style>
-        <Style x:Key="InfoButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="4" />
-            <Setter Property="MinHeight" Value="24" />
-            <Setter Property="MinWidth" Value="24" />
+
+        <!-- One setting: a soft tile holding the label and its control -->
+        <Style x:Key="SettingTile" TargetType="Border">
+            <Setter Property="Background" Value="{ThemeResource KomikPanelSunkenBrush}" />
+            <Setter Property="BorderBrush" Value="{ThemeResource KomikPanelStrokeBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="12" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="helpers:InstantToolTipHelper.IsInstant" Value="True" />
+            <Setter Property="Padding" Value="16,12" />
+        </Style>
+
+        <Style x:Key="SettingLabel" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <Style x:Key="SettingHint" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{ThemeResource KomikSubtleTextBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,2,0,0" />
+        </Style>
+
+        <Style x:Key="SettingsNavButton" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Padding" Value="12,9" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="BorderThickness" Value="2,2,3,3" />
+            <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
+        </Style>
+
+        <Style x:Key="ThemeTileStyle" TargetType="ToggleButton" BasedOn="{StaticResource DefaultToggleButtonStyle}">
+            <Setter Property="Width" Value="112" />
+            <Setter Property="Height" Value="92" />
+            <Setter Property="Padding" Value="6" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="BorderThickness" Value="2,2,4,4" />
+            <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
         </Style>
     </Page.Resources>
 
-    <Grid Padding="32,20,32,24" HorizontalAlignment="Stretch">
-        <Grid MaxWidth="1100" HorizontalAlignment="Stretch">
+    <Grid x:Name="PageRoot" Padding="28,10,28,16">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="WideState">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="980" />
+                    </VisualState.StateTriggers>
+                </VisualState>
+                <VisualState x:Name="NarrowState">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="NavRail.Visibility" Value="Collapsed" />
+                        <Setter Target="NavColumn.Width" Value="0" />
+                        <Setter Target="PageRoot.Padding" Value="14,8,14,12" />
+                        <Setter Target="HeaderTagline.Visibility" Value="Collapsed" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <Grid MaxWidth="1180">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- Top Header & Navigation -->
-            <Grid Grid.Row="0" Margin="0,0,0,20">
+            <!-- ═════ Header banner ═════ -->
+            <Grid Grid.Row="0" Margin="0,0,0,16" MinHeight="76" helpers:MotionHelper.RevealOnShow="True">
+                <Border Margin="5,5,0,0" CornerRadius="16" Background="{ThemeResource KomikShadowBrush}" />
+                <Border Margin="0,0,5,5" CornerRadius="16" Background="{ThemeResource KomikHeroBrush}" BorderBrush="{ThemeResource KomikInkStrokeBrush}" BorderThickness="2.5" />
+                <Border Margin="0,0,5,5" CornerRadius="16" Background="{StaticResource KomikHalftoneBrush}" Opacity="0.16" />
+                <Border Margin="0,0,5,5" CornerRadius="16" Background="{StaticResource KomikSpeedLinesBrush}" Opacity="0.05" />
+
+                <Grid Margin="0,0,5,5" Padding="16,10,20,10" ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button
+                        Click="BackButton_Click"
+                        Style="{StaticResource ComicPrimaryButtonStyle}"
+                        MinHeight="44"
+                        Padding="12,6,16,6"
+                        VerticalAlignment="Center"
+                        ToolTipService.ToolTip="Back to Library"
+                        AutomationProperties.Name="Back to Library">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE72B;" FontSize="14" />
+                            <TextBlock Text="LIBRARY" FontFamily="{StaticResource KomikDisplayFont}" FontSize="18" CharacterSpacing="50" />
+                        </StackPanel>
+                    </Button>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                        <Grid VerticalAlignment="Center">
+                            <TextBlock Text="SETTINGS" Style="{StaticResource ComicDisplayTextStyle}" FontSize="44" LineHeight="46" Foreground="{ThemeResource KomikWordmarkShadowBrush}" Margin="3,3,0,0" />
+                            <TextBlock Text="SETTINGS" Style="{StaticResource ComicDisplayTextStyle}" FontSize="44" LineHeight="46" Foreground="{ThemeResource KomikWordmarkBrush}" />
+                        </Grid>
+                        <Border Style="{StaticResource ComicStickerStyle}" Background="#00C2FF" BorderBrush="#0B0B12" VerticalAlignment="Center">
+                            <Border.RenderTransform>
+                                <RotateTransform Angle="-5" />
+                            </Border.RenderTransform>
+                            <TextBlock Text="MAKE IT YOURS" Style="{StaticResource ComicStickerTextStyle}" Foreground="#0B0B12" />
+                        </Border>
+                    </StackPanel>
+
+                    <TextBlock
+                        x:Name="HeaderTagline"
+                        Grid.Column="2"
+                        Text="Changes save automatically"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Foreground="{ThemeResource KomikHeroTextBrush}"
+                        Opacity="0.85"
+                        VerticalAlignment="Center" />
+                </Grid>
+            </Grid>
+
+            <Grid Grid.Row="1" ColumnSpacing="22">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition x:Name="NavColumn" Width="220" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                    <Button
-                        Click="BackButton_Click"
-                        Height="36"
-                        Width="36"
-                        Padding="0"
-                        CornerRadius="18"
-                        ToolTipService.ToolTip="Back to Library">
-                        <FontIcon Glyph="&#xE72B;" FontSize="14" />
-                    </Button>
-
-                    <TextBlock
-                        Text="Settings"
-                        FontSize="28"
-                        FontWeight="Bold"
-                        Style="{StaticResource TitleLargeTextBlockStyle}"
-                        VerticalAlignment="Center" />
-                </StackPanel>
-            </Grid>
-
-            <!-- Notification InfoBar -->
-            <InfoBar
-                Grid.Row="1"
-                x:Name="SettingsInfoBar"
-                IsOpen="{x:Bind ViewModel.IsNotificationOpen, Mode=TwoWay}"
-                Title="{x:Bind ViewModel.NotificationTitle, Mode=OneWay}"
-                Message="{x:Bind ViewModel.NotificationMessage, Mode=OneWay}"
-                Severity="{x:Bind ViewModel.NotificationSeverity, Mode=OneWay}"
-                IsClosable="True"
-                Margin="0,0,0,16" />
-
-            <!-- Scrollable Settings Sections -->
-            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Spacing="0" Margin="0,0,12,0">
-
-                <!-- 1. APPEARANCE & DISPLAY -->
-                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,8" VerticalAlignment="Center">
-                    <TextBlock Text="Appearance &amp; Library Layout" FontSize="16" FontWeight="SemiBold" />
-                    <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Personalize your theme, default library layout (cover grid vs details list), and initial comic sort order.">
-                        <FontIcon Glyph="&#xE946;" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    </Button>
-                </StackPanel>
-                <Border Style="{StaticResource SettingsSectionCard}">
-                    <StackPanel Spacing="16">
-                        <!-- Theme -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                <TextBlock Text="Application Theme" FontWeight="SemiBold" />
-                                <TextBlock Text="Select your preferred theme or match your Windows system preference." FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            </StackPanel>
-                            <ComboBox
-                                Grid.Column="1"
-                                Width="180"
-                                SelectedIndex="{x:Bind ViewModel.ThemeIndex, Mode=TwoWay}"
-                                SelectionChanged="SettingChanged">
-                                <ComboBoxItem Content="Use System Setting" />
-                                <ComboBoxItem Content="Light" />
-                                <ComboBoxItem Content="Dark" />
-                            </ComboBox>
-                        </Grid>
-
-                        <MenuFlyoutSeparator />
-
-                        <!-- Default View Mode -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                <TextBlock Text="Default Library View" FontWeight="SemiBold" />
-                                <TextBlock Text="Choose whether comics are shown as visual cover cards or detailed list rows." FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            </StackPanel>
-                            <ComboBox
-                                Grid.Column="1"
-                                Width="180"
-                                SelectedIndex="{x:Bind ViewModel.ViewModeIndex, Mode=TwoWay}"
-                                SelectionChanged="SettingChanged">
-                                <ComboBoxItem Content="Grid (Cover Cards)" />
-                                <ComboBoxItem Content="List (Details View)" />
-                            </ComboBox>
-                        </Grid>
-
-                        <MenuFlyoutSeparator />
-
-                        <!-- Default Sort Order -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                <TextBlock Text="Default Sort Order" FontWeight="SemiBold" />
-                                <TextBlock Text="Initial sorting applied when browsing the comic library." FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            </StackPanel>
-                            <ComboBox
-                                Grid.Column="1"
-                                Width="180"
-                                SelectedIndex="{x:Bind ViewModel.SortOptionIndex, Mode=TwoWay}"
-                                SelectionChanged="SettingChanged">
-                                <ComboBoxItem Content="Title (A to Z)" />
-                                <ComboBoxItem Content="Title (Z to A)" />
-                                <ComboBoxItem Content="Recently Read" />
-                                <ComboBoxItem Content="Date Added (Newest)" />
-                                <ComboBoxItem Content="Date Added (Oldest)" />
-                                <ComboBoxItem Content="Page Count (Most)" />
-                                <ComboBoxItem Content="File Size (Largest)" />
-                            </ComboBox>
-                        </Grid>
-                    </StackPanel>
-                </Border>
-
-                <!-- 2. READING DEFAULTS -->
-                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,8,0,8" VerticalAlignment="Center">
-                    <TextBlock Text="Reading Defaults" FontSize="16" FontWeight="SemiBold" />
-                    <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Configure initial page sizing, reading direction (Western Left-to-Right vs Manga Right-to-Left), and eye-care display filters.">
-                        <FontIcon Glyph="&#xE946;" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    </Button>
-                </StackPanel>
-                <Border Style="{StaticResource SettingsSectionCard}">
-                    <StackPanel Spacing="16">
-                        <!-- Fit Mode -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Text="Default Fit Mode" FontWeight="SemiBold" />
-                                    <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Fit to Height fits the full comic page height on screen. Fit to Width scales width across the screen (great for webtoons). Actual Size displays 1:1 original scan pixels.">
-                                        <FontIcon Glyph="&#xE946;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    </Button>
-                                </StackPanel>
-                                <TextBlock Text="Initial sizing mode when opening any comic book." FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            </StackPanel>
-                            <ComboBox
-                                Grid.Column="1"
-                                Width="180"
-                                SelectedIndex="{x:Bind ViewModel.FitModeIndex, Mode=TwoWay}"
-                                SelectionChanged="SettingChanged">
-                                <ComboBoxItem Content="Fit to Width" />
-                                <ComboBoxItem Content="Fit to Height" />
-                                <ComboBoxItem Content="Actual Size (100%)" />
-                            </ComboBox>
-                        </Grid>
-
-                        <MenuFlyoutSeparator />
-
-                        <!-- Reading Direction -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Text="Default Reading Direction" FontWeight="SemiBold" />
-                                    <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Western comics read from left-to-right. Japanese Manga and Manhwa read from right-to-left, which reverses page turns and two-page spread pairing.">
-                                        <FontIcon Glyph="&#xE946;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    </Button>
-                                </StackPanel>
-                                <TextBlock Text="Page navigation direction for spread pairing and horizontal scrolling." FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            </StackPanel>
-                            <ComboBox
-                                Grid.Column="1"
-                                Width="180"
-                                SelectedIndex="{x:Bind ViewModel.ReadingDirectionIndex, Mode=TwoWay}"
-                                SelectionChanged="SettingChanged">
-                                <ComboBoxItem Content="Left to Right (Western)" />
-                                <ComboBoxItem Content="Right to Left (Manga)" />
-                            </ComboBox>
-                        </Grid>
-
-                        <MenuFlyoutSeparator />
-
-                        <!-- Default Reading Theme / Preset -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Text="Default Reading Theme" FontWeight="SemiBold" />
-                                    <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Select a reading theme preset: Original scan colors, Night Mode (amber paper tint &amp; dimmer tones), Warm Sepia (vintage tone), High Contrast (deep ink &amp; crisp whites), Grayscale (B&amp;W manga), or Inverted (dark background with light ink).">
-                                        <FontIcon Glyph="&#xE946;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    </Button>
-                                </StackPanel>
-                                <TextBlock Text="Preset visual filter applied when opening any comic." FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            </StackPanel>
-                            <ComboBox
-                                Grid.Column="1"
-                                Width="180"
-                                SelectedIndex="{x:Bind ViewModel.ReadingPresetIndex, Mode=TwoWay}"
-                                SelectionChanged="SettingChanged">
-                                <ComboBoxItem Content="Original (No Filter)" />
-                                <ComboBoxItem Content="Night Mode (Amber)" />
-                                <ComboBoxItem Content="Warm Sepia" />
-                                <ComboBoxItem Content="High Contrast" />
-                                <ComboBoxItem Content="Grayscale (Manga)" />
-                                <ComboBoxItem Content="Inverted (Negatives)" />
-                            </ComboBox>
-                        </Grid>
-
-                        <MenuFlyoutSeparator />
-
-                        <!-- Default Color Fine Tuning -->
-                        <StackPanel Spacing="12">
-
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="220" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Default Brightness" VerticalAlignment="Center" FontSize="13" />
-                                <Slider
-                                    Grid.Column="1"
-                                    Minimum="-100"
-                                    Maximum="100"
-                                    Value="{x:Bind ViewModel.Brightness, Mode=TwoWay}"
-                                    ValueChanged="SettingChanged" />
-                            </Grid>
-
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="220" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Default Contrast" VerticalAlignment="Center" FontSize="13" />
-                                <Slider
-                                    Grid.Column="1"
-                                    Minimum="50"
-                                    Maximum="200"
-                                    Value="{x:Bind ViewModel.Contrast, Mode=TwoWay}"
-                                    ValueChanged="SettingChanged" />
-                            </Grid>
-
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="220" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Default Warmth (Paper De-yellowing)" VerticalAlignment="Center" FontSize="13" />
-                                <Slider
-                                    Grid.Column="1"
-                                    Minimum="-100"
-                                    Maximum="100"
-                                    Value="{x:Bind ViewModel.Warmth, Mode=TwoWay}"
-                                    ValueChanged="SettingChanged" />
-                            </Grid>
-
-                            <Button
-                                Content="Reset Color Defaults"
-                                Command="{x:Bind ViewModel.ResetColorSettingsCommand}"
-                                HorizontalAlignment="Right"
-                                Margin="0,4,0,0" />
+                <!-- ═════ Section rail ═════ -->
+                <StackPanel x:Name="NavRail" Spacing="8" helpers:MotionHelper.RevealOnShow="True">
+                    <TextBlock Text="JUMP TO" Style="{StaticResource ComicCaptionTextStyle}" Margin="4,0,0,2" />
+                    <Button Style="{StaticResource SettingsNavButton}" Click="NavAppearance_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Width="28" Height="28" CornerRadius="14" Background="#FFD700" BorderBrush="#0B0B12" BorderThickness="1.5"><FontIcon Glyph="&#xE790;" FontSize="13" Foreground="#0B0B12" /></Border>
+                            <TextBlock Text="Appearance" VerticalAlignment="Center" FontWeight="SemiBold" />
                         </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- 3. WATCHED FOLDERS -->
-                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,8,0,8" VerticalAlignment="Center">
-                    <TextBlock Text="Watched Library Folders" FontSize="16" FontWeight="SemiBold" />
-                    <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Folders monitored by Komik. Any CBZ, CBR, CB7, ZIP, RAR, 7Z, PDF, or image subfolders within these folders are automatically discovered and organized into your library.">
-                        <FontIcon Glyph="&#xE946;" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </Button>
+                    <Button Style="{StaticResource SettingsNavButton}" Click="NavReading_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Width="28" Height="28" CornerRadius="14" Background="#00C2FF" BorderBrush="#0B0B12" BorderThickness="1.5"><FontIcon Glyph="&#xE736;" FontSize="13" Foreground="#0B0B12" /></Border>
+                            <TextBlock Text="Reading" VerticalAlignment="Center" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource SettingsNavButton}" Click="NavFolders_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Width="28" Height="28" CornerRadius="14" Background="#2EE59D" BorderBrush="#0B0B12" BorderThickness="1.5"><FontIcon Glyph="&#xE8B7;" FontSize="13" Foreground="#0B0B12" /></Border>
+                            <TextBlock Text="Library Folders" VerticalAlignment="Center" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource SettingsNavButton}" Click="NavCovers_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Width="28" Height="28" CornerRadius="14" Background="#FF9F1C" BorderBrush="#0B0B12" BorderThickness="1.5"><FontIcon Glyph="&#xEB9F;" FontSize="13" Foreground="#0B0B12" /></Border>
+                            <TextBlock Text="Covers &amp; Storage" VerticalAlignment="Center" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource SettingsNavButton}" Click="NavBackup_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Width="28" Height="28" CornerRadius="14" Background="#FF1F6D" BorderBrush="#0B0B12" BorderThickness="1.5"><FontIcon Glyph="&#xEDE1;" FontSize="13" Foreground="White" /></Border>
+                            <TextBlock Text="Backup" VerticalAlignment="Center" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource SettingsNavButton}" Click="NavAbout_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Width="28" Height="28" CornerRadius="14" Background="{ThemeResource KomikPanelRaisedBrush}" BorderBrush="#0B0B12" BorderThickness="1.5"><FontIcon Glyph="&#xE946;" FontSize="13" /></Border>
+                            <TextBlock Text="About Komik" VerticalAlignment="Center" FontWeight="SemiBold" />
+                        </StackPanel>
                     </Button>
                 </StackPanel>
-                <Border Style="{StaticResource SettingsSectionCard}">
-                    <StackPanel Spacing="14">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock
-                                Grid.Column="0"
-                                Text="Root folders scanned and monitored for comic books."
-                                VerticalAlignment="Center"
-                                FontSize="13"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
 
-                            <Button
-                                Grid.Column="1"
-                                Command="{x:Bind ViewModel.AddFolderCommand}"
-                                Style="{StaticResource AccentButtonStyle}">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <FontIcon Glyph="&#xE8F4;" FontSize="13" />
-                                    <TextBlock Text="Add Folder..." />
+                <!-- ═════ Sections ═════ -->
+                <ScrollViewer x:Name="SettingsScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,0,14,8">
+
+                        <!-- 1. APPEARANCE -->
+                        <ContentControl x:Name="AppearanceSection" Style="{StaticResource SettingsSectionPanel}">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <Border Width="40" Height="40" CornerRadius="20" Background="#FFD700" BorderBrush="#0B0B12" BorderThickness="2"><FontIcon Glyph="&#xE790;" FontSize="17" Foreground="#0B0B12" /></Border>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="APPEARANCE &amp; LIBRARY LAYOUT" Style="{StaticResource ComicSectionTitleStyle}" TextWrapping="Wrap" />
+                                        <TextBlock Text="Theme, how the library looks, and its starting sort order." Style="{StaticResource SettingHint}" />
+                                    </StackPanel>
                                 </StackPanel>
-                            </Button>
-                        </Grid>
 
-                        <ListView
-                            ItemsSource="{x:Bind ViewModel.WatchedFolders, Mode=OneWay}"
-                            SelectionMode="None"
-                            Margin="0,6,0,0">
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="models:WatchedFolder">
-                                    <Grid Padding="4,8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                                <Border Style="{StaticResource SettingTile}">
+                                    <StackPanel Spacing="10">
+                                        <StackPanel>
+                                            <TextBlock Text="Application Theme" Style="{StaticResource SettingLabel}" />
+                                            <TextBlock Text="Every screen, button and popup is drawn for both light and dark." Style="{StaticResource SettingHint}" />
+                                        </StackPanel>
+                                        <helpers:WrapPanel HorizontalSpacing="10" VerticalSpacing="10">
+                                            <ToggleButton x:Name="ThemeSystemTile" Style="{StaticResource ThemeTileStyle}" Click="ThemeTile_Click" Tag="0" AutomationProperties.Name="Use system theme">
+                                                <StackPanel Spacing="6" HorizontalAlignment="Center">
+                                                    <Grid Width="56" Height="36" CornerRadius="6" BorderBrush="#0B0B12" BorderThickness="1.5">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Border Background="#FFFDF6" />
+                                                        <Border Grid.Column="1" Background="#17171F" />
+                                                        <FontIcon Grid.ColumnSpan="2" Glyph="&#xE770;" FontSize="14" Foreground="#FFD700" />
+                                                    </Grid>
+                                                    <TextBlock Text="System" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12" />
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <ToggleButton x:Name="ThemeLightTile" Style="{StaticResource ThemeTileStyle}" Click="ThemeTile_Click" Tag="1" AutomationProperties.Name="Light theme">
+                                                <StackPanel Spacing="6" HorizontalAlignment="Center">
+                                                    <Border Width="56" Height="36" CornerRadius="6" Background="#FFFDF6" BorderBrush="#0B0B12" BorderThickness="1.5">
+                                                        <FontIcon Glyph="&#xE706;" FontSize="16" Foreground="#E07B00" />
+                                                    </Border>
+                                                    <TextBlock Text="Light" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12" />
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <ToggleButton x:Name="ThemeDarkTile" Style="{StaticResource ThemeTileStyle}" Click="ThemeTile_Click" Tag="2" AutomationProperties.Name="Dark theme">
+                                                <StackPanel Spacing="6" HorizontalAlignment="Center">
+                                                    <Border Width="56" Height="36" CornerRadius="6" Background="#17171F" BorderBrush="#0B0B12" BorderThickness="1.5">
+                                                        <FontIcon Glyph="&#xE708;" FontSize="15" Foreground="#FFD700" />
+                                                    </Border>
+                                                    <TextBlock Text="Dark" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12" />
+                                                </StackPanel>
+                                            </ToggleButton>
+                                        </helpers:WrapPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource SettingTile}">
+                                    <Grid ColumnSpacing="16" RowSpacing="8">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-
-                                        <FontIcon Grid.Column="0" Glyph="&#xE8B7;" FontSize="16" Margin="0,0,12,0" VerticalAlignment="Center" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock Text="{x:Bind Path}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{x:Bind DateAddedFormatted}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="Default Library View" Style="{StaticResource SettingLabel}" />
+                                            <TextBlock Text="Cover cards or detailed list rows." Style="{StaticResource SettingHint}" />
                                         </StackPanel>
-
-                                        <Button
-                                            Grid.Column="2"
-                                            Click="RemoveFolderButton_Click"
-                                            Tag="{x:Bind}"
-                                            Height="32"
-                                            Width="32"
-                                            Padding="0"
-                                            CornerRadius="16"
-                                            ToolTipService.ToolTip="Remove folder from watched library">
-                                            <FontIcon Glyph="&#xE74D;" FontSize="13" Foreground="#FF4560" />
-                                        </Button>
+                                        <ComboBox Grid.Column="1" Width="200" VerticalAlignment="Center" SelectedIndex="{x:Bind ViewModel.ViewModeIndex, Mode=TwoWay}" SelectionChanged="SettingChanged">
+                                            <ComboBoxItem Content="Grid (Cover Cards)" />
+                                            <ComboBoxItem Content="List (Details View)" />
+                                        </ComboBox>
                                     </Grid>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                    </StackPanel>
-                </Border>
+                                </Border>
 
-                <!-- 4. THUMBNAIL CACHE & STORAGE -->
-                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,8,0,8" VerticalAlignment="Center">
-                    <TextBlock Text="Cover Thumbnail Cache &amp; Storage" FontSize="16" FontWeight="SemiBold" />
-                    <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Komik pre-renders and caches cover thumbnails locally to provide instantaneous library browsing and fast scrolling without repeatedly opening comic archives. Clearing cache removes cached images from disk without affecting your comic files or reading history.">
-                        <FontIcon Glyph="&#xE946;" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    </Button>
-                </StackPanel>
-                <Border Style="{StaticResource SettingsSectionCard}">
-                    <StackPanel Spacing="14">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
-                                <TextBlock Text="Cover Thumbnail Cache" FontWeight="SemiBold" />
-                                <TextBlock Text="{x:Bind ViewModel.ThumbnailCacheDirectory, Mode=OneWay}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{x:Bind ViewModel.ThumbnailCacheSizeText, Mode=OneWay}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AccentFillColorDefaultBrush}" Margin="0,4,0,0" />
+                                <Border Style="{StaticResource SettingTile}">
+                                    <Grid ColumnSpacing="16">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="Default Sort Order" Style="{StaticResource SettingLabel}" />
+                                            <TextBlock Text="How the library is sorted when it opens." Style="{StaticResource SettingHint}" />
+                                        </StackPanel>
+                                        <ComboBox Grid.Column="1" Width="200" VerticalAlignment="Center" SelectedIndex="{x:Bind ViewModel.SortOptionIndex, Mode=TwoWay}" SelectionChanged="SettingChanged">
+                                            <ComboBoxItem Content="Title (A to Z)" />
+                                            <ComboBoxItem Content="Title (Z to A)" />
+                                            <ComboBoxItem Content="Recently Read" />
+                                            <ComboBoxItem Content="Date Added (Newest)" />
+                                            <ComboBoxItem Content="Date Added (Oldest)" />
+                                            <ComboBoxItem Content="Page Count (Most)" />
+                                            <ComboBoxItem Content="File Size (Largest)" />
+                                        </ComboBox>
+                                    </Grid>
+                                </Border>
                             </StackPanel>
+                        </ContentControl>
 
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <Button
-                                    Command="{x:Bind ViewModel.OpenCacheFolderCommand}"
-                                    IsEnabled="{x:Bind ViewModel.IsNotCaching, Mode=OneWay}"
-                                    ToolTipService.ToolTip="Open thumbnail cache folder in Windows File Explorer">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xED25;" FontSize="13" />
-                                        <TextBlock Text="Open Cache Folder" />
+                        <!-- 2. READING -->
+                        <ContentControl x:Name="ReadingSection" Style="{StaticResource SettingsSectionPanel}">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <Border Width="40" Height="40" CornerRadius="20" Background="#00C2FF" BorderBrush="#0B0B12" BorderThickness="2"><FontIcon Glyph="&#xE736;" FontSize="17" Foreground="#0B0B12" /></Border>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="READING DEFAULTS" Style="{StaticResource ComicSectionTitleStyle}" />
+                                        <TextBlock Text="How every comic opens: sizing, direction and page colors." Style="{StaticResource SettingHint}" />
                                     </StackPanel>
-                                </Button>
-
-                                <Button
-                                    Click="CacheAllCoversButton_Click"
-                                    IsEnabled="{x:Bind ViewModel.IsNotCaching, Mode=OneWay}"
-                                    ToolTipService.ToolTip="Scan library and pre-render cover thumbnails for all comics">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xEB9F;" FontSize="13" />
-                                        <TextBlock Text="Cache All Covers" />
-                                    </StackPanel>
-                                </Button>
-
-                                <Button
-                                    Click="ClearCacheButton_Click"
-                                    IsEnabled="{x:Bind ViewModel.IsNotCaching, Mode=OneWay}"
-                                    ToolTipService.ToolTip="Remove all cached cover images from disk">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xE74D;" FontSize="13" />
-                                        <TextBlock Text="Clear Cache" />
-                                    </StackPanel>
-                                </Button>
-                            </StackPanel>
-                        </Grid>
-
-                        <!-- Progress indicator when caching is active -->
-                        <StackPanel Spacing="6" Visibility="{x:Bind ViewModel.IsCaching, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
-                            <ProgressBar
-                                Value="{x:Bind ViewModel.CachingProgress, Mode=OneWay}"
-                                Maximum="{x:Bind ViewModel.CachingTotal, Mode=OneWay}"
-                                IsIndeterminate="{x:Bind ViewModel.IsCachingIndeterminate, Mode=OneWay}" />
-                            <TextBlock
-                                Text="{x:Bind ViewModel.CachingStatusText, Mode=OneWay}"
-                                FontSize="12"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- 5. LIBRARY BACKUP & DATA PORTABILITY -->
-                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,8,0,8" VerticalAlignment="Center">
-                    <TextBlock Text="Library Data &amp; Backup (Portable JSON)" FontSize="16" FontWeight="SemiBold" />
-                    <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Library Data &amp; Backup Details">
-                        <FontIcon Glyph="&#xE946;" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <Button.Flyout>
-                            <Flyout Placement="Bottom">
-                                <StackPanel Width="280" Spacing="8">
-                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                        <FontIcon Glyph="&#xEDE1;" FontSize="16" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
-                                        <TextBlock Text="Library Data &amp; Backup" FontWeight="Bold" FontSize="14" />
-                                    </StackPanel>
-                                    <TextBlock Text="Export or restore your complete reading progress, bookmarks, favorites, tags, and reading sessions in a portable, human-readable JSON format (.komikbackup). Seamlessly transfer your collection history between machines and drives." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 </StackPanel>
-                            </Flyout>
-                        </Button.Flyout>
-                    </Button>
-                </StackPanel>
-                <Border Style="{StaticResource SettingsSectionCard}">
-                    <StackPanel Spacing="14">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
-                                <TextBlock Text="Export Library Backup" FontWeight="SemiBold" />
-                                <TextBlock Text="Save your reading history, page positions, bookmarks, favorites, tags, and stats to a portable .komikbackup file." FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+                                <Border Style="{StaticResource SettingTile}">
+                                    <Grid ColumnSpacing="16">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="Default Fit Mode" Style="{StaticResource SettingLabel}" />
+                                            <TextBlock Text="Fit to Height shows the whole page, Fit to Width fills the screen, Actual Size shows original pixels." Style="{StaticResource SettingHint}" />
+                                        </StackPanel>
+                                        <ComboBox Grid.Column="1" Width="200" VerticalAlignment="Center" SelectedIndex="{x:Bind ViewModel.FitModeIndex, Mode=TwoWay}" SelectionChanged="SettingChanged">
+                                            <ComboBoxItem Content="Fit to Width" />
+                                            <ComboBoxItem Content="Fit to Height" />
+                                            <ComboBoxItem Content="Actual Size (100%)" />
+                                        </ComboBox>
+                                    </Grid>
+                                </Border>
+
+                                <Border Style="{StaticResource SettingTile}">
+                                    <Grid ColumnSpacing="16">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="Default Reading Direction" Style="{StaticResource SettingLabel}" />
+                                            <TextBlock Text="Western comics read left to right; manga reads right to left and flips page turns and spreads." Style="{StaticResource SettingHint}" />
+                                        </StackPanel>
+                                        <ComboBox Grid.Column="1" Width="200" VerticalAlignment="Center" SelectedIndex="{x:Bind ViewModel.ReadingDirectionIndex, Mode=TwoWay}" SelectionChanged="SettingChanged">
+                                            <ComboBoxItem Content="Left to Right (Western)" />
+                                            <ComboBoxItem Content="Right to Left (Manga)" />
+                                        </ComboBox>
+                                    </Grid>
+                                </Border>
+
+                                <Border Style="{StaticResource SettingTile}">
+                                    <Grid ColumnSpacing="16">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="Default Reading Theme" Style="{StaticResource SettingLabel}" />
+                                            <TextBlock Text="Original, Night (amber), Sepia, High Contrast, Grayscale or Inverted." Style="{StaticResource SettingHint}" />
+                                        </StackPanel>
+                                        <ComboBox Grid.Column="1" Width="200" VerticalAlignment="Center" SelectedIndex="{x:Bind ViewModel.ReadingPresetIndex, Mode=TwoWay}" SelectionChanged="SettingChanged">
+                                            <ComboBoxItem Content="Original (No Filter)" />
+                                            <ComboBoxItem Content="Night Mode (Amber)" />
+                                            <ComboBoxItem Content="Warm Sepia" />
+                                            <ComboBoxItem Content="High Contrast" />
+                                            <ComboBoxItem Content="Grayscale (Manga)" />
+                                            <ComboBoxItem Content="Inverted (Negatives)" />
+                                        </ComboBox>
+                                    </Grid>
+                                </Border>
+
+                                <Border Style="{StaticResource SettingTile}">
+                                    <StackPanel Spacing="10">
+                                        <Grid>
+                                            <StackPanel>
+                                                <TextBlock Text="Default Page Colors" Style="{StaticResource SettingLabel}" />
+                                                <TextBlock Text="Fine-tune brightness, contrast and paper warmth for every comic." Style="{StaticResource SettingHint}" />
+                                            </StackPanel>
+                                        </Grid>
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" MinWidth="120" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="44" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Brightness" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                            <Slider Grid.Column="1" Minimum="-100" Maximum="100" Value="{x:Bind ViewModel.Brightness, Mode=TwoWay}" ValueChanged="SettingChanged" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.Brightness, Mode=OneWay}" VerticalAlignment="Center" HorizontalAlignment="Right" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" />
+                                        </Grid>
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" MinWidth="120" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="44" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Contrast" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                            <Slider Grid.Column="1" Minimum="50" Maximum="200" Value="{x:Bind ViewModel.Contrast, Mode=TwoWay}" ValueChanged="SettingChanged" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.Contrast, Mode=OneWay}" VerticalAlignment="Center" HorizontalAlignment="Right" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" />
+                                        </Grid>
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" MinWidth="120" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="44" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Warmth" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                            <Slider Grid.Column="1" Minimum="-100" Maximum="100" Value="{x:Bind ViewModel.Warmth, Mode=TwoWay}" ValueChanged="SettingChanged" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.Warmth, Mode=OneWay}" VerticalAlignment="Center" HorizontalAlignment="Right" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" />
+                                        </Grid>
+                                        <Button Command="{x:Bind ViewModel.ResetColorSettingsCommand}" HorizontalAlignment="Right">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <FontIcon Glyph="&#xE777;" FontSize="12" />
+                                                <TextBlock Text="Reset Colors" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
-                            <Button
-                                Grid.Column="1"
-                                Command="{x:Bind ViewModel.ExportBackupCommand}"
-                                ToolTipService.ToolTip="Save a portable backup file (.komikbackup)">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <FontIcon Glyph="&#xEDE1;" FontSize="13" />
-                                    <TextBlock Text="Export Backup..." />
-                                </StackPanel>
-                            </Button>
-                        </Grid>
+                        </ContentControl>
 
-                        <MenuFlyoutSeparator />
+                        <!-- 3. WATCHED FOLDERS -->
+                        <ContentControl x:Name="FoldersSection" Style="{StaticResource SettingsSectionPanel}">
+                            <StackPanel Spacing="12">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Border Width="40" Height="40" CornerRadius="20" Background="#2EE59D" BorderBrush="#0B0B12" BorderThickness="2"><FontIcon Glyph="&#xE8B7;" FontSize="17" Foreground="#0B0B12" /></Border>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="WATCHED LIBRARY FOLDERS" Style="{StaticResource ComicSectionTitleStyle}" TextWrapping="Wrap" />
+                                            <TextBlock Text="Any CBZ, CBR, CB7, ZIP, RAR, 7Z, PDF or image folder inside is found automatically." Style="{StaticResource SettingHint}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource ComicPrimaryButtonStyle}" Command="{x:Bind ViewModel.AddFolderCommand}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE8F4;" FontSize="13" />
+                                            <TextBlock Text="Add Folder" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
 
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
-                                <TextBlock Text="Restore from Backup" FontWeight="SemiBold" />
-                                <TextBlock Text="Restore previously saved bookmarks, progress, favorites, and reading stats from a backup file." FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.WatchedFolders, Mode=OneWay}">
+                                    <ItemsControl.ItemContainerTransitions>
+                                        <TransitionCollection>
+                                            <EntranceThemeTransition IsStaggeringEnabled="True" FromVerticalOffset="16" />
+                                            <RepositionThemeTransition />
+                                        </TransitionCollection>
+                                    </ItemsControl.ItemContainerTransitions>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:WatchedFolder">
+                                            <Border Style="{StaticResource SettingTile}" Margin="0,0,0,8" helpers:MotionHelper.HoverLift="True">
+                                                <Grid ColumnSpacing="12">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Width="34" Height="34" CornerRadius="8" Background="#FFD700" BorderBrush="#0B0B12" BorderThickness="1.5">
+                                                        <FontIcon Glyph="&#xE8B7;" FontSize="15" Foreground="#0B0B12" />
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                        <TextBlock Text="{x:Bind Path}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind Path}" />
+                                                        <TextBlock FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}">
+                                                            <Run Text="Added" />
+                                                            <Run Text="{x:Bind DateAddedFormatted}" />
+                                                            <Run Text="· Last scan" />
+                                                            <Run Text="{x:Bind LastScannedFormatted}" />
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                    <Button
+                                                        Grid.Column="2"
+                                                        Style="{StaticResource ComicDangerButtonStyle}"
+                                                        MinHeight="34"
+                                                        Padding="10,4"
+                                                        Click="RemoveFolderButton_Click"
+                                                        Tag="{x:Bind}"
+                                                        AutomationProperties.Name="Remove folder"
+                                                        ToolTipService.ToolTip="Stop watching this folder (files are not deleted)">
+                                                        <FontIcon Glyph="&#xE74D;" FontSize="13" />
+                                                    </Button>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
-                            <Button
-                                Grid.Column="1"
-                                Command="{x:Bind ViewModel.ImportBackupCommand}"
-                                ToolTipService.ToolTip="Restore library data from a .komikbackup file">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <FontIcon Glyph="&#xED43;" FontSize="13" />
-                                    <TextBlock Text="Import Backup..." />
+                        </ContentControl>
+
+                        <!-- 4. COVERS & STORAGE -->
+                        <ContentControl x:Name="CoversSection" Style="{StaticResource SettingsSectionPanel}">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <Border Width="40" Height="40" CornerRadius="20" Background="#FF9F1C" BorderBrush="#0B0B12" BorderThickness="2"><FontIcon Glyph="&#xEB9F;" FontSize="17" Foreground="#0B0B12" /></Border>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="COVER CACHE &amp; STORAGE" Style="{StaticResource ComicSectionTitleStyle}" TextWrapping="Wrap" />
+                                        <TextBlock Text="Pre-rendered covers make browsing instant. Clearing them never touches your comics or progress." Style="{StaticResource SettingHint}" />
+                                    </StackPanel>
                                 </StackPanel>
-                            </Button>
-                        </Grid>
+
+                                <Border Style="{StaticResource SettingTile}">
+                                    <StackPanel Spacing="12">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Style="{StaticResource ComicStickerStyle}" VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind ViewModel.ThumbnailCacheSizeText, Mode=OneWay}" Style="{StaticResource ComicStickerTextStyle}" FontSize="16" />
+                                            </Border>
+                                            <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.ThumbnailCacheDirectory, Mode=OneWay}" FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <helpers:WrapPanel HorizontalSpacing="8" VerticalSpacing="8">
+                                            <Button Command="{x:Bind ViewModel.OpenCacheFolderCommand}" IsEnabled="{x:Bind ViewModel.IsNotCaching, Mode=OneWay}" ToolTipService.ToolTip="Open the cover cache folder in File Explorer">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <FontIcon Glyph="&#xED25;" FontSize="13" />
+                                                    <TextBlock Text="Open Cache Folder" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Style="{StaticResource ComicAccentButtonStyle}" Click="CacheAllCoversButton_Click" IsEnabled="{x:Bind ViewModel.IsNotCaching, Mode=OneWay}" ToolTipService.ToolTip="Pre-render covers for every comic">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <FontIcon Glyph="&#xEB9F;" FontSize="13" />
+                                                    <TextBlock Text="Cache All Covers" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Style="{StaticResource ComicDangerButtonStyle}" Click="ClearCacheButton_Click" IsEnabled="{x:Bind ViewModel.IsNotCaching, Mode=OneWay}" ToolTipService.ToolTip="Remove cached cover images from disk">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <FontIcon Glyph="&#xE74D;" FontSize="13" />
+                                                    <TextBlock Text="Clear Cache" />
+                                                </StackPanel>
+                                            </Button>
+                                        </helpers:WrapPanel>
+                                        <StackPanel Spacing="6" Visibility="{x:Bind ViewModel.IsCaching, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
+                                            <ProgressBar
+                                                Value="{x:Bind ViewModel.CachingProgress, Mode=OneWay}"
+                                                Maximum="{x:Bind ViewModel.CachingTotal, Mode=OneWay}"
+                                                IsIndeterminate="{x:Bind ViewModel.IsCachingIndeterminate, Mode=OneWay}"
+                                                Foreground="{ThemeResource KomikCyanBrush}"
+                                                MinHeight="6" />
+                                            <TextBlock Text="{x:Bind ViewModel.CachingStatusText, Mode=OneWay}" Style="{StaticResource SettingHint}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ContentControl>
+
+                        <!-- 5. BACKUP -->
+                        <ContentControl x:Name="BackupSection" Style="{StaticResource SettingsSectionPanel}">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <Border Width="40" Height="40" CornerRadius="20" Background="#FF1F6D" BorderBrush="#0B0B12" BorderThickness="2"><FontIcon Glyph="&#xEDE1;" FontSize="17" Foreground="White" /></Border>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="LIBRARY DATA &amp; BACKUP" Style="{StaticResource ComicSectionTitleStyle}" TextWrapping="Wrap" />
+                                        <TextBlock Text="Move your progress, bookmarks, favorites, tags and reading stats between PCs with a portable .komikbackup file." Style="{StaticResource SettingHint}" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <Grid ColumnSpacing="12" RowSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Style="{StaticResource SettingTile}" helpers:MotionHelper.HoverLift="True">
+                                        <StackPanel Spacing="10">
+                                            <TextBlock Text="Export Backup" Style="{StaticResource SettingLabel}" />
+                                            <TextBlock Text="Save everything about your reading to a file." Style="{StaticResource SettingHint}" />
+                                            <Button Style="{StaticResource ComicPrimaryButtonStyle}" Command="{x:Bind ViewModel.ExportBackupCommand}" HorizontalAlignment="Left">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <FontIcon Glyph="&#xEDE1;" FontSize="13" />
+                                                    <TextBlock Text="Export..." />
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Column="1" Style="{StaticResource SettingTile}" helpers:MotionHelper.HoverLift="True">
+                                        <StackPanel Spacing="10">
+                                            <TextBlock Text="Restore Backup" Style="{StaticResource SettingLabel}" />
+                                            <TextBlock Text="Bring back saved progress, bookmarks and stats." Style="{StaticResource SettingHint}" />
+                                            <Button Style="{StaticResource ComicAccentButtonStyle}" Command="{x:Bind ViewModel.ImportBackupCommand}" HorizontalAlignment="Left">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <FontIcon Glyph="&#xED43;" FontSize="13" />
+                                                    <TextBlock Text="Import..." />
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </StackPanel>
+                        </ContentControl>
+
+                        <!-- 6. ABOUT -->
+                        <ContentControl x:Name="AboutSection" Style="{StaticResource SettingsSectionPanel}">
+                            <Grid ColumnSpacing="18">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="72" Height="72" CornerRadius="16" Background="{ThemeResource KomikHeroBrush}" BorderBrush="#0B0B12" BorderThickness="2.5,2.5,4,4" VerticalAlignment="Top">
+                                    <Image Source="ms-appx:///Assets/Square150x150Logo.scale-200.png" Width="48" Height="48" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Spacing="6">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <Grid>
+                                            <TextBlock Text="KOMIK" Style="{StaticResource ComicDisplayTextStyle}" FontSize="36" LineHeight="38" Foreground="{ThemeResource KomikWordmarkShadowBrush}" Margin="2,2,0,0" />
+                                            <TextBlock Text="KOMIK" Style="{StaticResource ComicDisplayTextStyle}" FontSize="36" LineHeight="38" Foreground="{ThemeResource KomikWordmarkBrush}" />
+                                        </Grid>
+                                        <Border Style="{StaticResource ComicStickerStyle}" Background="#FF1F6D" BorderBrush="#0B0B12" Padding="7,0">
+                                            <Border.RenderTransform>
+                                                <RotateTransform Angle="-6" />
+                                            </Border.RenderTransform>
+                                            <TextBlock Text="v1.1.0" Style="{StaticResource ComicStickerTextStyle}" Foreground="White" />
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="A modern, private, local-only comic reader for Windows, built with WinUI 3, the Windows App SDK, C# (.NET 8) and SQLite." Style="{StaticResource SettingHint}" FontSize="13" />
+                                    <helpers:WrapPanel HorizontalSpacing="6" VerticalSpacing="6">
+                                        <Border Style="{StaticResource ComicPillStyle}"><TextBlock Text="CBZ" FontSize="11" FontWeight="Bold" /></Border>
+                                        <Border Style="{StaticResource ComicPillStyle}"><TextBlock Text="CBR (RAR4/5)" FontSize="11" FontWeight="Bold" /></Border>
+                                        <Border Style="{StaticResource ComicPillStyle}"><TextBlock Text="CB7" FontSize="11" FontWeight="Bold" /></Border>
+                                        <Border Style="{StaticResource ComicPillStyle}"><TextBlock Text="ZIP" FontSize="11" FontWeight="Bold" /></Border>
+                                        <Border Style="{StaticResource ComicPillStyle}"><TextBlock Text="PDF" FontSize="11" FontWeight="Bold" /></Border>
+                                        <Border Style="{StaticResource ComicPillStyle}"><TextBlock Text="Image folders" FontSize="11" FontWeight="Bold" /></Border>
+                                        <Border Style="{StaticResource ComicPillStyle}"><TextBlock Text="No cloud" FontSize="11" FontWeight="Bold" /></Border>
+                                    </helpers:WrapPanel>
+                                </StackPanel>
+                            </Grid>
+                        </ContentControl>
                     </StackPanel>
-                </Border>
-
-                <!-- 6. ABOUT KOMIK -->
-                <TextBlock Text="About Komik" FontSize="16" FontWeight="SemiBold" Margin="0,8,0,8" />
-                <Border Style="{StaticResource SettingsSectionCard}">
-                    <StackPanel Spacing="6">
-                        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                            <Image Source="ms-appx:///Assets/Square150x150Logo.scale-200.png" Width="36" Height="36" Stretch="Uniform" VerticalAlignment="Center" />
-                            <TextBlock Text="Komik" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" />
-                            <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
-                                <TextBlock Text="v1.1.0" FontSize="10" FontWeight="Bold" Foreground="White" />
-                            </Border>
-                        </StackPanel>
-
-                        <TextBlock
-                            Text="A modern, personal, local-only Windows comic viewer and reader built with WinUI 3, Windows App SDK, C# (.NET 8), and SQLite."
-                            FontSize="12"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            TextWrapping="Wrap"
-                            Margin="0,4,0,0" />
-
-                        <TextBlock
-                            Text="Supports CBZ, CBR (RAR4/5), CB7 (7Z), ZIP, PDF, and image folders with zero cloud dependencies."
-                            FontSize="11"
-                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                            Margin="0,2,0,0" />
-                    </StackPanel>
-                </Border>
-
-            </StackPanel>
-        </ScrollViewer>
+                </ScrollViewer>
+            </Grid>
         </Grid>
+
+        <!-- Floating notification (overlays, auto-hides) -->
+        <controls:ComicToast
+            x:Name="SettingsToast"
+            IsOpen="{x:Bind ViewModel.IsNotificationOpen, Mode=TwoWay}"
+            Title="{x:Bind ViewModel.NotificationTitle, Mode=OneWay}"
+            Message="{x:Bind ViewModel.NotificationMessage, Mode=OneWay}"
+            Severity="{x:Bind ViewModel.NotificationSeverity, Mode=OneWay}" />
     </Grid>
 </Page>

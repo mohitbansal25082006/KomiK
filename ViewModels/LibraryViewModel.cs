@@ -34,6 +34,13 @@ public partial class LibraryViewModel : ObservableObject
     private readonly IFilePickerService _pickerService;
     private readonly IFormatConversionService _conversionService;
     private readonly IDuplicateDetectionService _duplicateService;
+    private readonly ISeriesDetectionService _seriesService = new SeriesDetectionService();
+    private const string IgnoredSeriesSettingKey = "series.ignored_keys";
+    private HashSet<string> _ignoredSeriesKeys = new(StringComparer.Ordinal);
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _statsRefreshTimer;
+    private bool _statsRefreshQueued;
+    private int _seriesUpdateVersion;
+    private int _duplicateScanVersion;
 
     private CancellationTokenSource? _searchDebounceCts;
     private CancellationTokenSource? _conversionCts;
@@ -74,7 +81,35 @@ public partial class LibraryViewModel : ObservableObject
     [ObservableProperty]
     private string _seriesSearchText = string.Empty;
 
-    public string SeriesGroupsCountDisplay => SeriesGroups.Count == 1 ? "1 Series" : $"{SeriesGroups.Count} Series";
+    public string SeriesGroupsCountDisplay => IsCreatorSection
+        ? (SeriesGroups.Count == 1 ? "1 Creator" : $"{SeriesGroups.Count} Creators")
+        : (SeriesGroups.Count == 1 ? "1 Series" : $"{SeriesGroups.Count} Series");
+
+    /// <summary>Series page sections: story continuations, or everything grouped by author/artist.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsStorySection))]
+    [NotifyPropertyChangedFor(nameof(SeriesGroupsCountDisplay))]
+    private bool _isCreatorSection;
+
+    public bool IsStorySection => !IsCreatorSection;
+
+    [ObservableProperty]
+    private int _storySeriesCount;
+
+    [ObservableProperty]
+    private int _creatorGroupCount;
+
+    partial void OnIsCreatorSectionChanged(bool value)
+    {
+        OnPropertyChanged(nameof(NewGroupButtonText));
+        _ = UpdateSeriesGroupsAsync();
+    }
+
+    [RelayCommand]
+    public void ShowStorySeries() => IsCreatorSection = false;
+
+    [RelayCommand]
+    public void ShowCreatorGroups() => IsCreatorSection = true;
 
     partial void OnSeriesSearchTextChanged(string value)
     {
@@ -98,7 +133,7 @@ public partial class LibraryViewModel : ObservableObject
         foreach (var item in ManualSeriesCandidates)
         {
             item.IsVisible = string.IsNullOrWhiteSpace(query) ||
-                             item.Comic.Title.Contains(query, StringComparison.OrdinalIgnoreCase);
+                             (item.Comic.Title.Contains(query, StringComparison.OrdinalIgnoreCase) || item.Caption.Contains(query, StringComparison.OrdinalIgnoreCase));
         }
     }
 
@@ -112,6 +147,27 @@ public partial class LibraryViewModel : ObservableObject
 
     public int DuplicateCount => DuplicateGroups.Count;
     public bool HasDuplicates => DuplicateGroups.Count > 0;
+    public int DuplicateExtraCopies => DuplicateGroups.Sum(g => Math.Max(0, g.CopyCount - 1));
+    public string DuplicateSummaryDisplay => DuplicateGroups.Count == 0
+        ? "No duplicates"
+        : $"{DuplicateGroups.Count} group{(DuplicateGroups.Count == 1 ? "" : "s")} · {DuplicateExtraCopies} extra cop{(DuplicateExtraCopies == 1 ? "y" : "ies")} · {DuplicateComicGroup.FormatBytes(DuplicateGroups.Sum(g => g.ReclaimableBytes))} reclaimable";
+
+    public List<string> SeriesStatusFilters { get; } = new() { "All Series", "Reading", "Not Started", "Caught Up", "Has Gaps" };
+
+    [ObservableProperty]
+    private string _selectedSeriesStatusFilter = "All Series";
+
+    partial void OnSelectedSeriesStatusFilterChanged(string value)
+    {
+        _ = UpdateSeriesGroupsAsync();
+    }
+
+    public int HiddenSeriesCount => _ignoredSeriesKeys.Count;
+    public bool HasHiddenSeries => _ignoredSeriesKeys.Count > 0;
+    public string HiddenSeriesDisplay => _ignoredSeriesKeys.Count == 1 ? "Restore 1 hidden" : $"Restore {_ignoredSeriesKeys.Count} hidden";
+
+    [ObservableProperty]
+    private bool _isStatsLoading;
 
     [ObservableProperty]
     private bool _isStatsDialogOpen;
@@ -367,9 +423,21 @@ public partial class LibraryViewModel : ObservableObject
         }
     }
 
-    public async Task InitializeAsync()
+    private bool _hasInitialized;
+
+    public string NewGroupButtonText => IsCreatorSection ? "New Creator" : "New Series";
+
+    /// <param name="refreshOnly">Returning to the page: reload data but keep the current view, section and open overlays.</param>
+    public async Task InitializeAsync(bool refreshOnly = false)
     {
         await _repository.InitializeAsync();
+        if (refreshOnly && _hasInitialized)
+        {
+            await RefreshTagsAndCollectionsAsync();
+            await ReloadComicsAsync();
+            return;
+        }
+        _hasInitialized = true;
         try
         {
             var settings = await _repository.GetAppSettingsAsync();
@@ -1020,85 +1088,53 @@ public partial class LibraryViewModel : ObservableObject
 
     public async Task UpdateSeriesGroupsAsync()
     {
-        SeriesGroups.Clear();
+        int version = ++_seriesUpdateVersion;
 
-        // 1. Fetch manual series from the database (all issues, independent of comic filter chips)
         var manualSeries = await _repository.GetManualSeriesAsync();
-        var manualComicIds = new HashSet<long>();
-        var matchingManualGroups = new List<ComicSeriesGroup>();
-
-        foreach (var ms in manualSeries)
-        {
-            foreach (var issue in ms.Issues)
-            {
-                manualComicIds.Add(issue.Id);
-            }
-
-            if (ms.Issues.Count > 0)
-            {
-                matchingManualGroups.Add(ms);
-            }
-        }
-
-        // 2. Auto-detect series from all library comics not in manual series (matching >= 90% full title)
         var allComics = await _repository.GetComicsAsync();
-        var clusters = new List<(string BaseSeriesName, string RepresentativeTitle, List<ComicEntity> Issues)>();
+        var metadata = await _repository.GetAllComicMetadataAsync();
+        var watched = await _repository.GetWatchedFoldersAsync();
+        await LoadIgnoredSeriesKeysAsync();
 
-        foreach (var comic in allComics)
+        var options = new SeriesDetectionOptions
         {
-            if (manualComicIds.Contains(comic.Id)) continue;
+            MinIssues = !string.IsNullOrWhiteSpace(SeriesSearchText) ? 1 : 2,
+            IgnoredSeriesKeys = new HashSet<string>(_ignoredSeriesKeys, StringComparer.Ordinal),
+            RootFolders = watched.Select(w => w.Path).ToList()
+        };
 
-            bool added = false;
-            foreach (var cluster in clusters)
+        // Auto-updating manual series first pull in newly detected comics of the group they follow.
+        if (manualSeries.Any(m => m.IsAutoUpdate))
+        {
+            var automatic = await Task.Run(() => _seriesService.DetectAll(allComics, metadata, null, new SeriesDetectionOptions { RootFolders = options.RootFolders }));
+            bool changed = false;
+            foreach (var manual in manualSeries.Where(m => m.IsAutoUpdate))
             {
-                if (SeriesParserHelper.AreInSameSeries(comic.Title, cluster.RepresentativeTitle, 0.90))
+                var additions = SeriesDetectionService.FindAutoUpdateAdditions(manual, automatic);
+                if (additions.Count == 0) continue;
+                try
                 {
-                    cluster.Issues.Add(comic);
-                    added = true;
-                    break;
+                    await _repository.AddComicsToManualSeriesAsync(manual.ManualSeriesId, additions.Select(a => a.Id));
+                    var ordered = SeriesDetectionService.OrderForReading(manual.Issues.Concat(additions), metadata, manual.Section == SeriesSection.Creator);
+                    await _repository.SetManualSeriesOrderAsync(manual.ManualSeriesId, ordered.Select(c => c.Id).ToList());
+                    changed = true;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[LibraryViewModel] Auto-update of '{manual.SeriesName}' failed: {ex.Message}");
                 }
             }
-
-            if (!added)
-            {
-                var (series, _) = SeriesParserHelper.ParseSeriesAndIssue(comic.Title, comic.FilePath);
-                clusters.Add((series, comic.Title, new List<ComicEntity> { comic }));
-            }
+            if (version != _seriesUpdateVersion) return;
+            if (changed) manualSeries = await _repository.GetManualSeriesAsync();
         }
 
-        int minIssues = !string.IsNullOrWhiteSpace(SeriesSearchText) ? 1 : 2;
-        var validClusters = clusters.Where(c => c.Issues.Count >= minIssues).ToList();
+        var detection = await Task.Run(() => _seriesService.DetectAll(allComics, metadata, manualSeries, options));
+        if (version != _seriesUpdateVersion) return; // a newer refresh started meanwhile
 
-        var autoGroups = new List<ComicSeriesGroup>();
-        foreach (var cluster in validClusters)
-        {
-            var sGroup = new ComicSeriesGroup
-            {
-                SeriesName = cluster.BaseSeriesName
-            };
+        StorySeriesCount = detection.Series.Count;
+        CreatorGroupCount = detection.Creators.Count;
+        var allGroups = IsCreatorSection ? detection.Creators : detection.Series;
 
-            var sortedIssues = cluster.Issues
-                .OrderBy(i => SeriesParserHelper.ParseSeriesAndIssue(i.Title, i.FilePath).IssueNumber)
-                .ThenBy(i => i.Title, new NaturalSortComparer())
-                .ToList();
-
-            foreach (var issue in sortedIssues)
-            {
-                sGroup.Issues.Add(issue);
-            }
-
-            if (!string.IsNullOrEmpty(sortedIssues[0].ThumbnailPath))
-            {
-                sGroup.CoverThumbnailPath = sortedIssues[0].ThumbnailPath;
-            }
-
-            sGroup.RefreshProperties();
-            autoGroups.Add(sGroup);
-        }
-
-        var allGroups = matchingManualGroups.Concat(autoGroups).ToList();
-
-        // Filter by SeriesSearchText if specified
         if (!string.IsNullOrWhiteSpace(SeriesSearchText))
         {
             string query = SeriesSearchText.Trim();
@@ -1108,27 +1144,177 @@ public partial class LibraryViewModel : ObservableObject
             ).ToList();
         }
 
-        // Sort series according to selected sort option
+        allGroups = SelectedSeriesStatusFilter switch
+        {
+            "Reading" => allGroups.Where(g => g.IsReading).ToList(),
+            "Not Started" => allGroups.Where(g => g.IsNotStarted).ToList(),
+            "Caught Up" => allGroups.Where(g => g.IsCaughtUp).ToList(),
+            "Has Gaps" => allGroups.Where(g => g.HasMissingIssues).ToList(),
+            _ => allGroups
+        };
+
+
         var sortOption = SelectedSortOption?.Option ?? LibrarySortOption.TitleAscending;
         IEnumerable<ComicSeriesGroup> sortedGroups = sortOption switch
         {
             LibrarySortOption.TitleDescending => allGroups.OrderByDescending(g => g.SeriesName, new NaturalSortComparer()),
-            LibrarySortOption.LastReadDescending => allGroups.OrderByDescending(g => g.Issues.Max(i => i.LastReadAt ?? DateTime.MinValue)),
+            LibrarySortOption.LastReadDescending => allGroups.OrderByDescending(g => g.LastReadAt ?? DateTime.MinValue),
             LibrarySortOption.DateAddedDescending => allGroups.OrderByDescending(g => g.Issues.Max(i => i.DateAdded)),
             LibrarySortOption.DateAddedAscending => allGroups.OrderBy(g => g.Issues.Min(i => i.DateAdded)),
-            LibrarySortOption.PageCountDescending => allGroups.OrderByDescending(g => g.Issues.Sum(i => i.PageCount)),
+            LibrarySortOption.PageCountDescending => allGroups.OrderByDescending(g => g.TotalPages),
             LibrarySortOption.FileSizeDescending => allGroups.OrderByDescending(g => g.Issues.Sum(i => i.FileSize)),
+            _ when IsCreatorSection => allGroups.OrderByDescending(g => g.WorkCount).ThenByDescending(g => g.IssueCount).ThenBy(g => g.SeriesName, new NaturalSortComparer()),
             _ => allGroups.OrderBy(g => g.SeriesName, new NaturalSortComparer())
         };
 
+        SeriesGroups.Clear();
         foreach (var group in sortedGroups)
         {
             SeriesGroups.Add(group);
         }
 
+        // Keep an open detail view pointed at the refreshed instance of the same series.
+        if (IsSeriesDetailOpen && SelectedSeriesGroup != null)
+        {
+            var current = SelectedSeriesGroup;
+            var refreshed = SeriesGroups.FirstOrDefault(g =>
+                (g.IsManual && current.IsManual && g.ManualSeriesId == current.ManualSeriesId) ||
+                (!g.IsManual && !current.IsManual && g.SeriesKey == current.SeriesKey));
+            if (refreshed != null) SelectedSeriesGroup = refreshed;
+        }
+
         OnPropertyChanged(nameof(SeriesGroupsCountDisplay));
         OnPropertyChanged(nameof(ShowSeriesGrid));
         OnPropertyChanged(nameof(ShowEmptyFilter));
+        OnPropertyChanged(nameof(HiddenSeriesCount));
+        OnPropertyChanged(nameof(HasHiddenSeries));
+        OnPropertyChanged(nameof(HiddenSeriesDisplay));
+    }
+
+    private async Task LoadIgnoredSeriesKeysAsync()
+    {
+        try
+        {
+            string? json = await _repository.GetSettingAsync(IgnoredSeriesSettingKey);
+            var keys = string.IsNullOrWhiteSpace(json)
+                ? new List<string>()
+                : System.Text.Json.JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+            _ignoredSeriesKeys = new HashSet<string>(keys.Where(k => !string.IsNullOrWhiteSpace(k)), StringComparer.Ordinal);
+        }
+        catch
+        {
+            _ignoredSeriesKeys = new HashSet<string>(StringComparer.Ordinal);
+        }
+    }
+
+    private Task SaveIgnoredSeriesKeysAsync() =>
+        _repository.SetSettingAsync(IgnoredSeriesSettingKey, System.Text.Json.JsonSerializer.Serialize(_ignoredSeriesKeys.OrderBy(k => k).ToList()));
+
+    [RelayCommand]
+    public async Task HideSeriesAsync(ComicSeriesGroup? group)
+    {
+        if (group == null || group.IsManual || string.IsNullOrEmpty(group.SeriesKey)) return;
+        _ignoredSeriesKeys.Add(group.SeriesKey);
+        await SaveIgnoredSeriesKeysAsync();
+        if (ReferenceEquals(SelectedSeriesGroup, group)) CloseSeriesDetail();
+        await UpdateSeriesGroupsAsync();
+        ShowNotification("Series Hidden", $"'{group.SeriesName}' won't be grouped automatically. Restore it from the Series toolbar.", InfoBarSeverity.Informational);
+    }
+
+    [RelayCommand]
+    public async Task RestoreHiddenSeriesAsync()
+    {
+        if (_ignoredSeriesKeys.Count == 0) return;
+        int count = _ignoredSeriesKeys.Count;
+        _ignoredSeriesKeys.Clear();
+        await SaveIgnoredSeriesKeysAsync();
+        await UpdateSeriesGroupsAsync();
+        ShowNotification("Series Restored", count == 1 ? "1 hidden series is back." : $"{count} hidden series are back.", InfoBarSeverity.Success);
+    }
+
+    [RelayCommand]
+    public async Task SaveSeriesAsManualAsync(ComicSeriesGroup? group)
+    {
+        if (group == null || group.IsManual || group.Issues.Count == 0) return;
+        try
+        {
+            var ids = group.Issues.Select(i => i.Id).ToHashSet();
+            var existing = await _repository.GetManualSeriesAsync();
+            var same = existing.FirstOrDefault(m => m.Issues.Count == ids.Count && m.Issues.All(i => ids.Contains(i.Id)));
+            if (same != null)
+            {
+                ShowNotification("Already Saved", $"These comics are already saved as the manual series '{same.SeriesName}'.", InfoBarSeverity.Informational);
+                return;
+            }
+
+            var section = group.IsCreatorGroup ? SeriesSection.Creator : SeriesSection.Story;
+            long id = await _repository.CreateManualSeriesAsync(group.SeriesName, group.Issues.Select(i => i.Id), section, autoUpdate: false, sourceKey: group.SeriesKey);
+            await UpdateSeriesGroupsAsync();
+            ReopenManualDetail(id);
+            ShowNotification(group.IsCreatorGroup ? "Creator Saved" : "Series Saved",
+                $"'{group.SeriesName}' is now manual with {group.Issues.Count} comics. Turn on Auto-update to keep adding new matches, or make it automatic again anytime.",
+                InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Couldn't Save Series", ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    private void ReopenManualDetail(long manualId)
+    {
+        var fresh = SeriesGroups.FirstOrDefault(g => g.IsManual && g.ManualSeriesId == manualId);
+        if (fresh != null && IsSeriesDetailOpen) SelectedSeriesGroup = fresh;
+        else if (IsSeriesDetailOpen) CloseSeriesDetail();
+    }
+
+    /// <summary>Turns a manual series back into automatic grouping (comics stay in the library).</summary>
+    [RelayCommand]
+    public async Task MakeSeriesAutomaticAsync(ComicSeriesGroup? group)
+    {
+        var target = group ?? SelectedSeriesGroup;
+        if (target == null || !target.IsManual) return;
+        try
+        {
+            await _repository.DeleteManualSeriesAsync(target.ManualSeriesId);
+            if (!string.IsNullOrEmpty(target.SourceKey) && _ignoredSeriesKeys.Remove(target.SourceKey))
+            {
+                await SaveIgnoredSeriesKeysAsync();
+            }
+            if (IsSeriesDetailOpen) CloseSeriesDetail();
+            await UpdateSeriesGroupsAsync();
+            ShowNotification("Back to Automatic", $"'{target.SeriesName}' is grouped automatically again and follows your library.", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Couldn't Switch to Automatic", ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    /// <summary>Manual series: switch auto-update (adding newly detected matching comics) on or off.</summary>
+    [RelayCommand]
+    public async Task ToggleSeriesAutoUpdateAsync(ComicSeriesGroup? group)
+    {
+        var target = group ?? SelectedSeriesGroup;
+        if (target == null || !target.IsManual) return;
+        bool enable = !target.IsAutoUpdate;
+        try
+        {
+            await _repository.UpdateManualSeriesOptionsAsync(target.ManualSeriesId, enable, target.Section);
+            target.IsAutoUpdate = enable;
+            int before = target.Issues.Count;
+            await UpdateSeriesGroupsAsync();
+            ReopenManualDetail(target.ManualSeriesId);
+            int after = SeriesGroups.FirstOrDefault(g => g.IsManual && g.ManualSeriesId == target.ManualSeriesId)?.Issues.Count ?? before;
+            string added = enable && after > before ? $" {after - before} new comic{(after - before == 1 ? " was" : "s were")} added." : string.Empty;
+            ShowNotification(enable ? "Auto-update On" : "Auto-update Off",
+                enable ? $"'{target.SeriesName}' will pick up new matching comics automatically.{added}" : $"'{target.SeriesName}' now only changes when you edit it.",
+                InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Couldn't Change Auto-update", ex.Message, InfoBarSeverity.Error);
+        }
     }
 
     [RelayCommand]
@@ -1191,21 +1377,79 @@ public partial class LibraryViewModel : ObservableObject
         }
     }
 
+    /// <summary>Create dialog: true builds a creator collection, false a continuation series.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NewSeriesIsStory))]
+    [NotifyPropertyChangedFor(nameof(NewSeriesNamePlaceholder))]
+    [NotifyPropertyChangedFor(nameof(NewSeriesDialogTitle))]
+    [NotifyPropertyChangedFor(nameof(NewSeriesSmartPickText))]
+    private bool _newSeriesIsCreator;
+
+    public bool NewSeriesIsStory => !NewSeriesIsCreator;
+    public string NewSeriesNamePlaceholder => NewSeriesIsCreator ? "Creator name, e.g. an author, artist or circle" : "Series name, e.g. Saga or Berserk";
+    public string NewSeriesDialogTitle => NewSeriesIsCreator ? "NEW CREATOR COLLECTION" : "NEW CONTINUATION SERIES";
+    public string NewSeriesSmartPickText => NewSeriesIsCreator ? "Pick everything by this creator" : "Pick every book of this series";
+
+    [ObservableProperty]
+    private bool _newSeriesAutoUpdate = true;
+
+    public string SelectedCandidateCountDisplay => SelectedCandidateCount == 1 ? "1 comic selected" : $"{SelectedCandidateCount} comics selected";
+
+    partial void OnSelectedCandidateCountChanged(int value) => OnPropertyChanged(nameof(SelectedCandidateCountDisplay));
+
     [RelayCommand]
     public async Task OpenCreateSeriesDialogAsync()
     {
         NewSeriesName = string.Empty;
         ManualSeriesSearchQuery = string.Empty;
         ManualSeriesCandidates.Clear();
+        NewSeriesIsCreator = IsCreatorSection;
+        NewSeriesAutoUpdate = true;
 
         var allComics = await _repository.GetComicsAsync();
-        foreach (var comic in allComics)
+        var metadata = await _repository.GetAllComicMetadataAsync();
+        foreach (var comic in allComics.Where(c => !c.IsMissing).OrderBy(c => c.Title, new NaturalSortComparer()))
         {
-            var candidate = new ManualSeriesComicItem(comic, isSelected: false);
-            ManualSeriesCandidates.Add(candidate);
+            metadata.TryGetValue(comic.Id, out var meta);
+            ManualSeriesCandidates.Add(new ManualSeriesComicItem(comic, ComicIdentityParser.Parse(comic, meta), isSelected: false));
         }
         SelectedCandidateCount = 0;
         IsCreateSeriesDialogOpen = true;
+    }
+
+    [RelayCommand]
+    public void SetNewSeriesKind(string? kind) => NewSeriesIsCreator = string.Equals(kind, "creator", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Selects every comic whose parsed series (or credited creator) matches the typed name.</summary>
+    [RelayCommand]
+    public void SmartSelectCandidates()
+    {
+        string name = (string.IsNullOrWhiteSpace(NewSeriesName) ? ManualSeriesSearchQuery : NewSeriesName)?.Trim() ?? string.Empty;
+        string key = ComicIdentityParser.MakeKey(name);
+        if (key.Length < 2)
+        {
+            ShowNotification("Type a Name First", NewSeriesIsCreator ? "Enter the creator's name, then pick their comics." : "Enter the series name, then pick its books.", InfoBarSeverity.Warning);
+            return;
+        }
+
+        int picked = 0;
+        foreach (var item in ManualSeriesCandidates)
+        {
+            bool match = NewSeriesIsCreator
+                ? item.Identity.CreatorKeys.Any(c => c == key || (key.Length >= 4 && (c.Contains(key) || key.Contains(c) && c.Length >= 4)))
+                : item.Identity.SeriesKey == key
+                  || (key.Length >= 5 && item.Identity.SeriesKey.StartsWith(key, StringComparison.Ordinal))
+                  || (key.Length >= 7 && SeriesParserHelper.CalculateTypoSimilarity(item.Identity.SeriesKey, key) >= 0.9);
+            if (match && !item.IsSelected)
+            {
+                item.IsSelected = true;
+                picked++;
+            }
+        }
+        SelectedCandidateCount = ManualSeriesCandidates.Count(c => c.IsSelected);
+        ShowNotification(picked == 0 ? "No Matches" : "Comics Picked",
+            picked == 0 ? $"Nothing in your library matches '{name}'. Pick comics by hand instead." : $"Selected {picked} comic{(picked == 1 ? "" : "s")} matching '{name}'.",
+            picked == 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
     }
 
     [RelayCommand]
@@ -1265,10 +1509,18 @@ public partial class LibraryViewModel : ObservableObject
 
         try
         {
-            await _repository.CreateManualSeriesAsync(name, selectedIds);
+            var selectedComics = ManualSeriesCandidates.Where(c => c.IsSelected).Select(c => c.Comic).ToList();
+            var metadata = await _repository.GetAllComicMetadataAsync();
+            var ordered = SeriesDetectionService.OrderForReading(selectedComics, metadata, NewSeriesIsCreator);
+            var section = NewSeriesIsCreator ? SeriesSection.Creator : SeriesSection.Story;
+            await _repository.CreateManualSeriesAsync(name, ordered.Select(c => c.Id), section, NewSeriesAutoUpdate, sourceKey: null);
             IsCreateSeriesDialogOpen = false;
+            IsCreatorSection = NewSeriesIsCreator;
+            if (!IsSeriesView) IsSeriesView = true;
             await ReloadComicsAsync();
-            ShowNotification("Series Created", $"Successfully created series '{name}' with {selectedIds.Count} comic(s).", InfoBarSeverity.Success);
+            ShowNotification(NewSeriesIsCreator ? "Creator Collection Created" : "Series Created",
+                $"'{name}' has {selectedIds.Count} comic{(selectedIds.Count == 1 ? "" : "s")}{(NewSeriesAutoUpdate ? " and will auto-update with new matches" : "")}.",
+                InfoBarSeverity.Success);
         }
         catch (Exception ex)
         {
@@ -1335,9 +1587,9 @@ public partial class LibraryViewModel : ObservableObject
         var allComics = await _repository.GetComicsAsync();
         foreach (var comic in allComics)
         {
-            if (!existingIds.Contains(comic.Id))
+            if (!existingIds.Contains(comic.Id) && !comic.IsMissing)
             {
-                var candidate = new ManualSeriesComicItem(comic, isSelected: false);
+                var candidate = new ManualSeriesComicItem(comic, ComicIdentityParser.Parse(comic), isSelected: false);
                 ManualSeriesCandidates.Add(candidate);
             }
         }
@@ -1378,7 +1630,8 @@ public partial class LibraryViewModel : ObservableObject
             {
                 // Upgrade auto-detected series into a persistent manual series
                 var allIds = SelectedSeriesGroup.Issues.Select(i => i.Id).Concat(selectedComics.Select(c => c.Id)).Distinct();
-                seriesId = await _repository.CreateManualSeriesAsync(SelectedSeriesGroup.SeriesName, allIds);
+                seriesId = await _repository.CreateManualSeriesAsync(SelectedSeriesGroup.SeriesName, allIds,
+                    SelectedSeriesGroup.IsCreatorGroup ? SeriesSection.Creator : SeriesSection.Story, autoUpdate: false, sourceKey: SelectedSeriesGroup.SeriesKey);
                 SelectedSeriesGroup.ManualSeriesId = seriesId;
                 SelectedSeriesGroup.IsManual = true;
             }
@@ -1425,20 +1678,22 @@ public partial class LibraryViewModel : ObservableObject
     [RelayCommand]
     public async Task ScanDuplicatesAsync()
     {
+        int version = ++_duplicateScanVersion;
         IsScanningDuplicates = true;
         try
         {
             var allComics = await _repository.GetComicsAsync();
             var ignored = await _repository.GetIgnoredDuplicatePairsAsync();
-            var dupes = _duplicateService.FindDuplicates(allComics, ignored);
+            var metadata = await _repository.GetAllComicMetadataAsync();
+            var dupes = await Task.Run(() => _duplicateService.FindDuplicates(allComics, ignored, metadata, compareFileContents: true));
+            if (version != _duplicateScanVersion) return;
 
             DuplicateGroups.Clear();
             foreach (var d in dupes)
             {
                 DuplicateGroups.Add(d);
             }
-            OnPropertyChanged(nameof(DuplicateCount));
-            OnPropertyChanged(nameof(HasDuplicates));
+            NotifyDuplicatesChanged();
         }
         catch (Exception ex)
         {
@@ -1446,7 +1701,159 @@ public partial class LibraryViewModel : ObservableObject
         }
         finally
         {
-            IsScanningDuplicates = false;
+            if (version == _duplicateScanVersion) IsScanningDuplicates = false;
+        }
+    }
+
+    private void NotifyDuplicatesChanged()
+    {
+        OnPropertyChanged(nameof(DuplicateCount));
+        OnPropertyChanged(nameof(HasDuplicates));
+        OnPropertyChanged(nameof(DuplicateExtraCopies));
+        OnPropertyChanged(nameof(DuplicateSummaryDisplay));
+    }
+
+    /// <summary>Keeps the recommended copy, carries reading progress and favorite over, and removes the others.</summary>
+    public async Task<int> KeepBestCopyAsync(DuplicateComicGroup? group, bool deleteFiles)
+    {
+        if (group?.RecommendedKeep is not { } keep) return 0;
+        var extras = group.Copies.Where(c => !ReferenceEquals(c, keep)).ToList();
+        if (extras.Count == 0) return 0;
+
+        await MergeReadingStateAsync(keep, extras);
+
+        int removed = 0;
+        foreach (var extra in extras)
+        {
+            try
+            {
+                await _repository.DeleteComicAsync(extra.Id, deleteFiles);
+                Comics.Remove(extra);
+                removed++;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[LibraryViewModel] Remove duplicate failed: {ex.Message}");
+            }
+        }
+
+        DuplicateGroups.Remove(group);
+        NotifyDuplicatesChanged();
+        return removed;
+    }
+
+    public async Task ResolveDuplicateGroupAsync(DuplicateComicGroup? group, bool deleteFiles)
+    {
+        if (group == null) return;
+        int removed = await KeepBestCopyAsync(group, deleteFiles);
+        await AfterDuplicateCleanupAsync();
+        string where = deleteFiles ? "moved to the Recycle Bin" : "removed from the library";
+        ShowNotification("Duplicates Resolved",
+            $"Kept the best copy of '{group.GroupTitle}'. {removed} extra cop{(removed == 1 ? "y" : "ies")} {where}.",
+            InfoBarSeverity.Success);
+    }
+
+    public async Task ResolveAllDuplicatesAsync(bool deleteFiles, bool highConfidenceOnly)
+    {
+        var targets = DuplicateGroups.Where(g => !highConfidenceOnly || g.IsHighConfidence).ToList();
+        int removed = 0;
+        foreach (var group in targets)
+        {
+            removed += await KeepBestCopyAsync(group, deleteFiles);
+        }
+
+        await AfterDuplicateCleanupAsync();
+        string where = deleteFiles ? "moved to the Recycle Bin" : "removed from the library";
+        ShowNotification("Library Cleaned Up",
+            $"Resolved {targets.Count} duplicate group{(targets.Count == 1 ? "" : "s")}. {removed} extra cop{(removed == 1 ? "y" : "ies")} {where}.",
+            InfoBarSeverity.Success);
+    }
+
+    public async Task RemoveDuplicateCopyAsync(ComicEntity? comic, bool deleteFile)
+    {
+        if (comic == null) return;
+        try
+        {
+            var group = DuplicateGroups.FirstOrDefault(g => g.Copies.Contains(comic));
+            var keep = group?.Copies.Where(c => !ReferenceEquals(c, comic)).OrderByDescending(DuplicateDetectionService.KeepScore).FirstOrDefault();
+            if (keep != null) await MergeReadingStateAsync(keep, new[] { comic });
+
+            await _repository.DeleteComicAsync(comic.Id, deleteFile);
+            Comics.Remove(comic);
+
+            if (group != null)
+            {
+                group.Copies.Remove(comic);
+                var item = group.CopyItems.FirstOrDefault(c => ReferenceEquals(c.Comic, comic));
+                if (item != null) group.CopyItems.Remove(item);
+                if (group.Copies.Count < 2)
+                {
+                    DuplicateGroups.Remove(group);
+                }
+                else if (!group.CopyItems.Any(c => c.IsRecommended))
+                {
+                    var best = group.CopyItems.OrderByDescending(c => DuplicateDetectionService.KeepScore(c.Comic)).First();
+                    best.IsRecommended = true;
+                }
+                group.Refresh();
+            }
+
+            NotifyDuplicatesChanged();
+            await AfterDuplicateCleanupAsync();
+            ShowNotification(deleteFile ? "Copy Recycled" : "Copy Removed",
+                deleteFile ? $"'{comic.Title}' was moved to the Recycle Bin." : $"'{comic.Title}' was removed from the library (the file stays on disk).",
+                InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Removal Failed", ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    /// <summary>The kept copy inherits the furthest reading progress and any favorite flag from the removed copies.</summary>
+    private async Task MergeReadingStateAsync(ComicEntity keep, IEnumerable<ComicEntity> removed)
+    {
+        try
+        {
+            var others = removed.ToList();
+            if (others.Any(o => o.IsFavorite) && !keep.IsFavorite)
+            {
+                await _repository.SetFavoriteAsync(keep.Id, true);
+                keep.IsFavorite = true;
+            }
+
+            static double ProgressOf(ComicEntity c) =>
+                c.IsCompleted ? 1.0 : c.PageCount > 0 && c.LastReadPage > 0 ? (c.LastReadPage + 1) / (double)c.PageCount : 0;
+
+            var furthest = others.OrderByDescending(ProgressOf).FirstOrDefault();
+            if (furthest == null || ProgressOf(furthest) <= ProgressOf(keep)) return;
+
+            if (furthest.IsCompleted)
+            {
+                await _repository.SetCompletedStatusAsync(keep.Id, true);
+                keep.IsCompleted = true;
+            }
+            else if (keep.PageCount > 0)
+            {
+                int page = Math.Clamp((int)Math.Round(ProgressOf(furthest) * keep.PageCount) - 1, 0, keep.PageCount - 1);
+                await _repository.UpdateReadingProgressAsync(keep.FilePath, page, keep.PageCount);
+                keep.LastReadPage = page;
+                keep.LastReadAt = DateTime.UtcNow;
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[LibraryViewModel] Merge reading state failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Reloads the grid, counts, series and duplicate groups so removed copies vanish instantly everywhere.</summary>
+    private async Task AfterDuplicateCleanupAsync()
+    {
+        await ReloadComicsAsync();
+        if (IsSeriesDetailOpen && SelectedSeriesGroup != null && SelectedSeriesGroup.Issues.Count == 0)
+        {
+            CloseSeriesDetail();
         }
     }
 
@@ -1466,9 +1873,8 @@ public partial class LibraryViewModel : ObservableObject
             }
 
             DuplicateGroups.Remove(group);
-            OnPropertyChanged(nameof(DuplicateCount));
-            OnPropertyChanged(nameof(HasDuplicates));
-            ShowNotification("Duplicates Dismissed", $"Flag removed for '{group.GroupTitle}'. Both copies will be kept.", InfoBarSeverity.Informational);
+            NotifyDuplicatesChanged();
+            ShowNotification("Kept All Copies", $"'{group.GroupTitle}' won't be flagged again.", InfoBarSeverity.Informational);
         }
         catch (Exception ex)
         {
@@ -1477,50 +1883,33 @@ public partial class LibraryViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public async Task DeleteDuplicateCopyAsync(ComicEntity? comic)
-    {
-        if (comic == null) return;
-
-        try
-        {
-            await _repository.DeleteComicAsync(comic.Id, deleteFileFromDisk: true);
-            Comics.Remove(comic);
-
-            foreach (var group in DuplicateGroups.ToList())
-            {
-                if (group.Copies.Contains(comic))
-                {
-                    group.Copies.Remove(comic);
-                    if (group.Copies.Count < 2)
-                    {
-                        DuplicateGroups.Remove(group);
-                    }
-                }
-            }
-
-            OnPropertyChanged(nameof(DuplicateCount));
-            OnPropertyChanged(nameof(HasDuplicates));
-            await UpdateSeriesGroupsAsync();
-            NotifyComicsChanged();
-            ShowNotification("Duplicate Deleted", $"Successfully deleted '{comic.Title}' from disk and library.", InfoBarSeverity.Success);
-        }
-        catch (Exception ex)
-        {
-            ShowNotification("Deletion Failed", ex.Message, InfoBarSeverity.Error);
-        }
-    }
+    public Task DeleteDuplicateCopyAsync(ComicEntity? comic) => RemoveDuplicateCopyAsync(comic, deleteFile: true);
 
     [RelayCommand]
     public async Task OpenReadingStatsAsync()
     {
+        IsStatsDialogOpen = true;
+        ReadingStatsNotifier.StatsChanged -= OnReadingStatsChanged;
+        ReadingStatsNotifier.StatsChanged += OnReadingStatsChanged;
+        StartStatsRefreshTimer();
+        await RefreshReadingStatsAsync();
+    }
+
+    [RelayCommand]
+    public async Task RefreshReadingStatsAsync()
+    {
+        IsStatsLoading = true;
         try
         {
             StatsSummary = await _repository.GetReadingStatsSummaryAsync();
-            IsStatsDialogOpen = true;
         }
         catch (Exception ex)
         {
             ShowNotification("Stats Error", ex.Message, InfoBarSeverity.Error);
+        }
+        finally
+        {
+            IsStatsLoading = false;
         }
     }
 
@@ -1528,6 +1917,38 @@ public partial class LibraryViewModel : ObservableObject
     public void CloseReadingStats()
     {
         IsStatsDialogOpen = false;
+        ReadingStatsNotifier.StatsChanged -= OnReadingStatsChanged;
+        _statsRefreshTimer?.Stop();
+    }
+
+    private void OnReadingStatsChanged()
+    {
+        var dq = App.DispatcherQueue;
+        if (dq == null || _statsRefreshQueued) return;
+        _statsRefreshQueued = true;
+        dq.TryEnqueue(async () =>
+        {
+            _statsRefreshQueued = false;
+            if (IsStatsDialogOpen) await RefreshReadingStatsAsync();
+        });
+    }
+
+    private void StartStatsRefreshTimer()
+    {
+        var dq = App.DispatcherQueue;
+        if (dq == null) return;
+        if (_statsRefreshTimer == null)
+        {
+            _statsRefreshTimer = dq.CreateTimer();
+            // Keeps "today", streaks and "x minutes ago" correct while the dashboard stays open.
+            _statsRefreshTimer.Interval = TimeSpan.FromSeconds(30);
+            _statsRefreshTimer.IsRepeating = true;
+            _statsRefreshTimer.Tick += async (_, _) =>
+            {
+                if (IsStatsDialogOpen) await RefreshReadingStatsAsync();
+            };
+        }
+        _statsRefreshTimer.Start();
     }
 
     [RelayCommand]

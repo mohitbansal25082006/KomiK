@@ -25,6 +25,7 @@ public sealed partial class SettingsPage : Page
         ViewModel.IsNotificationOpen = false;
         await ViewModel.InitializeAsync();
         ViewModel.IsNotificationOpen = false;
+        SyncThemeTiles();
         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
             _isInitializing = false;
@@ -43,6 +44,37 @@ public sealed partial class SettingsPage : Page
             Frame.Navigate(typeof(LibraryPage));
         }
     }
+
+    private void ThemeTile_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: string tag } && int.TryParse(tag, out int index))
+        {
+            ViewModel.ThemeIndex = index;
+            SyncThemeTiles();
+            if (!_isInitializing) _ = ViewModel.SaveSettingsAsync();
+        }
+    }
+
+    private void SyncThemeTiles()
+    {
+        ThemeSystemTile.IsChecked = ViewModel.ThemeIndex == 0;
+        ThemeLightTile.IsChecked = ViewModel.ThemeIndex == 1;
+        ThemeDarkTile.IsChecked = ViewModel.ThemeIndex == 2;
+    }
+
+    private void JumpTo(FrameworkElement section)
+    {
+        var point = section.TransformToVisual((UIElement)SettingsScroller.Content).TransformPoint(new Windows.Foundation.Point(0, 0));
+        SettingsScroller.ChangeView(null, point.Y, null, false);
+        Helpers.MotionHelper.PlayReveal(section);
+    }
+
+    private void NavAppearance_Click(object sender, RoutedEventArgs e) => JumpTo(AppearanceSection);
+    private void NavReading_Click(object sender, RoutedEventArgs e) => JumpTo(ReadingSection);
+    private void NavFolders_Click(object sender, RoutedEventArgs e) => JumpTo(FoldersSection);
+    private void NavCovers_Click(object sender, RoutedEventArgs e) => JumpTo(CoversSection);
+    private void NavBackup_Click(object sender, RoutedEventArgs e) => JumpTo(BackupSection);
+    private void NavAbout_Click(object sender, RoutedEventArgs e) => JumpTo(AboutSection);
 
     private void SettingChanged(object sender, object e)
     {

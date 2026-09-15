@@ -6,77 +6,22 @@ namespace Komik.Helpers;
 
 public static class SeriesParserHelper
 {
-    // Specific issue pattern: #12, issue 05, ch. 102, chapter 4
-    private static readonly Regex SpecificIssuePattern = new(
-        @"(?:[\s_.-]+(?:#|issue|ch|chapter)[\s_.-]*(\d+(?:\.\d+)?))",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-    // Volume pattern: v2, vol 03, volume 1
-    private static readonly Regex VolumePattern = new(
-        @"(?:[\s_.-]+(?:v|vol|volume)[\s_.-]*(\d+(?:\.\d+)?))",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-    // Trailing issue number pattern: "Batman 001", "Invincible 042 (2020)"
-    private static readonly Regex TrailingNumberPattern = new(
-        @"(?:[\s_.-]+(\d{1,4})(?:\s*[\(\[].*?[\)\]])?\.?[a-zA-Z0-9]*$)",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-    private static readonly Regex PunctuationCleanPattern = new(
-        @"^[\s_.-]+|[\s_.-]+$",
-        RegexOptions.Compiled);
-
     public static (string SeriesName, double IssueNumber) ParseSeriesAndIssue(string title, string? filePath = null)
     {
-        string cleanTitle = Path.GetFileNameWithoutExtension(title);
-        if (string.IsNullOrWhiteSpace(cleanTitle) && !string.IsNullOrWhiteSpace(filePath))
+        var identity = ComicIdentityParser.Parse(title, filePath);
+        if (identity.HasNumber && !string.IsNullOrWhiteSpace(identity.SeriesName))
         {
-            cleanTitle = Path.GetFileNameWithoutExtension(filePath);
+            return (identity.SeriesName, identity.Issue ?? identity.Volume ?? 1.0);
         }
 
-        // 1. Try explicit issue marker (#, issue, ch, chapter)
-        var match = SpecificIssuePattern.Match(cleanTitle);
-        if (!match.Success)
+        // No number in the name: a meaningful parent folder usually names the series.
+        string? folder = ComicIdentityParser.GetMeaningfulFolderName(filePath);
+        if (!string.IsNullOrWhiteSpace(folder))
         {
-            // 2. Try explicit volume marker (v, vol, volume)
-            match = VolumePattern.Match(cleanTitle);
+            return (folder, 1.0);
         }
 
-        if (!match.Success)
-        {
-            // 3. Try trailing number
-            match = TrailingNumberPattern.Match(cleanTitle);
-        }
-
-        if (match.Success)
-        {
-            string issueStr = match.Groups[1].Value;
-            if (double.TryParse(issueStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double issueNum))
-            {
-                string seriesPart = cleanTitle.Substring(0, match.Index).Trim();
-                seriesPart = PunctuationCleanPattern.Replace(seriesPart, string.Empty).Trim();
-
-                if (!string.IsNullOrWhiteSpace(seriesPart))
-                {
-                    return (seriesPart, issueNum);
-                }
-            }
-        }
-
-        // Fallback: If title has parent folder name that looks like a series
-        if (!string.IsNullOrWhiteSpace(filePath))
-        {
-            try
-            {
-                string? parentDir = Path.GetFileName(Path.GetDirectoryName(filePath));
-                if (!string.IsNullOrWhiteSpace(parentDir) && !parentDir.Equals("Comics", StringComparison.OrdinalIgnoreCase) && !parentDir.Equals("Downloads", StringComparison.OrdinalIgnoreCase))
-                {
-                    return (parentDir, 1.0);
-                }
-            }
-            catch { }
-        }
-
-        return (cleanTitle, 1.0);
+        return (string.IsNullOrWhiteSpace(identity.SeriesName) ? Path.GetFileNameWithoutExtension(title) : identity.SeriesName, 1.0);
     }
 
     private static readonly Regex MetadataTagsPattern = new(
@@ -133,6 +78,43 @@ public static class SeriesParserHelper
         return dPrevious[m];
     }
 
+    /// <summary>
+    /// Optimal string alignment distance: like Levenshtein, but swapping two neighbouring letters costs 1 (common typo).
+    /// </summary>
+    public static int TranspositionDistance(string s, string t)
+    {
+        if (string.IsNullOrEmpty(s)) return string.IsNullOrEmpty(t) ? 0 : t.Length;
+        if (string.IsNullOrEmpty(t)) return s.Length;
+
+        var d = new int[s.Length + 1, t.Length + 1];
+        for (int i = 0; i <= s.Length; i++) d[i, 0] = i;
+        for (int j = 0; j <= t.Length; j++) d[0, j] = j;
+
+        for (int i = 1; i <= s.Length; i++)
+        {
+            for (int j = 1; j <= t.Length; j++)
+            {
+                int cost = s[i - 1] == t[j - 1] ? 0 : 1;
+                d[i, j] = Math.Min(Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1), d[i - 1, j - 1] + cost);
+                if (i > 1 && j > 1 && s[i - 1] == t[j - 2] && s[i - 2] == t[j - 1])
+                {
+                    d[i, j] = Math.Min(d[i, j], d[i - 2, j - 2] + 1);
+                }
+            }
+        }
+
+        return d[s.Length, t.Length];
+    }
+
+    /// <summary>1.0 for equal strings, tolerant of letter swaps.</summary>
+    public static double CalculateTypoSimilarity(string s1, string s2)
+    {
+        if (string.IsNullOrEmpty(s1) && string.IsNullOrEmpty(s2)) return 1.0;
+        if (string.IsNullOrEmpty(s1) || string.IsNullOrEmpty(s2)) return 0.0;
+        int maxLen = Math.Max(s1.Length, s2.Length);
+        return 1.0 - (double)TranspositionDistance(s1, s2) / maxLen;
+    }
+
     public static double CalculateSimilarity(string s1, string s2)
     {
         if (string.IsNullOrEmpty(s1) && string.IsNullOrEmpty(s2)) return 1.0;
@@ -150,40 +132,33 @@ public static class SeriesParserHelper
     {
         if (string.IsNullOrWhiteSpace(title1) || string.IsNullOrWhiteSpace(title2)) return false;
 
-        string norm1 = NormalizeTitle(title1);
-        string norm2 = NormalizeTitle(title2);
+        var a = ComicIdentityParser.Parse(title1);
+        var b = ComicIdentityParser.Parse(title2);
+        if (a.SeriesKey.Length == 0 || b.SeriesKey.Length == 0) return false;
+        if (a.SeriesKey == b.SeriesKey) return true;
 
-        if (string.Equals(norm1, norm2, StringComparison.OrdinalIgnoreCase))
-        {
-            // Same normalized title: identical issues or duplicates, but if different issue parsed, same series
-            return true;
-        }
-
-        // 1. Raw similarity of full normalized title
-        double rawSim = CalculateSimilarity(norm1, norm2);
-        if (rawSim >= threshold) return true;
-
-        // 2. Structural similarity (with issue numbers mapped to # placeholder)
-        string struct1 = NormalizeStructureForSeries(title1);
-        string struct2 = NormalizeStructureForSeries(title2);
-
-        double structSim = CalculateSimilarity(struct1, struct2);
-        if (structSim >= threshold) return true;
-
-        return false;
+        // Tolerate small spelling/punctuation differences in longer series names only.
+        if (Math.Min(a.SeriesKey.Length, b.SeriesKey.Length) < 6) return false;
+        return CalculateTypoSimilarity(a.SeriesKey, b.SeriesKey) >= threshold;
     }
 
     public static bool AreDuplicates(string title1, string title2, double threshold = 0.95)
     {
         if (string.IsNullOrWhiteSpace(title1) || string.IsNullOrWhiteSpace(title2)) return false;
 
-        string norm1 = NormalizeTitle(title1);
-        string norm2 = NormalizeTitle(title2);
+        var a = ComicIdentityParser.Parse(title1);
+        var b = ComicIdentityParser.Parse(title2);
 
-        if (string.Equals(norm1, norm2, StringComparison.OrdinalIgnoreCase)) return true;
+        // Numbered books: only the exact same series + volume + issue can be duplicates (#1 is never a copy of #2).
+        if (a.BookKey != null || b.BookKey != null)
+        {
+            return a.BookKey != null && a.BookKey == b.BookKey;
+        }
 
-        double sim = CalculateSimilarity(norm1, norm2);
-        return sim >= threshold;
+        string keyA = ComicIdentityParser.MakeKey(a.CleanTitle);
+        string keyB = ComicIdentityParser.MakeKey(b.CleanTitle);
+        if (keyA.Length == 0 || keyB.Length == 0) return false;
+        if (keyA == keyB) return true;
+        return CalculateSimilarity(keyA, keyB) >= threshold;
     }
 }
-

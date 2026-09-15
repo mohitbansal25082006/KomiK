@@ -120,7 +120,7 @@ function ConverterMachine() {
   const ref = useRef<HTMLDivElement>(null);
   const active = useInView(ref, { margin: "200px 0px" });
   return (
-    <div ref={ref} className="relative mt-14 overflow-hidden border-[3px] border-black bg-[#15151B] p-5 shadow-[8px_8px_0_#000] sm:p-8 lg:p-10">
+    <div ref={ref} className="relative mt-14 overflow-hidden border-[3px] border-black bg-panel p-5 shadow-[8px_8px_0_#000] sm:p-8 lg:p-10">
       <div className="bg-halftone-cyan pointer-events-none absolute inset-0 opacity-25" />
       <div className="relative grid items-center gap-8 lg:grid-cols-12">
         <div className="lg:col-span-5">
@@ -216,7 +216,7 @@ function ConverterMachine() {
 
 export default function FormatShowcase() {
   return (
-    <section id="formats" className="relative scroll-mt-16 overflow-hidden border-b-[3px] border-black bg-[#0B0B10] py-20 sm:py-28">
+    <section id="formats" className="relative scroll-mt-16 overflow-hidden border-b-[3px] border-black bg-ink-deep py-20 sm:py-28">
       <div className="bg-halftone pointer-events-none absolute inset-0 opacity-30" />
       <div className="pointer-events-none absolute -right-60 top-0 h-[720px] w-[720px] bg-[radial-gradient(circle,rgba(0,194,255,0.1),transparent_65%)]" />
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

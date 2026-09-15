@@ -83,6 +83,7 @@ public interface ILibraryRepository : IDisposable
 
     // Extended Comic Metadata
     Task<ComicMetadataEntity?> GetMetadataForComicAsync(long comicId);
+    Task<IReadOnlyDictionary<long, ComicMetadataEntity>> GetAllComicMetadataAsync();
     Task SaveComicMetadataAsync(ComicMetadataEntity metadata);
     Task DeleteComicMetadataAsync(long comicId);
     Task UpdateComicTitleAsync(long comicId, string title);
@@ -95,6 +96,7 @@ public interface ILibraryRepository : IDisposable
 
     // Reading Sessions & Statistics
     Task RecordReadingSessionAsync(long comicId, DateTime startTime, DateTime endTime, int durationSeconds, int pagesRead);
+    Task<long> SaveReadingSessionAsync(long? sessionId, long comicId, DateTime startTimeUtc, DateTime endTimeUtc, int durationSeconds, int pagesRead);
     Task<ReadingStatsSummary> GetReadingStatsSummaryAsync();
 
     // Duplicate Handling
@@ -110,6 +112,9 @@ public interface ILibraryRepository : IDisposable
     // Manual Series
     Task<List<ComicSeriesGroup>> GetManualSeriesAsync();
     Task<long> CreateManualSeriesAsync(string name, IEnumerable<long> comicIds);
+    Task<long> CreateManualSeriesAsync(string name, IEnumerable<long> comicIds, SeriesSection section, bool autoUpdate, string? sourceKey);
+    Task UpdateManualSeriesOptionsAsync(long seriesId, bool autoUpdate, SeriesSection section);
+    Task SetManualSeriesOrderAsync(long seriesId, IReadOnlyList<long> orderedComicIds);
     Task AddComicsToManualSeriesAsync(long seriesId, IEnumerable<long> comicIds);
     Task RemoveComicFromManualSeriesAsync(long seriesId, long comicId);
     Task DeleteManualSeriesAsync(long seriesId);
