@@ -1501,6 +1501,9 @@ public static class Program
 
             // Tests 31-36: series detection, duplicate detection and live reading statistics
             await LibraryIntelligenceTests.RunAllAsync(RunTestAsync, tempDir);
+
+            // v1.2.0: embedded ComicInfo.xml metadata, tags and watched-folder downloads
+            await EmbeddedMetadataTests.RunAllAsync(RunTestAsync, tempDir);
         }
         finally
         {

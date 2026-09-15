@@ -116,6 +116,8 @@ public sealed class LibraryScannerService : ILibraryScannerService
                 await _repository.UpdateWatchedFolderLastScannedAsync(folder.Id, DateTime.UtcNow);
             }
 
+            await ImportEmbeddedMetadataAsync(cancellationToken: cancellationToken);
+
             ReportProgress($"Rescan complete. {totalDiscovered} total comic{(totalDiscovered == 1 ? "" : "s")} indexed.", totalDiscovered, isCompleted: true);
         }
         finally
@@ -244,10 +246,14 @@ public sealed class LibraryScannerService : ILibraryScannerService
                 parentFolder = fileInfo.Directory?.Name;
             }
 
+            // ComicInfo.xml (e.g. from KomiK Downloader): title, series, credits and tags.
+            var embedded = format == ComicSourceType.PdfDocument ? null : ComicInfoReader.TryRead(path);
+            string title = embedded?.ResolveLibraryTitle(comic.Title) ?? comic.Title;
+
             var entity = new ComicEntity
             {
                 FilePath = path,
-                Title = comic.Title,
+                Title = title,
                 Format = format,
                 PageCount = comic.PageCount,
                 ThumbnailPath = thumbPath,
@@ -259,13 +265,69 @@ public sealed class LibraryScannerService : ILibraryScannerService
                 IsMissing = false
             };
 
-            await _repository.InsertComicAsync(entity);
+            long comicId = await _repository.InsertComicAsync(entity);
+            if (embedded != null)
+            {
+                await ApplyEmbeddedInfoAsync(comicId, title, embedded);
+            }
         }
         catch
         {
             // Skip invalid/unsupported/corrupted files during background scan
         }
     }
+
+    /// <summary>
+    /// Saves embedded metadata and tags for a comic. Metadata the user already has (typed in Comic
+    /// Details or restored from a backup) is never replaced; tags are only ever added.
+    /// </summary>
+    private async Task ApplyEmbeddedInfoAsync(long comicId, string libraryTitle, EmbeddedComicInfo info)
+    {
+        if (info.HasMetadata && await _repository.GetMetadataForComicAsync(comicId) == null)
+        {
+            await _repository.SaveComicMetadataAsync(info.ToMetadata(comicId, libraryTitle));
+        }
+
+        foreach (var tag in info.Tags)
+        {
+            await _repository.AddTagToComicAsync(comicId, tag);
+        }
+    }
+
+    /// <summary>
+    /// One-time pass for libraries indexed before Komik read ComicInfo.xml: comics without any
+    /// metadata get their embedded title, details and tags. Returns how many comics were updated.
+    /// </summary>
+    public async Task<int> ImportEmbeddedMetadataAsync(bool force = false, CancellationToken cancellationToken = default)
+    {
+        if (!force && await _repository.GetSettingAsync(EmbeddedMetadataImportedKey) == "1") return 0;
+
+        int updated = 0;
+        var metadata = await _repository.GetAllComicMetadataAsync();
+        foreach (var comic in await _repository.GetComicsAsync())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (comic.IsMissing || comic.Format == ComicSourceType.PdfDocument || metadata.ContainsKey(comic.Id)) continue;
+
+            var info = await Task.Run(() => ComicInfoReader.TryRead(comic.FilePath), cancellationToken);
+            if (info == null) continue;
+
+            string title = info.ResolveLibraryTitle(comic.Title);
+            if (title != comic.Title)
+            {
+                await _repository.UpdateComicTitleAsync(comic.Id, title);
+                comic.Title = title;
+            }
+
+            await ApplyEmbeddedInfoAsync(comic.Id, title, info);
+            updated++;
+        }
+
+        await _repository.SetSettingAsync(EmbeddedMetadataImportedKey, "1");
+        return updated;
+    }
+
+    private const string EmbeddedMetadataImportedKey = "EmbeddedComicInfoImported";
 
     public async Task<ComicEntity?> IndexSingleComicAsync(string path, CancellationToken cancellationToken = default)
     {
@@ -351,6 +413,56 @@ public sealed class LibraryScannerService : ILibraryScannerService
             IsScanning = false;
         }
         return added;
+    }
+
+    /// <summary>
+    /// Quietly indexes new comic files or folders (for example a download that just finished in a watched
+    /// folder). Comics already in the library or removed by the user are skipped. No progress is reported.
+    /// </summary>
+    public async Task<int> IndexNewSourcesAsync(IEnumerable<string> paths, CancellationToken cancellationToken = default)
+    {
+        var removed = await _repository.GetRemovedComicPathsAsync();
+        int added = 0;
+        foreach (var path in paths.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ComicSourceType? format = DetectFormat(path);
+            if (!format.HasValue || removed.Contains(path)) continue;
+            if (await _repository.GetComicByPathAsync(path) is { IsMissing: false }) continue;
+
+            await ProcessComicSourceAsync(path, format.Value, cancellationToken, includeRemoved: true);
+            if (await _repository.GetComicByPathAsync(path) != null) added++;
+        }
+        return added;
+    }
+
+    /// <summary>
+    /// Picks up everything that changed in watched folders while Komik was closed: new comics are indexed
+    /// (with their embedded metadata) and the one-time ComicInfo.xml import runs. No progress is reported.
+    /// </summary>
+    public async Task<int> SyncWatchedFoldersQuietlyAsync(CancellationToken cancellationToken = default)
+    {
+        var folders = await _repository.GetWatchedFoldersAsync();
+        int added = 0;
+        if (folders.Count > 0)
+        {
+            var known = new HashSet<string>((await _repository.GetComicsAsync()).Select(c => c.FilePath), StringComparer.OrdinalIgnoreCase);
+            var sources = await FindComicSourcesAsync(folders.Select(f => f.Path), cancellationToken);
+            added = await IndexNewSourcesAsync(sources.Where(s => !known.Contains(s.Path)).Select(s => s.Path), cancellationToken);
+        }
+
+        int imported = await ImportEmbeddedMetadataAsync(cancellationToken: cancellationToken);
+        return added + imported;
+    }
+
+    private ComicSourceType? DetectFormat(string path)
+    {
+        if (_folderLoader.CanLoad(path)) return ComicSourceType.Folder;
+        if (_zipLoader.CanLoad(path)) return ComicSourceType.ZipArchive;
+        if (_rarLoader.CanLoad(path)) return ComicSourceType.RarArchive;
+        if (_sevenZipLoader.CanLoad(path)) return ComicSourceType.SevenZipArchive;
+        if (_pdfLoader.CanLoad(path)) return ComicSourceType.PdfDocument;
+        return null;
     }
 
     private void ReportProgress(string message, int count, bool isCompleted = false)

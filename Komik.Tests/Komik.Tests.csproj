@@ -31,6 +31,8 @@
     <Compile Include="..\Services\ThumbnailService.cs" Link="Services\%(Filename)%(Extension)" />
     <Compile Include="..\Services\ILibraryScannerService.cs" Link="Services\%(Filename)%(Extension)" />
     <Compile Include="..\Services\LibraryScannerService.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\ComicInfoReader.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\WatchedFolderMonitor.cs" Link="Services\%(Filename)%(Extension)" />
     <Compile Include="..\Services\FormatConversionService.cs" Link="Services\%(Filename)%(Extension)" />
     <Compile Include="..\Services\DuplicateDetectionService.cs" Link="Services\%(Filename)%(Extension)" />
     <Compile Include="..\Helpers\NaturalSortComparer.cs" Link="Helpers\%(Filename)%(Extension)" />

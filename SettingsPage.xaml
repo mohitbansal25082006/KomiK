@@ -830,7 +830,7 @@
                                             <Border.RenderTransform>
                                                 <RotateTransform Angle="-6" />
                                             </Border.RenderTransform>
-                                            <TextBlock Text="v1.1.0" Style="{StaticResource ComicStickerTextStyle}" Foreground="White" />
+                                            <TextBlock Text="v1.2.0" Style="{StaticResource ComicStickerTextStyle}" Foreground="White" />
                                         </Border>
                                     </StackPanel>
                                     <TextBlock Text="A modern, private, local-only comic reader for Windows, built with WinUI 3, the Windows App SDK, C# (.NET 8) and SQLite." Style="{StaticResource SettingHint}" FontSize="13" />

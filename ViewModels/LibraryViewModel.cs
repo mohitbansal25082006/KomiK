@@ -487,6 +487,41 @@ public partial class LibraryViewModel : ObservableObject
         _scannerService.ProgressChanged += Scanner_ProgressChanged;
         _conversionService.ProgressChanged += Conversion_ProgressChanged;
         LibraryThumbnailsChanged += OnLibraryThumbnailsChanged;
+        WatchedFolderMonitor.ComicsAdded += OnWatchedComicsAdded;
+    }
+
+    private static int _watchedFoldersSynced;
+
+    /// <summary>New comics appeared in a watched folder (e.g. a finished KomiK Downloader download).</summary>
+    private void OnWatchedComicsAdded(int count)
+    {
+        App.DispatcherQueue?.TryEnqueue(async () =>
+        {
+            await RefreshTagsAndCollectionsAsync();
+            await RefreshTagUsageAsync();
+            await ReloadComicsAsync();
+            ShowNotification("Library Updated",
+                $"{count} comic{(count == 1 ? "" : "s")} from your watched folders {(count == 1 ? "was" : "were")} added or filled in with embedded details and tags.",
+                InfoBarSeverity.Success);
+        });
+    }
+
+    /// <summary>Once per app run: index comics added to watched folders while Komik was closed.</summary>
+    private void SyncWatchedFoldersInBackground()
+    {
+        if (Interlocked.Exchange(ref _watchedFoldersSynced, 1) == 1) return;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                int changed = await _scannerService.SyncWatchedFoldersQuietlyAsync();
+                if (changed > 0) OnWatchedComicsAdded(changed);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[LibraryViewModel] Watched folder sync failed: {ex.Message}");
+            }
+        });
     }
 
     public static event Action? LibraryThumbnailsChanged;
@@ -546,6 +581,7 @@ public partial class LibraryViewModel : ObservableObject
             if (_appliedSettingsVersion != SettingsVersion) await ApplyLibrarySettingsAsync(includeSeriesView: false);
             await RefreshTagsAndCollectionsAsync();
             await RefreshTagUsageAsync();
+            await RefreshWatchedFoldersAsync();
             await ReloadComicsAsync();
             return;
         }
@@ -556,6 +592,7 @@ public partial class LibraryViewModel : ObservableObject
         await RefreshTagUsageAsync();
         await RefreshWatchedFoldersAsync();
         await ReloadComicsAsync();
+        SyncWatchedFoldersInBackground();
     }
 
     private void Scanner_ProgressChanged(object? sender, ScanProgressEventArgs e)
@@ -2093,6 +2130,7 @@ public partial class LibraryViewModel : ObservableObject
         {
             WatchedFolders.Add(f);
         }
+        WatchedFolderMonitor.Watch(_scannerService, folders.Select(f => f.Path));
     }
 
     public async Task RefreshTagsAndCollectionsAsync()

@@ -143,6 +143,15 @@ public sealed class FormatConversionService : IFormatConversionService
                     using var entryStream = entry.Open();
                     await entryStream.WriteAsync(imageBytes, 0, imageBytes.Length, cancellationToken);
                 }
+
+                // Keep the comic's embedded details and tags in the converted CBZ.
+                byte[]? comicInfo = ComicInfoReader.TryReadRaw(sourcePath);
+                if (comicInfo != null)
+                {
+                    var infoEntry = zipArchive.CreateEntry(ComicInfoReader.FileName, CompressionLevel.Optimal);
+                    using var infoStream = infoEntry.Open();
+                    await infoStream.WriteAsync(comicInfo, 0, comicInfo.Length, cancellationToken);
+                }
             }
 
             ReportProgress($"Successfully converted to '{Path.GetFileName(destinationPath)}'.", totalPages, totalPages, isCompleted: true);

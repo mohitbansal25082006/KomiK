@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+release/
+*.zip
+*.crx
+
+# Extension signing keys (never commit)
+*.pem
+
+# Test output
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+coverage/
+tests/.tmp/
+
+# Tooling caches
+.vite/
+*.tsbuildinfo
+
+# Logs & OS files
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db

@@ -26,7 +26,7 @@ public sealed class BackupBookmarkRecord
 
 public sealed class LibraryBackupData
 {
-    public string AppVersion { get; set; } = "1.1.0";
+    public string AppVersion { get; set; } = "1.2.0";
     public string ExportDateUtc { get; set; } = DateTime.UtcNow.ToString("o");
     public List<string> WatchedFolders { get; set; } = new();
     public List<BackupComicRecord> Comics { get; set; } = new();

@@ -233,7 +233,7 @@
                         <Border.RenderTransform>
                             <RotateTransform Angle="-6" />
                         </Border.RenderTransform>
-                        <TextBlock Text="v1.1.0" Style="{StaticResource ComicStickerTextStyle}" Foreground="White" FontSize="11" />
+                        <TextBlock Text="v1.2.0" Style="{StaticResource ComicStickerTextStyle}" Foreground="White" FontSize="11" />
                     </Border>
                     <TextBlock x:Name="HeroTagline" Text="YOUR OFFLINE COMIC UNIVERSE" FontSize="9" FontWeight="Bold" CharacterSpacing="200" Foreground="{ThemeResource KomikHeroTaglineBrush}" VerticalAlignment="Center" />
                 </StackPanel>
