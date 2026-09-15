@@ -1,6 +1,6 @@
-# Komik — Version 1 Development Process & File Manifest
+# Komik — Development Process & File Manifest (Versions 1.0 and 1.1.0)
 
-This document records the complete manifest of files created for Version 1.0 of **Komik**, along with a summary of all features delivered in this release.
+This document records the complete manifest of files created for **Komik** Version 1.0 and Version 1.1.0, along with a summary of the features delivered in each release.
 
 ---
 
@@ -18,9 +18,7 @@ This document records the complete manifest of files created for Version 1.0 of 
 - `project development process.md`
 - `README.md`
 - `Properties\launchSettings.json`
-- `Properties\PublishProfiles\win-arm64.pubxml`
-- `Properties\PublishProfiles\win-x64.pubxml`
-- `Properties\PublishProfiles\win-x86.pubxml`
+- `Properties\PublishProfiles\` (local publish profiles, git-ignored)
 
 ### User Interface Views & Code-Behind
 - `MainWindow.xaml`
@@ -80,7 +78,6 @@ This document records the complete manifest of files created for Version 1.0 of 
 
 ### Assets & Visual Resources
 - `Assets\AppIcon.ico`
-- `Assets\LockScreenLogo.scale-200.png`
 - `Assets\SplashScreen.scale-200.png`
 - `Assets\Square150x150Logo.scale-200.png`
 - `Assets\Square44x44Logo.scale-200.png`
@@ -209,9 +206,9 @@ Version 1.1.0 represents a major evolutionary leap for **Komik**, delivering dee
 
 #### Data Models & Entities
 - `Models\ComicSeriesGroup.cs`: Data model for multi-issue series runs, volume groupings, reading order tracking, and 1-click read-next resolution.
-- `Models\ManualSeries.cs`: Entity and DTO models for custom user-created series and reading orders with SQLite relational persistence.
+- `Models\ManualSeriesComicItem.cs`: Selectable comic item used when building custom user-created series and reading orders (persisted in the `ManualSeries` / `ManualSeriesComics` tables).
 - `Models\DuplicateComicGroup.cs`: Data structures representing multi-copy comic sets across formats with resolution options (Keep All vs. Remove from Disk).
-- `Models\ReadingSession.cs`: Reading session models tracking timestamps, active duration, page delta, reading streaks, and summary metrics.
+- `Models\ReadingStatsSummary.cs`: Reading statistics summary tracking time read, pages, reading streaks, Top Series and Komik Wrapped highlights.
 - `Models\ReadingPreset.cs`: Look-Up Table (LUT) preset model powering the 6 hardware-accelerated color themes.
 - `Models\WebtoonPageItem.cs`: Observable item model for continuous vertical Webtoon pages with dynamic aspect ratio calculation and off-thread decoding.
 
@@ -381,8 +378,8 @@ The companion website was rebuilt from the ground up as an interactive comic boo
 
 #### README Artwork (`komik-website/public/readme/`)
 - Animated SVG (pure SVG + CSS keyframes, reduced-motion aware): `banner.svg`, `stats.svg`, `divider.svg`, `the-end.svg`, and ten chapter headers `section-*.svg`.
-- Desktop app screenshots: `app-reader.jpg`, `app-library.jpg`, `app-webtoon.jpg`, `app-series.jpg`, `app-stats.jpg`. Captured from the installed Komik 1.1.0 build reading the demo comic packed into real `.cbz` files, using a temporary isolated library so the developer's own library was never modified.
-- Website screenshots: `screenshot-hero.jpg`, `screenshot-reader.jpg`, `screenshot-formats.jpg`, `screenshot-engine.jpg`, `screenshot-new.jpg`, `screenshot-mobile-hero.jpg`, `screenshot-mobile-reader.jpg`.
+- Desktop app screenshots: `app-reader.jpg`, `app-library.jpg`, `app-webtoon.jpg`, `app-series.jpg`, `app-stats.jpg` (re-captured for the redesign in section 5, which also adds `app-series-detail.jpg`, `app-tags.jpg` and `app-settings.jpg`). Captured from the installed Komik 1.1.0 build reading the demo comic packed into real `.cbz` files, using a temporary isolated library so the developer's own library was never modified.
+- Website screenshots: `screenshot-hero.jpg`, `screenshot-reader.jpg`, `screenshot-formats.jpg`, `screenshot-engine.jpg`, `screenshot-new.jpg`, `mobile-screen-hero-section.PNG`, `screenshot-mobile-reader.jpg`.
 
 ---
 
@@ -417,3 +414,116 @@ The companion website was rebuilt from the ground up as an interactive comic boo
   - rewritten with animated artwork and real app screenshots
   - corrected SQLite schema (13 tables) and test inventory (27 suites in `Komik.Tests/Program.cs`)
   - fixed the Docnet.Core acknowledgement link
+
+---
+
+## 5. Version 1.1.0: Comic-Style App Redesign, Library Intelligence & Polish
+
+The desktop app was brought into the same comic-book visual language as the website, and the library learned to understand what each comic *is*: its series, its creators and its number. This pass then polished every screen touched by that work (series, tags, reader, settings, duplicates and stats) based on hands-on testing. It is still **version 1.1.0**: no data migration is needed and existing libraries upgrade in place.
+
+---
+
+### 1. File Manifest (Redesign & Polish)
+
+#### New: Views, Dialogs & Controls
+- `Controls\ComicToast.xaml` / `.xaml.cs`: floating comic-style notification that pops in, counts down, pauses on hover and restarts when a new message arrives.
+- `LibraryPage.Dialogs.cs`: series, tag and comic dialogs of the library page (edit series, change cover, add comics, manage tags, comic details).
+- `Themes\ComicControls.xaml`: shared comic styles: panels, stickers, pills, section titles, buttons and toggle tiles.
+- `Assets\Fonts\Bangers-Regular.ttf` + `Bangers-OFL.txt`: display lettering (SIL Open Font License).
+- `Assets\Textures\halftone.png`, `halftone-corner.png`, `speedlines.png`: print textures for panels, headers and empty screens.
+
+#### New: Helpers
+- `Helpers\ComicIdentityParser.cs`: reads a comic's series, credited creators, volume, issue, chapter, part and year from its name or metadata. Series grouping, duplicate detection and reading statistics all share it, so they always agree.
+- `Helpers\MotionHelper.cs`: Composition animations (hover lift and tilt, pop-in reveal, press squash) that respect the Windows *Animation effects* setting.
+- `Helpers\ComicDialogXaml.cs`: builds comic-styled dialog content from XAML so `{ThemeResource}` brushes follow light and dark exactly like the pages.
+- `Helpers\WrapPanel.cs`: wrapping layout for action bars on narrow windows.
+- `Helpers\ValueConverters.cs`: adds `HexToBrushConverter` for per-filter accent colours.
+
+#### New: Services
+- `Services\SeriesDetectionService.cs`: builds both views of a library: **Continuation Series** (issues, volumes, sequels, typo-tolerant title merging, gap detection) and **By Creator** collections, then layers manual series on top.
+- `Services\ReadingSessionTracker.cs`: counts only active reading time (idle gaps are capped) and the distinct pages actually viewed.
+- `Services\ReadingStatsCalculator.cs`: pure, time-zone-aware statistics: local calendar days, streaks, periods and page-accurate series progress.
+- `Services\FileDeletion.cs`: deletes comic files without Windows prompts: Recycle Bin first, retried while a lingering file handle closes, then a permanent delete as the last resort.
+- `Services\OcrLayout.cs`: groups recognized lines into speech bubbles in reading order (left to right, or right to left for manga), tiles tall webtoon pages, and filters artwork noise while keeping real sound effects.
+
+#### New: Models & ViewModel Partials
+- `Models\EditSeriesComicItem.cs`: one comic in the Edit Series screen (position, cover flag) plus `TagChipItem` (a tag with its usage count).
+- `Models\UnindexedComicItem.cs`: a comic found in a watched folder that is not in the library (never added, or removed earlier).
+- `ViewModels\LibraryViewModel.SeriesEdit.cs`: Edit Series state: rename, section, auto-update, reading order, cover, removals and save.
+- `ViewModels\LibraryViewModel.Tags.cs`: tag filter, a comic's tags and tag management, built to stay quick with hundreds of tags.
+
+#### Significantly Updated
+- `App.xaml`, `MainWindow.xaml(.cs)`: comic theme resources for light and dark; the app now opens in the **light theme by default**.
+- `LibraryPage.xaml(.cs)`: comic cover grid, Series screen, series detail banner, empty screens, active filter sticker.
+- `MainPage.xaml(.cs)`: reader chrome, animated webtoon toolbar, live zoom percentage, saved-page anchoring.
+- `SettingsPage.xaml(.cs)`, `ViewModels\SettingsViewModel.cs`: instant-apply settings, page colours, *How Comics Open*, *Add Back Removed Comics*.
+- `Services\DuplicateDetectionService.cs`, `Models\DuplicateComicGroup.cs`: confidence levels, reasons and a recommended copy.
+- `Services\LibraryRepository.cs`, `Services\LibraryScannerService.cs`, `Services\OcrService.cs`, `Models\ReadingStatsSummary.cs`, `Models\ComicSeriesGroup.cs`, `Models\AppSettings.cs`, `ViewModels\LibraryViewModel.cs`, `ViewModels\MainViewModel.cs`.
+
+#### Database Updates (automatic, in place)
+- `ManualSeries` gains `kind` (`story` / `creator`), `auto_update` and `source_key` columns.
+- New `ManualSeriesExclusions` table: comics the user removed from an auto-updating series stay out.
+- New `RemovedComics` table: comics removed from the library are remembered, skipped by rescans and can be added back from Settings.
+- New settings keys: `DefaultReaderViewMode` (`SinglePage`, `DoublePage`, `Webtoon`) and a one-time light-theme migration flag.
+
+---
+
+### 2. Features & Fixes
+
+#### Comic-style interface
+- Halftone panels, ink borders, stickers and Bangers lettering across the library, reader, settings, dialogs and toasts, in both light and dark themes.
+- Cards lift and tilt toward the pointer; panels pop in; buttons squash on press. Dropdowns open instantly (no press delay on buttons that open a menu).
+- Flyouts stay inside the window, and the white halftone circles on comic cards were removed.
+
+#### Series & Volumes
+- Two sections: **Continuation Series** and **By Creator**. Detection understands issues, volumes, chapters, sequels (*II*, *2*, *Zenpen / Kouhen*), typos and missing numbers.
+- Right-click menu on every comic inside a series (read, mark read / unread, set as cover, details, tags, remove from series).
+- **Change series cover** from any comic in the series.
+- **Add Comics** picker with search and filters. Creator collections only offer comics that are not already in another creator collection.
+- A larger **New Series** screen and a full **Edit Series** screen: rename, choose the section, auto-update, drag-and-drop reading order, automatic ordering, cover and removals.
+- **Section rule:** a *By Creator* collection can be moved to *Continuation Series*, but a continuation series can never be moved to *By Creator*. The By Creator option is locked with an explanation, and moving a creator collection warns that it can't be moved back.
+- Fixed the series detail banner: the blurred cover is painted as a background so it can no longer stretch the layout at any window size.
+
+#### Tags
+- Manage Tags screen with search, sort (name, most used, least used, newest), usage counts, rename, merge and delete, sized for libraries with many tags.
+- A comic's tags screen shows chips with instant toggle, search and "press Enter to create".
+
+#### Library filters & empty screens
+- Every empty filter, tag, search and series view now shows a comic panel with a rocking starburst in that filter's colour, a sticker (*EMPTY TAG*, *NO MATCH!*, *ALL READ!*…), a clear title and two actions: *Show All Comics* and a context action (Manage Tags, Clear Search, Browse Unread, New Series…).
+- The active filter or tag appears as a coloured sticker with its kind, name, matching comic count and a clear button, and the Tags button turns yellow while a tag is selected.
+
+#### Reader
+- **How Comics Open** (Settings → Reading): page by page, two-page spread or webtoon, combined with comic (left to right) or manga (right to left). A summary line describes the choice, and it applies to every comic you open.
+- Comics that open straight into webtoon mode now land on their saved page instead of the first page.
+- Zooming in or out in webtoon mode keeps the page being read in place (it used to slide far down the strip).
+- Webtoon toolbar hides and shows with an animation while scrolling; webtoon keys and buttons work consistently; the zoom percentage updates live.
+- **Advanced offline OCR:** speech bubbles are grouped and ordered the way a reader's eye moves, tall pages are tiled for accuracy, and texture noise (e.g. `rrrwruur`) is filtered while sound effects like `BZZT` are kept.
+
+#### Duplicates, stats & settings
+- Redesigned duplicate dialogs with confidence, reasons, a recommended copy and space saved.
+- Fixed "file is in use" failures when deleting a duplicate from disk.
+- **Top Series** redesign with book counts, last read time and an exact page-based percentage (for example 44% instead of 0% or 100%). Hovering the bar shows "X of Y pages".
+- Settings apply instantly, including page background colours, and a new **Add Back Removed Comics** screen lists comics in watched folders that are not in the library.
+
+#### Versioning & installer
+- Removed the unused `Assets\LockScreenLogo.scale-200.png` template asset (not referenced by the app or `Package.appxmanifest`).
+- `Komik.csproj` (`Version`, `AssemblyVersion`, `FileVersion`), `Package.appxmanifest`, the backup format, the in-app badges and `installer\Komik.iss` all report **1.1.0**.
+- `Komik-Setup.exe` now carries Windows version information (**1.1.0.0**, product name, publisher, description and copyright) instead of showing 0.0.0.0 under *Properties → Details*.
+
+---
+
+### 3. Verification
+
+- Automated tests: **41 passed, 0 failed** (`cd Komik.Tests; dotnet run -c Release`), including the new suites:
+  - `ComicIdentityParser` parses series, volumes, issues, chapters and years
+  - `SeriesDetectionService` groups, orders, merges typos, finds gaps, continuations and creator collections
+  - `DuplicateDetectionService` scores copies, avoids false positives and recommends the best copy
+  - `ReadingSessionTracker` active time with idle cap and distinct pages
+  - `ReadingStatsCalculator` local days, streaks, periods, real series totals and page-accurate Top Series percentages
+  - manual series: unique names, creator section, auto-update, exclusions, rename and going back to automatic
+  - removed comics remembered, skipped by rescans and added back
+  - tags: usage counts, rename, merge and delete
+  - OCR layout: bubble grouping, reading order, tall-page tiling and noise filtering
+- UI checks on an isolated demo library (`KOMIK_DATA_DIR`), never the real library: series detail at 1440×900 and 960×680, edit series section lock, empty tag / filter / search screens, active filter sticker, How Comics Open tiles, webtoon opening at the saved page, Top Series percentages.
+- Release build: self-contained win-x64 publish, then `ISCC installer\Komik.iss` → `shipping\Komik-Setup.exe`, installed and launched successfully.
+- README screenshots re-captured from this build with the original mock comics (see `komik-website/public/readme/app-*.jpg`).

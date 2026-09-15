@@ -53,6 +53,16 @@
             <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
         </Style>
 
+        <Style x:Key="ReadingTileStyle" TargetType="ToggleButton" BasedOn="{StaticResource DefaultToggleButtonStyle}">
+            <Setter Property="Width" Value="250" />
+            <Setter Property="MinHeight" Value="76" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="BorderThickness" Value="2,2,4,4" />
+            <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
+        </Style>
+
         <Style x:Key="ThemeTileStyle" TargetType="ToggleButton" BasedOn="{StaticResource DefaultToggleButtonStyle}">
             <Setter Property="Width" Value="112" />
             <Setter Property="Height" Value="92" />
@@ -169,6 +179,12 @@
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <Border Width="28" Height="28" CornerRadius="14" Background="#2EE59D" BorderBrush="#0B0B12" BorderThickness="1.5"><FontIcon Glyph="&#xE8B7;" FontSize="13" Foreground="#0B0B12" /></Border>
                             <TextBlock Text="Library Folders" VerticalAlignment="Center" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource SettingsNavButton}" Click="NavAddBack_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Width="28" Height="28" CornerRadius="14" Background="#B388FF" BorderBrush="#0B0B12" BorderThickness="1.5"><FontIcon Glyph="&#xE8F4;" FontSize="13" Foreground="#0B0B12" /></Border>
+                            <TextBlock Text="Add Back Comics" VerticalAlignment="Center" FontWeight="SemiBold" />
                         </StackPanel>
                     </Button>
                     <Button Style="{StaticResource SettingsNavButton}" Click="NavCovers_Click">
@@ -318,20 +334,117 @@
                                 </Border>
 
                                 <Border Style="{StaticResource SettingTile}">
-                                    <Grid ColumnSpacing="16">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Text="Default Reading Direction" Style="{StaticResource SettingLabel}" />
-                                            <TextBlock Text="Western comics read left to right; manga reads right to left and flips page turns and spreads." Style="{StaticResource SettingHint}" />
+                                    <StackPanel Spacing="12">
+                                        <StackPanel>
+                                            <TextBlock Text="How Comics Open" Style="{StaticResource SettingLabel}" />
+                                            <TextBlock Text="Pick the layout and direction every comic starts in. Webtoon and manga can be combined, and you can still switch any comic from the reader toolbar." Style="{StaticResource SettingHint}" />
                                         </StackPanel>
-                                        <ComboBox Grid.Column="1" Width="200" VerticalAlignment="Center" SelectedIndex="{x:Bind ViewModel.ReadingDirectionIndex, Mode=TwoWay}" SelectionChanged="SettingChanged">
-                                            <ComboBoxItem Content="Left to Right (Western)" />
-                                            <ComboBoxItem Content="Right to Left (Manga)" />
-                                        </ComboBox>
-                                    </Grid>
+
+                                        <TextBlock Text="LAYOUT" Style="{StaticResource ComicCaptionTextStyle}" />
+                                        <helpers:WrapPanel HorizontalSpacing="10" VerticalSpacing="10">
+                                            <ToggleButton x:Name="ReaderSingleTile" Style="{StaticResource ReadingTileStyle}" Click="ReaderModeTile_Click" Tag="0" AutomationProperties.Name="Open page by page">
+                                                <Grid ColumnSpacing="12">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Width="40" Height="54" CornerRadius="5" Background="#FFFDF6" BorderBrush="#0B0B12" BorderThickness="2" VerticalAlignment="Center">
+                                                        <Grid Margin="5" RowSpacing="3">
+                                                            <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
+                                                            <Border Background="#00C2FF" CornerRadius="2" />
+                                                            <Border Grid.Row="1" Background="#FF1F6D" CornerRadius="2" />
+                                                        </Grid>
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                        <TextBlock Text="PAGE BY PAGE" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" CharacterSpacing="30" />
+                                                        <TextBlock Text="One page at a time" FontSize="11" Opacity="0.75" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </ToggleButton>
+                                            <ToggleButton x:Name="ReaderSpreadTile" Style="{StaticResource ReadingTileStyle}" Click="ReaderModeTile_Click" Tag="1" AutomationProperties.Name="Open as two-page spread">
+                                                <Grid ColumnSpacing="12">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                                                        <Border Width="28" Height="54" CornerRadius="5,1,1,5" Background="#FFFDF6" BorderBrush="#0B0B12" BorderThickness="2">
+                                                            <Border Margin="4" Background="#FFD700" CornerRadius="2" />
+                                                        </Border>
+                                                        <Border Width="28" Height="54" CornerRadius="1,5,5,1" Background="#FFFDF6" BorderBrush="#0B0B12" BorderThickness="2">
+                                                            <Border Margin="4" Background="#2EE59D" CornerRadius="2" />
+                                                        </Border>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                        <TextBlock Text="TWO-PAGE SPREAD" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" CharacterSpacing="30" />
+                                                        <TextBlock Text="Side by side, like print" FontSize="11" Opacity="0.75" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </ToggleButton>
+                                            <ToggleButton x:Name="ReaderWebtoonTile" Style="{StaticResource ReadingTileStyle}" Click="ReaderModeTile_Click" Tag="2" AutomationProperties.Name="Open as webtoon">
+                                                <Grid ColumnSpacing="12">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Width="30" Height="58" CornerRadius="5" Background="#FFFDF6" BorderBrush="#0B0B12" BorderThickness="2" VerticalAlignment="Center">
+                                                        <StackPanel Margin="4" Spacing="3">
+                                                            <Border Height="14" Background="#B388FF" CornerRadius="2" />
+                                                            <Border Height="14" Background="#00C2FF" CornerRadius="2" />
+                                                            <Border Height="14" Background="#FF9F1C" CornerRadius="2" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                        <TextBlock Text="WEBTOON" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" CharacterSpacing="30" />
+                                                        <TextBlock Text="One long vertical scroll" FontSize="11" Opacity="0.75" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </ToggleButton>
+                                        </helpers:WrapPanel>
+
+                                        <TextBlock Text="DIRECTION" Style="{StaticResource ComicCaptionTextStyle}" />
+                                        <helpers:WrapPanel HorizontalSpacing="10" VerticalSpacing="10">
+                                            <ToggleButton x:Name="DirectionWesternTile" Style="{StaticResource ReadingTileStyle}" Click="DirectionTile_Click" Tag="0" AutomationProperties.Name="Western, left to right">
+                                                <Grid ColumnSpacing="12">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid Width="44" Height="44" VerticalAlignment="Center">
+                                                        <Ellipse Fill="#00C2FF" Stroke="#0B0B12" StrokeThickness="2" />
+                                                        <FontIcon Glyph="&#xE72A;" FontSize="18" Foreground="#0B0B12" />
+                                                    </Grid>
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                        <TextBlock Text="COMIC · LEFT TO RIGHT" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" CharacterSpacing="30" />
+                                                        <TextBlock Text="Western comics and graphic novels" FontSize="11" Opacity="0.75" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </ToggleButton>
+                                            <ToggleButton x:Name="DirectionMangaTile" Style="{StaticResource ReadingTileStyle}" Click="DirectionTile_Click" Tag="1" AutomationProperties.Name="Manga, right to left">
+                                                <Grid ColumnSpacing="12">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid Width="44" Height="44" VerticalAlignment="Center">
+                                                        <Ellipse Fill="#FF1F6D" Stroke="#0B0B12" StrokeThickness="2" />
+                                                        <FontIcon Glyph="&#xE72B;" FontSize="18" Foreground="White" />
+                                                    </Grid>
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                        <TextBlock Text="MANGA · RIGHT TO LEFT" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" CharacterSpacing="30" />
+                                                        <TextBlock Text="Page turns, spreads and OCR go right to left" FontSize="11" Opacity="0.75" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </ToggleButton>
+                                        </helpers:WrapPanel>
+
+                                        <Border x:Name="ReadingModeSummary" CornerRadius="10" Padding="12,8" Background="{ThemeResource KomikPanelBrush}" BorderBrush="{ThemeResource KomikPanelStrokeBrush}" BorderThickness="1" helpers:MotionHelper.RevealOnShow="True">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <FontIcon Glyph="&#xE736;" FontSize="14" Foreground="{ThemeResource KomikCyanBrush}" />
+                                                <TextBlock x:Name="ReadingModeSummaryText" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
                                 </Border>
 
                                 <Border Style="{StaticResource SettingTile}">
@@ -356,11 +469,22 @@
                                 </Border>
 
                                 <Border Style="{StaticResource SettingTile}">
+                                    <Grid ColumnSpacing="18">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid Grid.Column="1" Width="120" Height="172" VerticalAlignment="Top" CornerRadius="10" BorderBrush="{ThemeResource KomikInkStrokeBrush}" BorderThickness="2.5,2.5,4,4" Background="{ThemeResource KomikPanelBrush}" Visibility="{x:Bind ViewModel.HasColorPreview, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" ToolTipService.ToolTip="Preview: a cover from your library with these page colors">
+                                        <Image Source="{x:Bind ViewModel.ColorPreviewImage, Mode=OneWay}" Stretch="UniformToFill" />
+                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="5" Background="#FFD700" BorderBrush="#0B0B12" BorderThickness="1.5" CornerRadius="5" Padding="5,0">
+                                            <TextBlock Text="PREVIEW" FontFamily="{StaticResource KomikDisplayFont}" FontSize="12" CharacterSpacing="40" Foreground="#0B0B12" />
+                                        </Border>
+                                    </Grid>
                                     <StackPanel Spacing="10">
                                         <Grid>
                                             <StackPanel>
                                                 <TextBlock Text="Default Page Colors" Style="{StaticResource SettingLabel}" />
-                                                <TextBlock Text="Fine-tune brightness, contrast and paper warmth for every comic." Style="{StaticResource SettingHint}" />
+                                                <TextBlock Text="Brightness, contrast and paper warmth every comic opens with. Saved instantly; the reader's color menu can still adjust a single comic." Style="{StaticResource SettingHint}" />
                                             </StackPanel>
                                         </Grid>
                                         <Grid ColumnSpacing="12">
@@ -370,8 +494,8 @@
                                                 <ColumnDefinition Width="44" />
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Text="Brightness" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                            <Slider Grid.Column="1" Minimum="-100" Maximum="100" Value="{x:Bind ViewModel.Brightness, Mode=TwoWay}" ValueChanged="SettingChanged" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.Brightness, Mode=OneWay}" VerticalAlignment="Center" HorizontalAlignment="Right" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" />
+                                            <Slider Grid.Column="1" Minimum="-100" Maximum="100" StepFrequency="1" Value="{x:Bind ViewModel.Brightness, Mode=TwoWay}" ValueChanged="SettingChanged" VerticalAlignment="Center" AutomationProperties.Name="Brightness" />
+                                            <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.BrightnessDisplay, Mode=OneWay}" VerticalAlignment="Center" HorizontalAlignment="Right" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" />
                                         </Grid>
                                         <Grid ColumnSpacing="12">
                                             <Grid.ColumnDefinitions>
@@ -380,8 +504,8 @@
                                                 <ColumnDefinition Width="44" />
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Text="Contrast" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                            <Slider Grid.Column="1" Minimum="50" Maximum="200" Value="{x:Bind ViewModel.Contrast, Mode=TwoWay}" ValueChanged="SettingChanged" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.Contrast, Mode=OneWay}" VerticalAlignment="Center" HorizontalAlignment="Right" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" />
+                                            <Slider Grid.Column="1" Minimum="50" Maximum="200" StepFrequency="1" Value="{x:Bind ViewModel.ContrastPercent, Mode=TwoWay}" ValueChanged="SettingChanged" VerticalAlignment="Center" AutomationProperties.Name="Contrast" />
+                                            <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.ContrastDisplay, Mode=OneWay}" VerticalAlignment="Center" HorizontalAlignment="Right" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" />
                                         </Grid>
                                         <Grid ColumnSpacing="12">
                                             <Grid.ColumnDefinitions>
@@ -390,8 +514,8 @@
                                                 <ColumnDefinition Width="44" />
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Text="Warmth" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                            <Slider Grid.Column="1" Minimum="-100" Maximum="100" Value="{x:Bind ViewModel.Warmth, Mode=TwoWay}" ValueChanged="SettingChanged" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.Warmth, Mode=OneWay}" VerticalAlignment="Center" HorizontalAlignment="Right" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" />
+                                            <Slider Grid.Column="1" Minimum="-100" Maximum="100" StepFrequency="1" Value="{x:Bind ViewModel.Warmth, Mode=TwoWay}" ValueChanged="SettingChanged" VerticalAlignment="Center" AutomationProperties.Name="Warmth" />
+                                            <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.WarmthDisplay, Mode=OneWay}" VerticalAlignment="Center" HorizontalAlignment="Right" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" />
                                         </Grid>
                                         <Button Command="{x:Bind ViewModel.ResetColorSettingsCommand}" HorizontalAlignment="Right">
                                             <StackPanel Orientation="Horizontal" Spacing="6">
@@ -400,6 +524,7 @@
                                             </StackPanel>
                                         </Button>
                                     </StackPanel>
+                                    </Grid>
                                 </Border>
                             </StackPanel>
                         </ContentControl>
@@ -471,6 +596,116 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+                            </StackPanel>
+                        </ContentControl>
+
+                        <!-- 3b. ADD BACK COMICS -->
+                        <ContentControl x:Name="AddBackSection" Style="{StaticResource SettingsSectionPanel}">
+                            <StackPanel Spacing="12">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Border Width="40" Height="40" CornerRadius="20" Background="#B388FF" BorderBrush="#0B0B12" BorderThickness="2"><FontIcon Glyph="&#xE8F4;" FontSize="17" Foreground="#0B0B12" /></Border>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="COMICS NOT IN YOUR LIBRARY" Style="{StaticResource ComicSectionTitleStyle}" TextWrapping="Wrap" />
+                                            <TextBlock Text="Comics in your watched folders that you removed from the library, or that were never added. Pick the ones to bring back." Style="{StaticResource SettingHint}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource ComicAccentButtonStyle}" Command="{x:Bind ViewModel.FindUnindexedComicsCommand}" IsEnabled="{x:Bind ViewModel.IsNotFindingUnindexed, Mode=OneWay}" AutomationProperties.Name="Find comics">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE721;" FontSize="13" />
+                                            <TextBlock Text="Find Comics" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
+                                <Border Style="{StaticResource SettingTile}">
+                                    <StackPanel Spacing="10">
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <ProgressRing IsActive="{x:Bind ViewModel.IsFindingUnindexed, Mode=OneWay}" Width="18" Height="18" Visibility="{x:Bind ViewModel.IsFindingUnindexed, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+                                            <TextBlock Text="{x:Bind ViewModel.UnindexedStatusText, Mode=OneWay}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <ProgressBar Value="{x:Bind ViewModel.UnindexedProgress, Mode=OneWay}" Maximum="{x:Bind ViewModel.UnindexedProgressTotal, Mode=OneWay}" Visibility="{x:Bind ViewModel.IsFindingUnindexed, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+
+                                        <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.HasSearchedUnindexed, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
+                                            <Grid ColumnSpacing="10" RowSpacing="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" MinWidth="160" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <AutoSuggestBox QueryIcon="Find" PlaceholderText="Search file or folder name..." Text="{x:Bind ViewModel.UnindexedSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                <ComboBox Grid.Column="1" MinWidth="170" ItemsSource="{x:Bind ViewModel.UnindexedScopes}" SelectedItem="{x:Bind ViewModel.UnindexedScope, Mode=TwoWay}" ToolTipService.ToolTip="Show removed or never-added comics" />
+                                                <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
+                                                    <Button Padding="10,5" Command="{x:Bind ViewModel.SelectAllUnindexedCommand}" CommandParameter="True">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE8B3;" FontSize="12" /><TextBlock Text="Pick all shown" /></StackPanel>
+                                                    </Button>
+                                                    <Button Padding="10,5" Command="{x:Bind ViewModel.SelectAllUnindexedCommand}" CommandParameter="False">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE894;" FontSize="12" /><TextBlock Text="Clear" /></StackPanel>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <ListView ItemsSource="{x:Bind ViewModel.UnindexedComics, Mode=OneWay}" SelectionMode="None" MaxHeight="420" Visibility="{x:Bind ViewModel.HasUnindexedComics, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
+                                                <ListView.ItemContainerStyle>
+                                                    <Style TargetType="ListViewItem">
+                                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                        <Setter Property="Padding" Value="0" />
+                                                        <Setter Property="Margin" Value="0,0,0,6" />
+                                                    </Style>
+                                                </ListView.ItemContainerStyle>
+                                                <ListView.ItemTemplate>
+                                                    <DataTemplate x:DataType="models:UnindexedComicItem">
+                                                        <Grid ColumnSpacing="12" Padding="8" CornerRadius="10" Background="{ThemeResource KomikPanelBrush}" BorderBrush="{ThemeResource KomikPanelStrokeBrush}" BorderThickness="1,1,2,2">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <CheckBox IsChecked="{x:Bind IsSelected, Mode=TwoWay}" MinWidth="0" VerticalAlignment="Center" AutomationProperties.Name="{x:Bind FileName}" />
+                                                            <Grid Grid.Column="1" Width="38" Height="54" CornerRadius="5" Background="{ThemeResource KomikPanelSunkenBrush}">
+                                                                <FontIcon Glyph="&#xE82D;" FontSize="14" Foreground="{ThemeResource KomikSubtleTextBrush}" />
+                                                                <Image Source="{x:Bind ThumbnailPath, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
+                                                            </Grid>
+                                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+                                                                <TextBlock Text="{x:Bind FileName}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind Path}" />
+                                                                <TextBlock Text="{x:Bind FolderName}" FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}" TextTrimming="CharacterEllipsis" />
+                                                            </StackPanel>
+                                                            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                                <Border CornerRadius="5" Padding="6,0" Background="#FF9F1C" BorderBrush="#0B0B12" BorderThickness="1.5" Visibility="{x:Bind WasRemoved, Converter={StaticResource BoolToVisConverter}}">
+                                                                    <TextBlock Text="REMOVED" FontFamily="{StaticResource KomikDisplayFont}" FontSize="12" CharacterSpacing="40" Foreground="#0B0B12" />
+                                                                </Border>
+                                                                <Border CornerRadius="5" Padding="6,0" Background="#2EE59D" BorderBrush="#0B0B12" BorderThickness="1.5" Visibility="{x:Bind IsNew, Converter={StaticResource BoolToVisConverter}}">
+                                                                    <TextBlock Text="NEW" FontFamily="{StaticResource KomikDisplayFont}" FontSize="12" CharacterSpacing="40" Foreground="#0B0B12" />
+                                                                </Border>
+                                                                <Border Style="{StaticResource ComicPillStyle}" Padding="7,1">
+                                                                    <TextBlock Text="{x:Bind FormatBadge}" FontSize="10" FontWeight="Bold" />
+                                                                </Border>
+                                                                <TextBlock Text="{x:Bind SizeDisplay}" FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}" VerticalAlignment="Center" MinWidth="70" TextAlignment="Right" />
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ListView.ItemTemplate>
+                                            </ListView>
+
+                                            <TextBlock Text="{x:Bind ViewModel.UnindexedEmptyText, Mode=OneWay}" Visibility="{x:Bind ViewModel.ShowUnindexedEmpty, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" TextWrapping="Wrap" />
+
+                                            <Button HorizontalAlignment="Right" Style="{StaticResource ComicPrimaryButtonStyle}" Command="{x:Bind ViewModel.AddSelectedUnindexedCommand}" IsEnabled="{x:Bind ViewModel.IsNotFindingUnindexed, Mode=OneWay}" Visibility="{x:Bind ViewModel.HasUnindexedComics, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <FontIcon Glyph="&#xE710;" FontSize="13" />
+                                                    <TextBlock Text="{x:Bind ViewModel.AddUnindexedText, Mode=OneWay}" />
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </ContentControl>
 

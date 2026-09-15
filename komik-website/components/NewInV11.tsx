@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { animate, motion, useInView, useMotionValue, useSpring } from "framer-motion";
-import { ArrowLeftRight, Check, ChevronDown, Copy, DatabaseBackup, Files, Flame, FolderPlus, Layers, Monitor, Plus, ScanText, Trash2, Trophy } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, ArrowRight, BookOpen, Check, ChevronDown, Columns2, Copy, DatabaseBackup, Files, Flame, FolderPlus, Layers, Monitor, Plus, ScanText, Search, Settings2, Tag, Trash2, Trophy, X } from "lucide-react";
 import SectionHeading from "@/components/fx/SectionHeading";
 
 function useCount(to: number, inView: boolean, duration = 1.4) {
@@ -64,7 +64,7 @@ const COVERS = [
 function SeriesPanel() {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-15% 0px" });
-  const pct = useCount(94, inView);
+  const pct = useCount(68, inView);
   const [fanned, setFanned] = useState(false);
   useEffect(() => {
     if (inView) {
@@ -77,19 +77,19 @@ function SeriesPanel() {
       <div ref={ref} className="grid flex-1 items-center gap-5 sm:grid-cols-2">
         <div>
           <p className="text-sm font-semibold leading-relaxed text-black/80">
-            A dedicated Series screen groups multi-issue runs and volumes when titles match <strong>90% or more</strong>. Build your own reading orders, reorder issues and add
-            comics to any series with <strong>+ Add Comics</strong>.
+            Two sections: <strong>Continuation Series</strong> (issues, volumes, chapters and sequels, with typos merged and gaps flagged) and <strong>By Creator</strong>. Edit any
+            series: rename it, drag the reading order, pick a cover and <strong>+ Add Comics</strong>. A creator collection can become a continuation series, never the reverse.
           </p>
           <div className="mt-4 border-[3px] border-black bg-black p-3 font-mono text-[11px] text-white">
             <div className="flex justify-between">
-              <span>&quot;Neon Ronin Vol. 3&quot; ≈ &quot;Neon Ronin v4&quot;</span>
+              <span>Neon Ronin · 5 volumes · no gaps</span>
             </div>
             <div className="mt-2 h-3 border-2 border-white/30 bg-[#222]">
               <motion.div className="h-full bg-amber" initial={{ width: 0 }} animate={{ width: inView ? `${pct}%` : 0 }} />
             </div>
             <div className="mt-1 flex justify-between font-bold">
-              <span className="text-amber">{pct}% similar</span>
-              <span className="text-[#2FD17A]">{pct >= 90 ? "✓ grouped" : "…"}</span>
+              <span className="text-amber">{pct}% read</span>
+              <span className="text-[#2FD17A]">▶ Up next: Vol. 4</span>
             </div>
           </div>
           <button
@@ -202,7 +202,7 @@ function DuplicatePanel() {
   }, [inView, choice]);
   const merged = phase >= 1 || choice !== null;
   return (
-    <PanelShell className="lg:col-span-4" tone="bg-magenta text-white" tag="≥ 95% match" icon={Files} title="Duplicate Manager" delay={0.04}>
+    <PanelShell className="lg:col-span-4" tone="bg-magenta text-white" tag="Confidence scored" icon={Files} title="Duplicate Manager" delay={0.04}>
       <div ref={ref} className="flex flex-1 flex-col">
         <div className="relative flex h-36 items-center justify-center">
           {[
@@ -230,10 +230,10 @@ function DuplicatePanel() {
             transition={{ type: "spring", stiffness: 500, damping: 18 }}
             className="absolute z-10 border-[3px] border-magenta bg-white/90 px-2 py-0.5 font-bangers text-2xl text-magenta"
           >
-            {choice === "keep" ? "KEPT BOTH!" : choice === "remove" ? "CLEANED!" : "97% MATCH"}
+            {choice === "keep" ? "KEPT BOTH!" : choice === "remove" ? "CLEANED!" : "SAME ISSUE!"}
           </motion.div>
         </div>
-        <p className="text-[13px] font-semibold text-black/75">Finds copies across formats by size, page count and ≥95% title similarity.</p>
+        <p className="text-[13px] font-semibold text-black/75">Finds copies across formats (identical bytes, the same series and issue, or the same cleaned title) and recommends the copy to keep.</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button type="button" onClick={() => setChoice("keep")} className="btn-comic-cyan inline-flex items-center justify-center gap-1 px-2 py-2 text-[11px] uppercase">
             <Check className="h-3.5 w-3.5" /> Keep all
@@ -279,7 +279,7 @@ function OcrPanel() {
             transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
           />
         </div>
-        <p className="mt-3 text-[13px] font-semibold text-black/75">Search dialogue across pages, jump to a match, and copy text right off the art, with zero cloud APIs.</p>
+        <p className="mt-3 text-[13px] font-semibold text-black/75">Reads speech bubbles in reading order (manga right to left), filters art noise, and lets you search, jump and copy text, with zero cloud APIs.</p>
         <button
           type="button"
           onClick={async () => {
@@ -334,6 +334,129 @@ function BackupPanel() {
           ))}
         </ul>
         <p className="mt-2 text-[13px] font-semibold text-black/75">One JSON file with conflict-free import. Move between PCs, no cloud sync required.</p>
+      </div>
+    </PanelShell>
+  );
+}
+
+/* ------------------------- How comics open panel ------------------------- */
+
+const LAYOUTS = [
+  { id: "page", label: "Page by page", icon: BookOpen },
+  { id: "spread", label: "Two-page spread", icon: Columns2 },
+  { id: "webtoon", label: "Webtoon", icon: Layers },
+] as const;
+
+function OpenModePanel() {
+  const [layout, setLayout] = useState<(typeof LAYOUTS)[number]["id"]>("webtoon");
+  const [manga, setManga] = useState(true);
+  const summary = `Comics open ${layout === "page" ? "page by page" : layout === "spread" ? "as two-page spreads" : "as a webtoon strip"}, ${manga ? "right to left" : "left to right"}.`;
+  return (
+    <PanelShell className="lg:col-span-6" tone="bg-cyan" tag="Settings → Reading" icon={Settings2} title="How Comics Open" delay={0.04}>
+      <div className="flex flex-1 flex-col gap-3">
+        <p className="text-[13px] font-semibold text-black/75">Pick the layout and direction every comic starts in. Webtoon and manga combine, and each comic still opens at its saved page.</p>
+        <div className="grid grid-cols-3 gap-2">
+          {LAYOUTS.map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              aria-pressed={layout === l.id}
+              onClick={() => setLayout(l.id)}
+              className={`flex flex-col items-center gap-1 border-[3px] border-black px-2 py-2 text-[11px] font-black uppercase shadow-[3px_3px_0_#000] transition-transform active:translate-y-0.5 ${layout === l.id ? "bg-amber" : "bg-white"}`}
+            >
+              <l.icon className="h-5 w-5" /> {l.label}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { v: false, label: "Comic · left to right", icon: ArrowRight },
+            { v: true, label: "Manga · right to left", icon: ArrowLeft },
+          ].map((d) => (
+            <button
+              key={d.label}
+              type="button"
+              aria-pressed={manga === d.v}
+              onClick={() => setManga(d.v)}
+              className={`inline-flex items-center justify-center gap-1.5 border-[3px] border-black px-2 py-2 text-[11px] font-black uppercase shadow-[3px_3px_0_#000] ${manga === d.v ? "bg-magenta text-white" : "bg-white"}`}
+            >
+              <d.icon className="h-4 w-4" /> {d.label}
+            </button>
+          ))}
+        </div>
+        <motion.p
+          key={summary}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="border-2 border-black bg-paper px-3 py-2 font-mono text-[11px] font-bold"
+          aria-live="polite"
+        >
+          {summary}
+        </motion.p>
+      </div>
+    </PanelShell>
+  );
+}
+
+/* ------------------------------ Tags panel ------------------------------ */
+
+const TAGS = [
+  { name: "Sci-Fi", n: 11 },
+  { name: "Manga", n: 6 },
+  { name: "Cyberpunk", n: 6 },
+  { name: "Mystery", n: 4 },
+  { name: "Fantasy", n: 3 },
+  { name: "Superhero", n: 3 },
+  { name: "Webtoon", n: 3 },
+  { name: "Horror", n: 0 },
+];
+
+function TagsPanel() {
+  const [q, setQ] = useState("");
+  const [picked, setPicked] = useState<string | null>("Manga");
+  const shown = TAGS.filter((t) => t.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const active = TAGS.find((t) => t.name === picked);
+  return (
+    <PanelShell className="lg:col-span-6" tone="bg-amber" tag="Built for many tags" icon={Tag} title="Tag Manager" delay={0.08}>
+      <div className="flex flex-1 flex-col gap-3">
+        <p className="text-[13px] font-semibold text-black/75">Search, sort by use, rename, merge and clean up unused tags. Filtering shows a sticker with the match count, and empty filters suggest a next step.</p>
+        <label className="flex items-center gap-2 border-[3px] border-black bg-white px-2 py-1.5">
+          <Search className="h-4 w-4 shrink-0" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tags…" aria-label="Search tags" className="w-full bg-transparent text-sm font-semibold outline-none" />
+        </label>
+        <div className="flex min-h-[4.5rem] flex-wrap content-start gap-2">
+          {shown.map((t) => (
+            <button
+              key={t.name}
+              type="button"
+              aria-pressed={picked === t.name}
+              onClick={() => setPicked(picked === t.name ? null : t.name)}
+              className={`inline-flex items-center gap-1.5 rounded-full border-2 border-black px-2.5 py-1 text-xs font-black ${picked === t.name ? "bg-amber shadow-[2px_2px_0_#000]" : t.n === 0 ? "border-dashed bg-white/60 text-black/50" : "bg-white"}`}
+            >
+              {t.name} <span className="rounded-full bg-black px-1.5 text-[10px] text-white">{t.n}</span>
+            </button>
+          ))}
+          {shown.length === 0 && <span className="font-mono text-xs font-bold text-black/60">No tag matches “{q}”.</span>}
+        </div>
+        <div className="flex items-center gap-2">
+          {active ? (
+            <motion.span
+              key={active.name}
+              initial={{ scale: 0.6, rotate: -8 }}
+              animate={{ scale: 1, rotate: -2 }}
+              transition={{ type: "spring", stiffness: 400, damping: 14 }}
+              className="inline-flex items-center gap-2 border-[3px] border-black bg-amber px-2 py-1 text-xs font-black shadow-[3px_3px_0_#000]"
+            >
+              <Tag className="h-3.5 w-3.5" /> TAG {active.name}
+              <span className="rounded-full bg-black px-1.5 text-[10px] text-white">{active.n === 1 ? "1 comic" : `${active.n} comics`}</span>
+              <button type="button" onClick={() => setPicked(null)} aria-label="Clear tag filter" className="grid h-4 w-4 place-items-center rounded-full bg-white">
+                <X className="h-3 w-3" />
+              </button>
+            </motion.span>
+          ) : (
+            <span className="font-mono text-[11px] font-bold text-black/60">Pick a tag to filter the library.</span>
+          )}
+        </div>
       </div>
     </PanelShell>
   );
@@ -414,7 +537,7 @@ export default function NewInV11() {
             title="Brand-new"
             accent="this issue!"
             tone="magenta"
-            sub="Version 1.1.0 is the biggest update yet: deeper library organization, a faster reader, local analytics and a fully responsive top bar."
+            sub="Version 1.1.0 is the biggest update yet: a comic-style app, smarter series and tags, a faster reader that opens the way you like, and local analytics."
           />
           <motion.div
             initial={{ scale: 0, rotate: -30 }}
@@ -423,7 +546,7 @@ export default function NewInV11() {
             transition={{ type: "spring", stiffness: 300, damping: 12, delay: 0.3 }}
             className="hidden h-36 w-36 shrink-0 items-center justify-center rounded-full border-[4px] border-black bg-magenta text-center font-bangers text-3xl leading-none text-white shadow-[6px_6px_0_#000] md:flex"
           >
-            10 new
+            15 new
             <br />
             features!
           </motion.div>
@@ -434,6 +557,8 @@ export default function NewInV11() {
           <DuplicatePanel />
           <OcrPanel />
           <BackupPanel />
+          <OpenModePanel />
+          <TagsPanel />
           <ToolbarPanel />
         </div>
       </div>

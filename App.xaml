@@ -148,6 +148,7 @@
             <helpers:BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
             <helpers:BooleanToVisibilityConverter x:Key="InvertedBoolToVisConverter" IsInverted="True" />
             <helpers:InverseBooleanConverter x:Key="InvertedBoolConverter" />
+            <helpers:HexToBrushConverter x:Key="HexToBrushConverter" />
             <helpers:ViewModeTextConverter x:Key="ViewModeTextConverter" />
             <helpers:StringToImageSourceConverter x:Key="StringToImageSourceConverter" />
             <helpers:OcrButtonTextConverter x:Key="OcrButtonTextConverter" />

@@ -294,11 +294,26 @@ public static class MotionHelper
     private static void Pop_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e) =>
         AnimateTo(sender as UIElement, scale: 1f, translateY: 0f, durationMs: 260);
 
-    private static void Pop_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e) =>
-        AnimateTo(sender as UIElement, scale: 0.92f, translateY: 1f, durationMs: 110);
+    // Controls that open a drop-down skip the squash: the menu appears at once instead of after the bounce.
+    private static bool OpensPopup(object sender) =>
+        sender is Microsoft.UI.Xaml.Controls.ComboBox or Microsoft.UI.Xaml.Controls.DropDownButton or Microsoft.UI.Xaml.Controls.SplitButton
+        || (sender is Microsoft.UI.Xaml.Controls.Button { Flyout: not null });
 
-    private static void Pop_PointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e) =>
+    private static void Pop_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (OpensPopup(sender)) return;
+        AnimateTo(sender as UIElement, scale: 0.92f, translateY: 1f, durationMs: 110);
+    }
+
+    private static void Pop_PointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (OpensPopup(sender))
+        {
+            AnimateTo(sender as UIElement, scale: 1f, translateY: 0f, durationMs: 90);
+            return;
+        }
         AnimateTo(sender as UIElement, scale: 1.045f, translateY: -1.5f, durationMs: 300);
+    }
 
     #endregion
 

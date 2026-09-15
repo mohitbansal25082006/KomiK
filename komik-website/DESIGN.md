@@ -116,10 +116,10 @@ Because pages are vector SVG, they stay razor sharp at any zoom and in full scre
 1. **Intro splash**: yellow/magenta split panel with a "KOMIK!" burst (CSS only, once per session).
 2. **Navbar**: Bangers wordmark, active-section pill (`layoutId`), CMYK scroll-progress ink bar, and a comic-tile mobile menu whose tiles close the menu and then glide to their section (Esc also closes it).
 3. **Hero**: SplitText headline "Your comics. Your PC. Zero cloud.", draggable stickers, rotating speed lines, the reader mockup gliding in once, crossing marquee tapes.
-4. **By the numbers**: count-up stat panels (zeros count *down* from 99): 8 formats, 6 decoders, 6 LUT presets, 0 network calls, 0 accounts, 27 automated test suites.
+4. **By the numbers**: count-up stat panels (zeros count *down* from 99): 8 formats, 6 decoders, 6 LUT presets, 0 network calls, 0 accounts, 41 automated test suites.
 5. **Chapter 02 · Archive vault**: 8 collectible format cards (3D tilt, holographic sheen, flip for engine details) + the animated "CBZ-O-Matic 3000" converter.
 6. **Chapter 03 · Reading engine**: a pinned horizontal comic strip on desktop (stacked on mobile) with five live demos: spread pairing, the 6-worker webtoon decoder, a before/after LUT slider, a self-typing library search, and resume/bookmarks.
-7. **Special edition · New in 1.1.0**: a paper bento page covering Series & Volumes, Stats & Komik Wrapped, the Duplicate Manager, offline OCR, `.komikbackup` backups, and the responsive library with window memory.
+7. **Special edition · New in 1.1.0**: a paper bento page covering Series & Volumes (Continuation Series and By Creator), Stats & Komik Wrapped, the Duplicate Manager, offline OCR, `.komikbackup` backups, an interactive **How Comics Open** picker (layout + direction), an interactive **Tag Manager** (search, counts, active-tag sticker), and the responsive library with window memory.
 8. **Manifesto**: a torn newsprint editorial with slamming "NO CLOUD / NO LOGIN / NO SPYING / NO DELETES" stamps.
 9. **Appendix · Keyboard**: press real keys (or tap keycaps) to see each shortcut's SFX and description.
 10. **Final panel · Download**: magenta sunburst, burst-backed CTA, spec cards, taped SmartScreen note.
@@ -141,6 +141,6 @@ Because pages are vector SVG, they stay razor sharp at any zoom and in full scre
 The repository README reuses this design language, with no external services needed:
 
 - **Animated SVGs** (pure SVG + CSS keyframes, which render animated on GitHub and respect `prefers-reduced-motion`): `banner.svg` (rotating speed lines, popping "KOMIK!" lettering, crossing marquee tapes, floating Byte), ten `section-*.svg` chapter headers with a shine sweep, `stats.svg` drop-in stat cards, the CMYK `divider.svg`, and `the-end.svg`.
-- **Desktop app screenshots** (`app-*.jpg`): captured from the real Komik 1.1.0 app reading the demo comic packed into `.cbz` files. They cover the Library, reader (two-page spread), Webtoon mode, Series & Volumes and Reading Insights.
+- **Desktop app screenshots** (`app-*.jpg`): captured from the real Komik 1.1.0 app reading the demo comic packed into `.cbz` files. They use an isolated demo library of original mock comics and cover the Library, reader (two-page spread), Webtoon mode, Series & Volumes, a series detail, Manage Tags, Settings (How Comics Open) and Reading Insights.
 - **Website screenshots** (`screenshot-*.jpg`): hero, full-screen reader, format cards, reading engine strip, New in 1.1.0, and mobile views.
 - SVG lettering uses Impact with Anton / Arial Black fallbacks, because web fonts can't load inside `<img>`-embedded SVGs.

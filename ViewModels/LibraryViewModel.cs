@@ -64,6 +64,7 @@ public partial class LibraryViewModel : ObservableObject
         OnPropertyChanged(nameof(EmptyFilterTitle));
         OnPropertyChanged(nameof(EmptyFilterSubtitle));
         OnPropertyChanged(nameof(EmptyFilterGlyph));
+        NotifyEmptyStateExtras();
     }
 
     [ObservableProperty]
@@ -127,15 +128,7 @@ public partial class LibraryViewModel : ObservableObject
 
     public ObservableCollection<ManualSeriesComicItem> ManualSeriesCandidates { get; } = new();
 
-    partial void OnManualSeriesSearchQueryChanged(string value)
-    {
-        string query = value?.Trim() ?? string.Empty;
-        foreach (var item in ManualSeriesCandidates)
-        {
-            item.IsVisible = string.IsNullOrWhiteSpace(query) ||
-                             (item.Comic.Title.Contains(query, StringComparison.OrdinalIgnoreCase) || item.Caption.Contains(query, StringComparison.OrdinalIgnoreCase));
-        }
-    }
+    partial void OnManualSeriesSearchQueryChanged(string value) => ApplyCandidateFilter();
 
     public ObservableCollection<DuplicateComicGroup> DuplicateGroups { get; } = new();
 
@@ -350,6 +343,99 @@ public partial class LibraryViewModel : ObservableObject
         }
     }
 
+    private enum EmptyKind { Series, Search, Favorites, Reading, Unread, Completed, Tag, Collection, Other }
+
+    private EmptyKind CurrentEmptyKind =>
+        IsSeriesView && SeriesGroups.Count == 0 ? EmptyKind.Series
+        : !string.IsNullOrWhiteSpace(SearchText) ? EmptyKind.Search
+        : FilterFavoritesOnly ? EmptyKind.Favorites
+        : FilterInProgressOnly ? EmptyKind.Reading
+        : FilterUnreadOnly ? EmptyKind.Unread
+        : FilterCompletedOnly ? EmptyKind.Completed
+        : !string.IsNullOrEmpty(SelectedTag) ? EmptyKind.Tag
+        : !string.IsNullOrEmpty(SelectedCollection) ? EmptyKind.Collection
+        : EmptyKind.Other;
+
+    /// <summary>Burst color of the empty screen, matching the filter chip that led here.</summary>
+    public string EmptyFilterAccent => CurrentEmptyKind switch
+    {
+        EmptyKind.Series => "#B388FF",
+        EmptyKind.Search => "#00C2FF",
+        EmptyKind.Favorites => "#FF4D8D",
+        EmptyKind.Reading => "#00C2FF",
+        EmptyKind.Unread => "#FF9F1C",
+        EmptyKind.Completed => "#2EE59D",
+        EmptyKind.Tag => "#FFD700",
+        _ => "#FFD700"
+    };
+
+    public string EmptyFilterSticker => CurrentEmptyKind switch
+    {
+        EmptyKind.Series => "NO SERIES",
+        EmptyKind.Search => "NO MATCH!",
+        EmptyKind.Favorites => "NO FAVES",
+        EmptyKind.Reading => "ALL QUIET",
+        EmptyKind.Unread => "ALL READ!",
+        EmptyKind.Completed => "NOT YET",
+        EmptyKind.Tag => "EMPTY TAG",
+        _ => "NOTHING!"
+    };
+
+    public string EmptyFilterPrimaryText => CurrentEmptyKind == EmptyKind.Series ? "Back to Comics" : "Show All Comics";
+
+    public string EmptyFilterActionText => CurrentEmptyKind switch
+    {
+        EmptyKind.Series => string.IsNullOrWhiteSpace(SeriesSearchText) ? (IsCreatorSection ? "New Creator" : "New Series") : "Clear Search",
+        EmptyKind.Search => "Clear Search",
+        EmptyKind.Reading => "Browse Unread",
+        EmptyKind.Unread => "Show Finished",
+        EmptyKind.Completed => "Continue Reading",
+        EmptyKind.Tag => "Manage Tags",
+        _ => string.Empty
+    };
+
+    public string EmptyFilterActionGlyph => CurrentEmptyKind switch
+    {
+        EmptyKind.Search => "\uE894",
+        EmptyKind.Series => string.IsNullOrWhiteSpace(SeriesSearchText) ? "\uE710" : "\uE894",
+        EmptyKind.Reading => "\uE8A5",
+        EmptyKind.Unread => "\uE73E",
+        EmptyKind.Completed => "\uE768",
+        EmptyKind.Tag => "\uE8EC",
+        _ => "\uE71C"
+    };
+
+    public bool HasEmptyFilterAction => EmptyFilterActionText.Length > 0;
+
+    /// <summary>The second button on the empty screen does the most useful next thing for that filter.</summary>
+    public async Task RunEmptyFilterActionAsync()
+    {
+        switch (CurrentEmptyKind)
+        {
+            case EmptyKind.Series when !string.IsNullOrWhiteSpace(SeriesSearchText):
+                SeriesSearchText = string.Empty;
+                break;
+            case EmptyKind.Series:
+                await OpenCreateSeriesDialogAsync();
+                break;
+            case EmptyKind.Search:
+                SearchText = string.Empty;
+                break;
+            case EmptyKind.Reading:
+                FilterUnread();
+                break;
+            case EmptyKind.Unread:
+                FilterCompleted();
+                break;
+            case EmptyKind.Completed:
+                FilterContinueReading();
+                break;
+            case EmptyKind.Tag:
+                await OpenManageTagsAsync();
+                break;
+        }
+    }
+
     public string EmptyFilterGlyph
     {
         get
@@ -427,34 +513,47 @@ public partial class LibraryViewModel : ObservableObject
 
     public string NewGroupButtonText => IsCreatorSection ? "New Creator" : "New Series";
 
+    /// <summary>Bumped whenever Settings saves, so the library re-applies its defaults when you come back.</summary>
+    public static int SettingsVersion { get; private set; }
+    public static void NotifySettingsChanged() => SettingsVersion++;
+    private int _appliedSettingsVersion = -1;
+
+    private async Task ApplyLibrarySettingsAsync(bool includeSeriesView)
+    {
+        try
+        {
+            var settings = await _repository.GetAppSettingsAsync();
+            IsGridView = settings.DefaultViewMode != "List";
+            if (includeSeriesView) IsSeriesView = settings.IsSeriesViewDefault;
+            if (settings.DefaultSortOption >= 0 && settings.DefaultSortOption < SortOptions.Count && SelectedSortOption != SortOptions[settings.DefaultSortOption])
+            {
+                SelectedSortOption = SortOptions[settings.DefaultSortOption];
+            }
+            _appliedSettingsVersion = SettingsVersion;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[LibraryViewModel] Failed to apply settings: {ex.Message}");
+        }
+    }
+
     /// <param name="refreshOnly">Returning to the page: reload data but keep the current view, section and open overlays.</param>
     public async Task InitializeAsync(bool refreshOnly = false)
     {
         await _repository.InitializeAsync();
         if (refreshOnly && _hasInitialized)
         {
+            if (_appliedSettingsVersion != SettingsVersion) await ApplyLibrarySettingsAsync(includeSeriesView: false);
             await RefreshTagsAndCollectionsAsync();
+            await RefreshTagUsageAsync();
             await ReloadComicsAsync();
             return;
         }
         _hasInitialized = true;
-        try
-        {
-            var settings = await _repository.GetAppSettingsAsync();
-            IsGridView = settings.DefaultViewMode != "List";
-            IsSeriesView = settings.IsSeriesViewDefault;
-            if (settings.DefaultSortOption >= 0 && settings.DefaultSortOption < SortOptions.Count)
-            {
-                SelectedSortOption = SortOptions[settings.DefaultSortOption];
-            }
-        }
-
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[LibraryViewModel] Failed to apply settings: {ex.Message}");
-        }
+        await ApplyLibrarySettingsAsync(includeSeriesView: true);
 
         await RefreshTagsAndCollectionsAsync();
+        await RefreshTagUsageAsync();
         await RefreshWatchedFoldersAsync();
         await ReloadComicsAsync();
     }
@@ -914,10 +1013,17 @@ public partial class LibraryViewModel : ObservableObject
     public async Task RemoveFromLibraryAsync(ComicEntity comic)
     {
         await _repository.RemoveComicAsync(comic.Id);
-        Comics.Remove(comic);
+        var inGrid = Comics.FirstOrDefault(c => c.Id == comic.Id);
+        if (inGrid != null) Comics.Remove(inGrid);
         TotalComicCount = await _repository.GetTotalComicCountAsync();
         FavoritesCount = await _repository.GetFavoritesCountAsync();
+        InProgressCount = await _repository.GetInProgressCountAsync();
+        UnreadCount = await _repository.GetUnreadCountAsync();
+        CompletedCount = await _repository.GetCompletedCountAsync();
         NotifyComicsChanged();
+        await UpdateSeriesGroupsAsync();
+        _ = ScanDuplicatesAsync();
+        ShowNotification("Removed from Library", $"'{comic.Title}' was removed. The file stays on disk; add it back anytime from Settings.", InfoBarSeverity.Informational);
     }
 
     [RelayCommand]
@@ -1078,6 +1184,7 @@ public partial class LibraryViewModel : ObservableObject
             OnPropertyChanged(nameof(EmptyFilterTitle));
             OnPropertyChanged(nameof(EmptyFilterSubtitle));
             OnPropertyChanged(nameof(EmptyFilterGlyph));
+        NotifyEmptyStateExtras();
         }
     }
 
@@ -1130,6 +1237,9 @@ public partial class LibraryViewModel : ObservableObject
 
         var detection = await Task.Run(() => _seriesService.DetectAll(allComics, metadata, manualSeries, options));
         if (version != _seriesUpdateVersion) return; // a newer refresh started meanwhile
+
+        await LoadCoverOverridesAsync();
+        ApplyCoverOverrides(detection.Series.Concat(detection.Creators));
 
         StorySeriesCount = detection.Series.Count;
         CreatorGroupCount = detection.Creators.Count;
@@ -1186,6 +1296,10 @@ public partial class LibraryViewModel : ObservableObject
         OnPropertyChanged(nameof(SeriesGroupsCountDisplay));
         OnPropertyChanged(nameof(ShowSeriesGrid));
         OnPropertyChanged(nameof(ShowEmptyFilter));
+        OnPropertyChanged(nameof(EmptyFilterTitle));
+        OnPropertyChanged(nameof(EmptyFilterSubtitle));
+        OnPropertyChanged(nameof(EmptyFilterGlyph));
+        NotifyEmptyStateExtras();
         OnPropertyChanged(nameof(HiddenSeriesCount));
         OnPropertyChanged(nameof(HasHiddenSeries));
         OnPropertyChanged(nameof(HiddenSeriesDisplay));
@@ -1249,6 +1363,7 @@ public partial class LibraryViewModel : ObservableObject
 
             var section = group.IsCreatorGroup ? SeriesSection.Creator : SeriesSection.Story;
             long id = await _repository.CreateManualSeriesAsync(group.SeriesName, group.Issues.Select(i => i.Id), section, autoUpdate: false, sourceKey: group.SeriesKey);
+            await CarryCoverToManualAsync(group, id);
             await UpdateSeriesGroupsAsync();
             ReopenManualDetail(id);
             ShowNotification(group.IsCreatorGroup ? "Creator Saved" : "Series Saved",
@@ -1385,6 +1500,21 @@ public partial class LibraryViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(NewSeriesSmartPickText))]
     private bool _newSeriesIsCreator;
 
+    partial void OnNewSeriesIsCreatorChanged(bool value)
+    {
+        if (!IsCreateSeriesDialogOpen) return;
+        _ = RebuildCreateCandidatesAsync(value);
+    }
+
+    /// <summary>Switching Series / Creator in the create screen changes which comics may be picked; keep what still applies.</summary>
+    private async Task RebuildCreateCandidatesAsync(bool creator)
+    {
+        var picked = ManualSeriesCandidates.Where(c => c.IsSelected).Select(c => c.Comic.Id).ToHashSet();
+        await BuildCandidatesAsync(creator, null);
+        foreach (var item in ManualSeriesCandidates) item.IsSelected = picked.Contains(item.Comic.Id);
+        SelectedCandidateCount = ManualSeriesCandidates.Count(c => c.IsSelected);
+    }
+
     public bool NewSeriesIsStory => !NewSeriesIsCreator;
     public string NewSeriesNamePlaceholder => NewSeriesIsCreator ? "Creator name, e.g. an author, artist or circle" : "Series name, e.g. Saga or Berserk";
     public string NewSeriesDialogTitle => NewSeriesIsCreator ? "NEW CREATOR COLLECTION" : "NEW CONTINUATION SERIES";
@@ -1401,19 +1531,10 @@ public partial class LibraryViewModel : ObservableObject
     public async Task OpenCreateSeriesDialogAsync()
     {
         NewSeriesName = string.Empty;
-        ManualSeriesSearchQuery = string.Empty;
-        ManualSeriesCandidates.Clear();
         NewSeriesIsCreator = IsCreatorSection;
         NewSeriesAutoUpdate = true;
-
-        var allComics = await _repository.GetComicsAsync();
-        var metadata = await _repository.GetAllComicMetadataAsync();
-        foreach (var comic in allComics.Where(c => !c.IsMissing).OrderBy(c => c.Title, new NaturalSortComparer()))
-        {
-            metadata.TryGetValue(comic.Id, out var meta);
-            ManualSeriesCandidates.Add(new ManualSeriesComicItem(comic, ComicIdentityParser.Parse(comic, meta), isSelected: false));
-        }
-        SelectedCandidateCount = 0;
+        CandidateSortIndex = 0;
+        await BuildCandidatesAsync(IsCreatorSection, null);
         IsCreateSeriesDialogOpen = true;
     }
 
@@ -1457,6 +1578,7 @@ public partial class LibraryViewModel : ObservableObject
     {
         IsCreateSeriesDialogOpen = false;
         ManualSeriesCandidates.Clear();
+        FilteredCandidates.Clear();
         NewSeriesName = string.Empty;
         ManualSeriesSearchQuery = string.Empty;
         SelectedCandidateCount = 0;
@@ -1473,9 +1595,9 @@ public partial class LibraryViewModel : ObservableObject
     [RelayCommand]
     public void SelectAllCandidates()
     {
-        foreach (var item in ManualSeriesCandidates)
+        foreach (var item in FilteredCandidates)
         {
-            if (item.IsVisible) item.IsSelected = true;
+            item.IsSelected = true;
         }
         SelectedCandidateCount = ManualSeriesCandidates.Count(c => c.IsSelected);
     }
@@ -1580,20 +1702,8 @@ public partial class LibraryViewModel : ObservableObject
     {
         if (SelectedSeriesGroup == null) return;
 
-        ManualSeriesSearchQuery = string.Empty;
-        ManualSeriesCandidates.Clear();
-
-        var existingIds = new HashSet<long>(SelectedSeriesGroup.Issues.Select(i => i.Id));
-        var allComics = await _repository.GetComicsAsync();
-        foreach (var comic in allComics)
-        {
-            if (!existingIds.Contains(comic.Id) && !comic.IsMissing)
-            {
-                var candidate = new ManualSeriesComicItem(comic, ComicIdentityParser.Parse(comic), isSelected: false);
-                ManualSeriesCandidates.Add(candidate);
-            }
-        }
-        SelectedCandidateCount = 0;
+        CandidateSortIndex = 0;
+        await BuildCandidatesAsync(SelectedSeriesGroup.IsCreatorGroup, SelectedSeriesGroup);
         IsAddComicsToSeriesDialogOpen = true;
     }
 
@@ -1602,6 +1712,7 @@ public partial class LibraryViewModel : ObservableObject
     {
         IsAddComicsToSeriesDialogOpen = false;
         ManualSeriesCandidates.Clear();
+        FilteredCandidates.Clear();
         ManualSeriesSearchQuery = string.Empty;
         SelectedCandidateCount = 0;
     }
@@ -1620,41 +1731,31 @@ public partial class LibraryViewModel : ObservableObject
 
         try
         {
+            var group = SelectedSeriesGroup;
+            var metadata = await _repository.GetAllComicMetadataAsync();
+            var ordered = SeriesDetectionService.OrderForReading(group.Issues.Concat(selectedComics).GroupBy(c => c.Id).Select(g => g.First()), metadata, group.IsCreatorGroup);
             long seriesId;
-            if (SelectedSeriesGroup.IsManual && SelectedSeriesGroup.ManualSeriesId > 0)
+            if (group.IsManual && group.ManualSeriesId > 0)
             {
-                seriesId = SelectedSeriesGroup.ManualSeriesId;
+                seriesId = group.ManualSeriesId;
                 await _repository.AddComicsToManualSeriesAsync(seriesId, selectedComics.Select(c => c.Id));
+                await _repository.SetManualSeriesOrderAsync(seriesId, ordered.Select(c => c.Id).ToList());
             }
             else
             {
-                // Upgrade auto-detected series into a persistent manual series
-                var allIds = SelectedSeriesGroup.Issues.Select(i => i.Id).Concat(selectedComics.Select(c => c.Id)).Distinct();
-                seriesId = await _repository.CreateManualSeriesAsync(SelectedSeriesGroup.SeriesName, allIds,
-                    SelectedSeriesGroup.IsCreatorGroup ? SeriesSection.Creator : SeriesSection.Story, autoUpdate: false, sourceKey: SelectedSeriesGroup.SeriesKey);
-                SelectedSeriesGroup.ManualSeriesId = seriesId;
-                SelectedSeriesGroup.IsManual = true;
+                // Adding to an automatic series keeps it as a manual one with the new comics.
+                seriesId = await _repository.CreateManualSeriesAsync(group.SeriesName, ordered.Select(c => c.Id),
+                    group.IsCreatorGroup ? SeriesSection.Creator : SeriesSection.Story, autoUpdate: true, sourceKey: group.SeriesKey);
+                await CarryCoverToManualAsync(group, seriesId);
             }
-
-            foreach (var comic in selectedComics)
-            {
-                if (!SelectedSeriesGroup.Issues.Any(i => i.Id == comic.Id))
-                {
-                    SelectedSeriesGroup.Issues.Add(comic);
-                }
-            }
-
-            var sortedIssues = SelectedSeriesGroup.Issues.OrderBy(i => i.Title, new NaturalSortComparer()).ToList();
-            SelectedSeriesGroup.Issues.Clear();
-            foreach (var issue in sortedIssues)
-            {
-                SelectedSeriesGroup.Issues.Add(issue);
-            }
-            SelectedSeriesGroup.RefreshProperties();
 
             IsAddComicsToSeriesDialogOpen = false;
+            ManualSeriesCandidates.Clear();
+            FilteredCandidates.Clear();
             await UpdateSeriesGroupsAsync();
-            ShowNotification("Comics Added", $"Successfully added {selectedComics.Count} comic(s) to '{SelectedSeriesGroup.SeriesName}'.", InfoBarSeverity.Success);
+            var fresh = SeriesGroups.FirstOrDefault(g => g.IsManual && g.ManualSeriesId == seriesId);
+            if (fresh != null && IsSeriesDetailOpen) SelectedSeriesGroup = fresh;
+            ShowNotification("Comics Added", $"Added {selectedComics.Count} comic{(selectedComics.Count == 1 ? "" : "s")} to '{group.SeriesName}' in reading order.", InfoBarSeverity.Success);
         }
         catch (Exception ex)
         {
@@ -2028,6 +2129,16 @@ public partial class LibraryViewModel : ObservableObject
         }
     }
 
+    private void NotifyEmptyStateExtras()
+    {
+        OnPropertyChanged(nameof(EmptyFilterAccent));
+        OnPropertyChanged(nameof(EmptyFilterSticker));
+        OnPropertyChanged(nameof(EmptyFilterPrimaryText));
+        OnPropertyChanged(nameof(EmptyFilterActionText));
+        OnPropertyChanged(nameof(EmptyFilterActionGlyph));
+        OnPropertyChanged(nameof(HasEmptyFilterAction));
+    }
+
     private void NotifyComicsChanged()
     {
         OnPropertyChanged(nameof(HasComics));
@@ -2038,6 +2149,7 @@ public partial class LibraryViewModel : ObservableObject
         OnPropertyChanged(nameof(EmptyFilterTitle));
         OnPropertyChanged(nameof(EmptyFilterSubtitle));
         OnPropertyChanged(nameof(EmptyFilterGlyph));
+        NotifyEmptyStateExtras();
     }
 }
 

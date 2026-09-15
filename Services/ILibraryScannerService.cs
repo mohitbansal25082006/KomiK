@@ -31,4 +31,6 @@ public interface ILibraryScannerService
     Task ScanFolderAsync(string rootPath, CancellationToken cancellationToken = default);
     Task RescanAllAsync(CancellationToken cancellationToken = default);
     Task<ComicEntity?> IndexSingleComicAsync(string path, CancellationToken cancellationToken = default);
+    Task<System.Collections.Generic.List<(string Path, ComicSourceType Format)>> FindComicSourcesAsync(System.Collections.Generic.IEnumerable<string> roots, CancellationToken cancellationToken = default);
+    Task<int> IndexComicsAsync(System.Collections.Generic.IReadOnlyList<(string Path, ComicSourceType Format)> sources, IProgress<int>? progress = null, CancellationToken cancellationToken = default);
 }

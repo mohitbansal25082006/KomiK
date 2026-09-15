@@ -7,9 +7,10 @@ namespace Komik.Models;
 /// </summary>
 public sealed class AppSettings
 {
-    public string Theme { get; set; } = "Default"; // Default (System), Light, Dark
+    public string Theme { get; set; } = "Light"; // Light (default), Dark or Default (follow Windows)
     public string DefaultFitMode { get; set; } = "FitToHeight";
     public string DefaultReadingDirection { get; set; } = "LeftToRight";
+    public string DefaultReaderViewMode { get; set; } = "SinglePage"; // SinglePage, DoublePage or Webtoon
     public string DefaultViewMode { get; set; } = "Grid";
     public int DefaultSortOption { get; set; } = 0; // LibrarySortOption.TitleAscending
     public double DefaultBrightness { get; set; } = 0.0;

@@ -49,6 +49,7 @@ public sealed partial class MainPage : Page
         Unloaded += MainPage_Unloaded;
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+        ViewModel.ComicOpened += AnchorWebtoonPage;
     }
 
     protected override async void OnNavigatedTo(NavigationEventArgs e)
@@ -80,7 +81,9 @@ public sealed partial class MainPage : Page
             window.ClosingAsync -= Window_ClosingAsync;
         }
         ViewModel.StopSessionTracking();
-        _ = ViewModel.FlushReadingProgressAsync();
+        var flush = ViewModel.FlushReadingProgressAsync();
+        // Close the archive as soon as progress is saved so the file isn't locked (e.g. for duplicate cleanup).
+        _ = flush.ContinueWith(_ => DispatcherQueue.TryEnqueue(ViewModel.CloseComic), TaskScheduler.Default);
     }
 
     private void Window_FullscreenChanged(bool isFullscreen)
@@ -171,9 +174,59 @@ public sealed partial class MainPage : Page
 
     private void MainPage_Loaded(object sender, RoutedEventArgs e)
     {
+        foreach (var element in new UIElement[] { FitGroup, SpreadToggle, DirectionButton, OcrTextOverlayCard })
+        {
+            AttachPopVisibilityAnimations(element);
+        }
         ReaderScrollViewer.SizeChanged += ReaderScrollViewer_SizeChanged;
         UpdateLayoutForFitMode();
         Focus(FocusState.Programmatic);
+    }
+
+    /// <summary>Toolbar pieces pop out (shrink and fade) when hidden and pop back in when shown.</summary>
+    private static void AttachPopVisibilityAnimations(UIElement element)
+    {
+        var visual = Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(element);
+        var compositor = visual.Compositor;
+        var ease = compositor.CreateCubicBezierEasingFunction(new System.Numerics.Vector2(0.3f, 1.4f), new System.Numerics.Vector2(0.5f, 1f));
+
+        var show = compositor.CreateAnimationGroup();
+        var showFade = compositor.CreateScalarKeyFrameAnimation();
+        showFade.Target = "Opacity";
+        showFade.InsertKeyFrame(0f, 0f);
+        showFade.InsertKeyFrame(1f, 1f);
+        showFade.Duration = TimeSpan.FromMilliseconds(220);
+        var showScale = compositor.CreateVector3KeyFrameAnimation();
+        showScale.Target = "Scale";
+        showScale.InsertKeyFrame(0f, new System.Numerics.Vector3(0.6f, 0.6f, 1f));
+        showScale.InsertKeyFrame(1f, System.Numerics.Vector3.One, ease);
+        showScale.Duration = TimeSpan.FromMilliseconds(320);
+        show.Add(showFade);
+        show.Add(showScale);
+
+        var hide = compositor.CreateAnimationGroup();
+        var hideFade = compositor.CreateScalarKeyFrameAnimation();
+        hideFade.Target = "Opacity";
+        hideFade.InsertKeyFrame(1f, 0f);
+        hideFade.Duration = TimeSpan.FromMilliseconds(160);
+        var hideScale = compositor.CreateVector3KeyFrameAnimation();
+        hideScale.Target = "Scale";
+        hideScale.InsertKeyFrame(1f, new System.Numerics.Vector3(0.6f, 0.6f, 1f));
+        hideScale.Duration = TimeSpan.FromMilliseconds(160);
+        hide.Add(hideFade);
+        hide.Add(hideScale);
+
+        if (element is FrameworkElement fe)
+        {
+            fe.SizeChanged += (_, args) => visual.CenterPoint = new System.Numerics.Vector3((float)args.NewSize.Width / 2f, (float)args.NewSize.Height / 2f, 0f);
+        }
+        Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.SetImplicitShowAnimation(element, show);
+        Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.SetImplicitHideAnimation(element, hide);
+    }
+
+    private void CopyOcrBlock_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: OcrTextBlock block }) ViewModel.CopyOcrBlock(block);
     }
 
     private void MainPage_Unloaded(object sender, RoutedEventArgs e)
@@ -200,14 +253,7 @@ public sealed partial class MainPage : Page
                  e.PropertyName == nameof(ViewModel.SecondPageImage))
         {
             UpdateLayoutForFitMode();
-            if (ViewModel.IsWebtoonMode && ViewModel.CurrentPageIndex > 0)
-            {
-                DispatcherQueue.TryEnqueue(async () =>
-                {
-                    await Task.Delay(100);
-                    ScrollToWebtoonPage(ViewModel.CurrentPageIndex);
-                });
-            }
+            AnchorWebtoonPage();
         }
         else if (e.PropertyName == nameof(ViewModel.ZoomFactor))
         {
@@ -234,7 +280,10 @@ public sealed partial class MainPage : Page
                     ScrollToWebtoonPage(ViewModel.CurrentPageIndex);
                 }
             }
-            Bindings.Update();
+        }
+        else if (e.PropertyName == nameof(ViewModel.IsWebtoonMode))
+        {
+            SyncReaderToggles();
         }
     }
 
@@ -380,35 +429,55 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private bool _isSyncingZoomFromViewer;
+
     private void ApplyZoomFactor()
     {
+        if (_isSyncingZoomFromViewer) return;
         float targetZoom = (float)Math.Clamp(ViewModel.ZoomFactor, 0.2, 5.0);
-        if (Math.Abs(ReaderScrollViewer.ZoomFactor - targetZoom) > 0.02)
+        double oldZoom = Math.Max(0.01, ReaderScrollViewer.ZoomFactor);
+        if (Math.Abs(oldZoom - targetZoom) > 0.02)
         {
-            ReaderScrollViewer.ChangeView(null, null, targetZoom, true);
+            // Offsets are in zoomed pixels: keep the spot being read (a third down, centred) under the same screen point,
+            // otherwise zooming out in webtoon mode slides far down the strip.
+            double lineY = ReaderScrollViewer.ViewportHeight * 0.33;
+            double centerX = ReaderScrollViewer.ViewportWidth / 2;
+            double contentY = (ReaderScrollViewer.VerticalOffset + lineY) / oldZoom;
+            double contentX = (ReaderScrollViewer.HorizontalOffset + centerX) / oldZoom;
+            double newY = Math.Max(0, contentY * targetZoom - lineY);
+            double newX = Math.Max(0, contentX * targetZoom - centerX);
+            ReaderScrollViewer.ChangeView(newX, newY, targetZoom, false);
         }
     }
 
     private void ReaderScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
         ViewModel.NotifyReadingActivity();
-        if (Math.Abs(ViewModel.ZoomFactor - ReaderScrollViewer.ZoomFactor) > 0.05)
+
+        // Pinch / Ctrl+wheel zoom: the percent follows every frame, without pushing the value back to the viewer.
+        double viewerZoom = Math.Round(ReaderScrollViewer.ZoomFactor, 2);
+        if (Math.Abs(ViewModel.ZoomFactor - viewerZoom) >= 0.01)
         {
-            ViewModel.ZoomFactor = Math.Round(ReaderScrollViewer.ZoomFactor, 2);
+            _isSyncingZoomFromViewer = true;
+            try { ViewModel.ZoomFactor = viewerZoom; }
+            finally { _isSyncingZoomFromViewer = false; }
         }
 
-        if (_isProgrammaticScroll) return;
-
-        if (ViewModel.IsWebtoonMode && ReaderScrollViewer.ScrollableHeight > 0 && ViewModel.TotalPages > 0)
+        if (_isProgrammaticScroll)
         {
-            double ratio = Math.Clamp(ReaderScrollViewer.VerticalOffset / ReaderScrollViewer.ScrollableHeight, 0.0, 1.0);
-            int estPage = Math.Clamp((int)Math.Round(ratio * (ViewModel.TotalPages - 1)), 0, ViewModel.TotalPages - 1);
-            if (estPage != ViewModel.CurrentPageIndex)
+            if (!e.IsIntermediate) _isProgrammaticScroll = false;
+            return;
+        }
+
+        if (ViewModel.IsWebtoonMode && ViewModel.TotalPages > 0)
+        {
+            int page = GetWebtoonPageAtViewport();
+            if (page >= 0 && page != ViewModel.CurrentPageIndex)
             {
                 try
                 {
                     _isUserScrollingWebtoon = true;
-                    ViewModel.CurrentPageIndex = estPage;
+                    ViewModel.CurrentPageIndex = page;
                 }
                 finally
                 {
@@ -418,39 +487,98 @@ public sealed partial class MainPage : Page
         }
     }
 
+    /// <summary>Top of a webtoon page inside the strip, in unzoomed content pixels (NaN when not laid out).</summary>
+    private double WebtoonPageTop(int index)
+    {
+        if (WebtoonContainer?.ContainerFromIndex(index) is not FrameworkElement fe || fe.ActualHeight <= 0) return double.NaN;
+        return fe.TransformToVisual(PageDisplayContainer).TransformPoint(new Windows.Foundation.Point(0, 0)).Y;
+    }
+
+    /// <summary>The page covering the reading line (a third down the screen), found by binary search over real page positions.</summary>
+    private int GetWebtoonPageAtViewport()
+    {
+        int count = ViewModel.TotalPages;
+        if (count <= 0) return -1;
+        double zoom = Math.Max(0.01, ReaderScrollViewer.ZoomFactor);
+        double line = (ReaderScrollViewer.VerticalOffset + ReaderScrollViewer.ViewportHeight * 0.33) / zoom;
+
+        int lo = 0, hi = count - 1, found = 0;
+        while (lo <= hi)
+        {
+            int mid = (lo + hi) / 2;
+            double top = WebtoonPageTop(mid);
+            if (double.IsNaN(top)) return -1;
+            if (top <= line)
+            {
+                found = mid;
+                lo = mid + 1;
+            }
+            else
+            {
+                hi = mid - 1;
+            }
+        }
+        return found;
+    }
+
     private void ScrollToWebtoonPage(int targetIndex)
     {
         if (!ViewModel.IsWebtoonMode || targetIndex < 0 || ViewModel.TotalPages <= 0) return;
 
         try
         {
-            _isProgrammaticScroll = true;
+            double top = WebtoonPageTop(targetIndex);
+            double zoom = Math.Max(0.01, ReaderScrollViewer.ZoomFactor);
+            double targetY = !double.IsNaN(top)
+                ? top * zoom
+                : ViewModel.TotalPages > 1 ? (double)targetIndex / (ViewModel.TotalPages - 1) * ReaderScrollViewer.ScrollableHeight : 0;
+            targetY = Math.Clamp(targetY, 0, Math.Max(0, ReaderScrollViewer.ScrollableHeight));
+            if (Math.Abs(targetY - ReaderScrollViewer.VerticalOffset) < 1) return;
 
-            if (WebtoonContainer != null && WebtoonContainer.ContainerFromIndex(targetIndex) is FrameworkElement fe)
-            {
-                var transform = fe.TransformToVisual(PageDisplayContainer);
-                var pt = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
-                double targetY = Math.Clamp(pt.Y, 0, Math.Max(0, ReaderScrollViewer.ScrollableHeight));
-                ReaderScrollViewer.ChangeView(null, targetY, null, disableAnimation: false);
-            }
-            else if (ReaderScrollViewer.ScrollableHeight > 0 && ViewModel.TotalPages > 1)
-            {
-                double targetY = ((double)targetIndex / (ViewModel.TotalPages - 1)) * ReaderScrollViewer.ScrollableHeight;
-                ReaderScrollViewer.ChangeView(null, Math.Clamp(targetY, 0, ReaderScrollViewer.ScrollableHeight), null, disableAnimation: false);
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[MainPage] ScrollToWebtoonPage error: {ex.Message}");
-        }
-        finally
-        {
+            _isProgrammaticScroll = true;
+            ReaderScrollViewer.ChangeView(null, targetY, null, disableAnimation: false);
+
+            // Safety net in case the viewer reports no final (non-intermediate) change.
             DispatcherQueue.TryEnqueue(async () =>
             {
-                await Task.Delay(200);
+                await Task.Delay(900);
                 _isProgrammaticScroll = false;
             });
         }
+        catch (Exception ex)
+        {
+            _isProgrammaticScroll = false;
+            System.Diagnostics.Debug.WriteLine($"[MainPage] ScrollToWebtoonPage error: {ex.Message}");
+        }
+    }
+
+    private int _anchorVersion;
+
+    /// <summary>
+    /// Opening or switching into a webtoon: jump to the saved page, and keep it in view while the pages above it
+    /// load and grow (stops as soon as the reader moves on).
+    /// </summary>
+    private void AnchorWebtoonPage()
+    {
+        if (!ViewModel.IsWebtoonMode || ViewModel.CurrentPageIndex <= 0) return;
+        int anchor = ViewModel.CurrentPageIndex;
+        int version = ++_anchorVersion;
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            foreach (int wait in new[] { 120, 350, 700, 1200, 1900, 2800 })
+            {
+                await Task.Delay(wait);
+                if (version != _anchorVersion || !ViewModel.IsWebtoonMode || ViewModel.CurrentPageIndex != anchor) break;
+                ScrollToWebtoonPage(anchor);
+            }
+        });
+    }
+
+    /// <summary>Webtoon strips have no reading direction: left/back always goes up a page, right/forward down.</summary>
+    private void WebtoonStep(int delta)
+    {
+        if (delta > 0 && ViewModel.CanGoNext) _ = ViewModel.NextPageAsync();
+        else if (delta < 0 && ViewModel.CanGoPrevious) _ = ViewModel.PreviousPageAsync();
     }
 
     private void FitHeight_Click(object sender, RoutedEventArgs e)
@@ -592,6 +720,11 @@ public sealed partial class MainPage : Page
 
     private void NavigateLeft()
     {
+        if (ViewModel.IsWebtoonMode)
+        {
+            WebtoonStep(-1);
+            return;
+        }
         if (ViewModel.ReadingDirection == ReadingDirection.RightToLeft)
         {
             if (ViewModel.CanGoNext) _ = ViewModel.NextPageAsync();
@@ -604,6 +737,11 @@ public sealed partial class MainPage : Page
 
     private void NavigateRight()
     {
+        if (ViewModel.IsWebtoonMode)
+        {
+            WebtoonStep(1);
+            return;
+        }
         if (ViewModel.ReadingDirection == ReadingDirection.RightToLeft)
         {
             if (ViewModel.CanGoPrevious) _ = ViewModel.PreviousPageAsync();
@@ -734,10 +872,8 @@ public sealed partial class MainPage : Page
             if (ViewModel.IsWebtoonMode)
             {
                 // Smooth scroll in Webtoon mode without page turns
-                double scrollStep = 180.0;
-                double target = delta < 0
-                    ? ReaderScrollViewer.VerticalOffset + scrollStep
-                    : ReaderScrollViewer.VerticalOffset - scrollStep;
+                // Follows the wheel/trackpad amount, so precision touchpads scroll smoothly instead of in fixed jumps.
+                double target = ReaderScrollViewer.VerticalOffset - delta * 1.5;
                 target = Math.Clamp(target, 0, ReaderScrollViewer.ScrollableHeight);
                 ReaderScrollViewer.ChangeView(null, target, null, disableAnimation: false);
                 e.Handled = true;
@@ -840,6 +976,12 @@ public sealed partial class MainPage : Page
                 break;
 
             case VirtualKey.Right:
+                if (ViewModel.IsWebtoonMode)
+                {
+                    WebtoonStep(1);
+                    e.Handled = true;
+                    break;
+                }
                 if (ViewModel.ReadingDirection == ReadingDirection.RightToLeft)
                 {
                     if (ViewModel.CanGoPrevious) _ = ViewModel.PreviousPageAsync();
@@ -855,6 +997,11 @@ public sealed partial class MainPage : Page
                 if (isAlt)
                 {
                     ReaderBack_Click(this, new RoutedEventArgs());
+                    e.Handled = true;
+                }
+                else if (ViewModel.IsWebtoonMode)
+                {
+                    WebtoonStep(-1);
                     e.Handled = true;
                 }
                 else
@@ -873,6 +1020,12 @@ public sealed partial class MainPage : Page
 
 
             case VirtualKey.Space:
+                if (ViewModel.IsWebtoonMode)
+                {
+                    WebtoonStep(isShift ? -1 : 1);
+                    e.Handled = true;
+                    break;
+                }
                 if (isShift)
                 {
                     if (ViewModel.ReadingDirection == ReadingDirection.RightToLeft)

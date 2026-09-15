@@ -26,6 +26,8 @@
     <Compile Include="..\Services\ComicLoaderService.cs" Link="Services\%(Filename)%(Extension)" />
     <Compile Include="..\Services\ILibraryRepository.cs" Link="Services\%(Filename)%(Extension)" />
     <Compile Include="..\Services\LibraryRepository.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\FileDeletion.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\OcrLayout.cs" Link="Services\%(Filename)%(Extension)" />
     <Compile Include="..\Services\ThumbnailService.cs" Link="Services\%(Filename)%(Extension)" />
     <Compile Include="..\Services\ILibraryScannerService.cs" Link="Services\%(Filename)%(Extension)" />
     <Compile Include="..\Services\LibraryScannerService.cs" Link="Services\%(Filename)%(Extension)" />

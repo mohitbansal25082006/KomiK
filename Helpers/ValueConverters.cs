@@ -21,6 +21,34 @@ public sealed class BooleanToVisibilityConverter : IValueConverter
     }
 }
 
+/// <summary>"#RRGGBB" or "#AARRGGBB" text to a brush (accent colors chosen by view models).</summary>
+public sealed class HexToBrushConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, string language)
+    {
+        if (value is not string hex) return null;
+        hex = hex.TrimStart('#');
+        try
+        {
+            byte a = 255;
+            if (hex.Length == 8)
+            {
+                a = System.Convert.ToByte(hex[..2], 16);
+                hex = hex[2..];
+            }
+            if (hex.Length != 6) return null;
+            return new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(a,
+                System.Convert.ToByte(hex[..2], 16), System.Convert.ToByte(hex[2..4], 16), System.Convert.ToByte(hex[4..6], 16)));
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, string language) => throw new NotImplementedException();
+}
+
 public sealed class ViewModeTextConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, string language)

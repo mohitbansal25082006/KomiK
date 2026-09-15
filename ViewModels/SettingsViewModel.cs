@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -33,17 +35,114 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private int _viewModeIndex; // 0: Grid, 1: List
 
+    /// <summary>How the reader opens every comic: 0 page by page, 1 two-page spread, 2 webtoon strip.</summary>
+    [ObservableProperty]
+    private int _readerViewModeIndex;
+
     [ObservableProperty]
     private int _sortOptionIndex; // 0..6 (TitleAsc, TitleDesc, LastReadDesc, DateAddedDesc, DateAddedAsc, PageCountDesc, FileSizeDesc)
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BrightnessDisplay))]
     private double _brightness;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ContrastPercent))]
+    [NotifyPropertyChangedFor(nameof(ContrastDisplay))]
     private double _contrast = 1.0;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WarmthDisplay))]
     private double _warmth;
+
+    /// <summary>The contrast slider works in percent (50 to 200); the reader uses a factor (0.5 to 2.0).</summary>
+    public double ContrastPercent
+    {
+        get => Math.Round(Contrast * 100);
+        set
+        {
+            double factor = Math.Round(Math.Clamp(value, 50, 200)) / 100.0;
+            if (Math.Abs(factor - Contrast) > 0.001) Contrast = factor;
+        }
+    }
+
+    public string BrightnessDisplay => Signed(Brightness);
+    public string WarmthDisplay => Signed(Warmth);
+    public string ContrastDisplay => $"{Math.Round(Contrast * 100)}%";
+
+    private static string Signed(double value)
+    {
+        int v = (int)Math.Round(value);
+        return v > 0 ? $"+{v}" : v.ToString(System.Globalization.CultureInfo.CurrentCulture);
+    }
+
+    partial void OnBrightnessChanged(double value) => QueuePreview();
+    partial void OnContrastChanged(double value) => QueuePreview();
+    partial void OnWarmthChanged(double value) => QueuePreview();
+
+    /// <summary>A real cover from the library, drawn with the chosen page colors.</summary>
+    [ObservableProperty]
+    private Microsoft.UI.Xaml.Media.ImageSource? _colorPreviewImage;
+
+    [ObservableProperty]
+    private bool _hasColorPreview;
+
+    private byte[]? _previewBytes;
+    private CancellationTokenSource? _previewCts;
+
+    private async Task LoadPreviewSourceAsync()
+    {
+        try
+        {
+            var comics = await _repository.GetComicsAsync();
+            var withCover = comics.Where(c => !string.IsNullOrEmpty(c.ThumbnailPath) && File.Exists(c.ThumbnailPath)).ToList();
+            if (withCover.Count == 0) return;
+            var pick = withCover.OrderByDescending(c => c.LastReadAt ?? DateTime.MinValue).First();
+            _previewBytes = await File.ReadAllBytesAsync(pick.ThumbnailPath!);
+            QueuePreview();
+        }
+        catch
+        {
+            _previewBytes = null;
+        }
+    }
+
+    private void QueuePreview()
+    {
+        if (_previewBytes == null) return;
+        _previewCts?.Cancel();
+        var cts = _previewCts = new CancellationTokenSource();
+        App.DispatcherQueue?.TryEnqueue(async () =>
+        {
+            try
+            {
+                await Task.Delay(60, cts.Token);
+                var colors = new ColorCorrectionSettings();
+                colors.ApplyPreset(PresetFromIndex(ReadingPresetIndex));
+                colors.Brightness = Brightness;
+                colors.Contrast = Contrast;
+                colors.Warmth = Warmth;
+                var image = await Helpers.ImageHelper.CreateImageSourceAsync(new ComicPageData(_previewBytes), colors);
+                if (!cts.IsCancellationRequested)
+                {
+                    ColorPreviewImage = image;
+                    HasColorPreview = true;
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch { }
+        });
+    }
+
+    private static ReadingPreset PresetFromIndex(int index) => index switch
+    {
+        1 => ReadingPreset.NightMode,
+        2 => ReadingPreset.Sepia,
+        3 => ReadingPreset.HighContrast,
+        4 => ReadingPreset.Grayscale,
+        5 => ReadingPreset.Inverted,
+        _ => ReadingPreset.Original
+    };
 
     [ObservableProperty]
     private int _readingPresetIndex; // 0: Original, 1: NightMode, 2: Sepia, 3: HighContrast, 4: Grayscale, 5: Inverted
@@ -84,6 +183,7 @@ public partial class SettingsViewModel : ObservableObject
                 Warmth = 0;
                 break;
         }
+        QueuePreview();
     }
 
     [ObservableProperty]
@@ -167,6 +267,12 @@ public partial class SettingsViewModel : ObservableObject
         };
 
         ViewModeIndex = settings.DefaultViewMode == "List" ? 1 : 0;
+        ReaderViewModeIndex = settings.DefaultReaderViewMode switch
+        {
+            "DoublePage" => 1,
+            "Webtoon" => 2,
+            _ => 0
+        };
         SortOptionIndex = Math.Clamp(settings.DefaultSortOption, 0, 6);
 
         ReadingPresetIndex = settings.DefaultReadingPreset switch
@@ -179,11 +285,13 @@ public partial class SettingsViewModel : ObservableObject
             _ => 0
         };
 
-        Brightness = settings.DefaultBrightness;
-        Contrast = settings.DefaultContrast;
-        Warmth = settings.DefaultWarmth;
+        // Stored numbers win over the preset's own values (the preset setter above resets them).
+        Brightness = Math.Clamp(settings.DefaultBrightness, -100, 100);
+        Contrast = Math.Clamp(settings.DefaultContrast > 3 ? settings.DefaultContrast / 100.0 : settings.DefaultContrast, 0.5, 2.0);
+        Warmth = Math.Clamp(settings.DefaultWarmth, -100, 100);
         await RefreshWatchedFoldersAsync();
         RefreshCacheSize();
+        _ = LoadPreviewSourceAsync();
     }
 
     public async Task SaveSettingsAsync()
@@ -214,22 +322,209 @@ public partial class SettingsViewModel : ObservableObject
             _ => "Original"
         };
 
-        var settings = new AppSettings
-        {
-            Theme = theme,
-            DefaultFitMode = fit,
-            DefaultReadingDirection = dir,
-            DefaultViewMode = view,
-            DefaultSortOption = SortOptionIndex,
-            DefaultReadingPreset = preset,
-            DefaultBrightness = Brightness,
-            DefaultContrast = Contrast,
-            DefaultWarmth = Warmth,
-            DefaultNightMode = (ReadingPresetIndex == 1)
-        };
+        // Start from what is stored so window size, position and other keys are never reset.
+        var settings = await _repository.GetAppSettingsAsync();
+        settings.Theme = theme;
+        settings.DefaultFitMode = fit;
+        settings.DefaultReadingDirection = dir;
+        settings.DefaultReaderViewMode = ReaderViewModeIndex switch { 1 => "DoublePage", 2 => "Webtoon", _ => "SinglePage" };
+        settings.DefaultViewMode = view;
+        settings.DefaultSortOption = SortOptionIndex;
+        settings.DefaultReadingPreset = preset;
+        settings.DefaultBrightness = Math.Round(Brightness);
+        settings.DefaultContrast = Math.Round(Contrast, 2);
+        settings.DefaultWarmth = Math.Round(Warmth);
+        settings.DefaultNightMode = ReadingPresetIndex == 1;
 
         await _repository.SaveAppSettingsAsync(settings);
         ApplyThemeOverride(theme);
+        LibraryViewModel.NotifySettingsChanged();
+        SettingsSavedPulse++;
+    }
+
+    /// <summary>Changes each time settings are saved (drives the small "Saved" badge).</summary>
+    [ObservableProperty]
+    private int _settingsSavedPulse;
+
+    // ───────────── Comics in watched folders that aren't in the library ─────────────
+
+    private readonly List<UnindexedComicItem> _allUnindexed = new();
+    public ObservableCollection<UnindexedComicItem> UnindexedComics { get; } = new();
+    public List<string> UnindexedScopes { get; } = new() { "All", "Removed earlier", "Never added" };
+
+    [ObservableProperty]
+    private string _unindexedScope = "All";
+
+    [ObservableProperty]
+    private string _unindexedSearchText = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsNotFindingUnindexed))]
+    private bool _isFindingUnindexed;
+
+    [ObservableProperty]
+    private bool _hasSearchedUnindexed;
+
+    [ObservableProperty]
+    private string _unindexedStatusText = "Look through your watched folders for comics that aren't in the library.";
+
+    [ObservableProperty]
+    private double _unindexedProgress;
+
+    [ObservableProperty]
+    private double _unindexedProgressTotal = 1;
+
+    public bool IsNotFindingUnindexed => !IsFindingUnindexed;
+    public bool HasUnindexedComics => UnindexedComics.Count > 0;
+    public bool ShowUnindexedEmpty => HasSearchedUnindexed && !IsFindingUnindexed && UnindexedComics.Count == 0;
+    public int SelectedUnindexedCount => _allUnindexed.Count(i => i.IsSelected);
+    public string AddUnindexedText => SelectedUnindexedCount == 1 ? "Add 1 comic" : $"Add {SelectedUnindexedCount} comics";
+    public string UnindexedEmptyText => _allUnindexed.Count == 0
+        ? "Every comic in your watched folders is already in the library."
+        : "Nothing matches your search or filter.";
+
+    partial void OnUnindexedScopeChanged(string value) => ApplyUnindexedFilter();
+    partial void OnUnindexedSearchTextChanged(string value) => ApplyUnindexedFilter();
+    partial void OnHasSearchedUnindexedChanged(bool value) => OnPropertyChanged(nameof(ShowUnindexedEmpty));
+
+    private void ApplyUnindexedFilter()
+    {
+        string q = UnindexedSearchText.Trim();
+        UnindexedComics.Clear();
+        foreach (var item in _allUnindexed.Where(i =>
+                     (q.Length == 0 || i.FileName.Contains(q, StringComparison.OrdinalIgnoreCase) || i.FolderName.Contains(q, StringComparison.OrdinalIgnoreCase))
+                     && UnindexedScope switch { "Removed earlier" => i.WasRemoved, "Never added" => i.IsNew, _ => true }))
+        {
+            UnindexedComics.Add(item);
+        }
+        NotifyUnindexed();
+    }
+
+    private void NotifyUnindexed()
+    {
+        OnPropertyChanged(nameof(HasUnindexedComics));
+        OnPropertyChanged(nameof(ShowUnindexedEmpty));
+        OnPropertyChanged(nameof(SelectedUnindexedCount));
+        OnPropertyChanged(nameof(AddUnindexedText));
+        OnPropertyChanged(nameof(UnindexedEmptyText));
+    }
+
+    [RelayCommand]
+    public async Task FindUnindexedComicsAsync()
+    {
+        if (IsFindingUnindexed) return;
+        IsFindingUnindexed = true;
+        UnindexedStatusText = "Looking through your watched folders...";
+        try
+        {
+            var folders = await _repository.GetWatchedFoldersAsync();
+            if (folders.Count == 0)
+            {
+                UnindexedStatusText = "Add a watched folder first.";
+                _allUnindexed.Clear();
+                ApplyUnindexedFilter();
+                return;
+            }
+
+            var sources = await _scannerService.FindComicSourcesAsync(folders.Select(f => f.Path));
+            var inLibrary = new HashSet<string>((await _repository.GetComicsAsync()).Select(c => c.FilePath), StringComparer.OrdinalIgnoreCase);
+            var removed = await _repository.GetRemovedComicPathsAsync();
+
+            foreach (var item in _allUnindexed) item.PropertyChanged -= Unindexed_PropertyChanged;
+            _allUnindexed.Clear();
+            foreach (var (path, format) in sources.Where(s => !inLibrary.Contains(s.Path)).OrderBy(s => s.Path, StringComparer.OrdinalIgnoreCase))
+            {
+                string? thumb = null;
+                try
+                {
+                    thumb = new[] { ".png", ".jpg", ".jpeg", ".webp", ".bmp" }
+                        .Select(ext => _thumbnailService.GetThumbnailPathForComic(path, ext))
+                        .FirstOrDefault(File.Exists);
+                }
+                catch { }
+                var item = new UnindexedComicItem(path, format, removed.Contains(path), thumb);
+                item.PropertyChanged += Unindexed_PropertyChanged;
+                _allUnindexed.Add(item);
+            }
+
+            int removedCount = _allUnindexed.Count(i => i.WasRemoved);
+            UnindexedStatusText = _allUnindexed.Count == 0
+                ? $"All {sources.Count} comics in your watched folders are in the library."
+                : $"Found {_allUnindexed.Count} comic{(_allUnindexed.Count == 1 ? "" : "s")} not in the library ({removedCount} removed earlier, {_allUnindexed.Count - removedCount} never added).";
+            HasSearchedUnindexed = true;
+            ApplyUnindexedFilter();
+        }
+        catch (Exception ex)
+        {
+            UnindexedStatusText = $"Couldn't look through the folders: {ex.Message}";
+        }
+        finally
+        {
+            IsFindingUnindexed = false;
+            OnPropertyChanged(nameof(ShowUnindexedEmpty));
+        }
+    }
+
+    private void Unindexed_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(UnindexedComicItem.IsSelected))
+        {
+            OnPropertyChanged(nameof(SelectedUnindexedCount));
+            OnPropertyChanged(nameof(AddUnindexedText));
+        }
+    }
+
+    [RelayCommand]
+    public void SelectAllUnindexed(string? select)
+    {
+        bool value = !bool.TryParse(select, out bool parsed) || parsed;
+        foreach (var item in UnindexedComics) item.IsSelected = value;
+        NotifyUnindexed();
+    }
+
+    [RelayCommand]
+    public async Task AddSelectedUnindexedAsync()
+    {
+        var chosen = _allUnindexed.Where(i => i.IsSelected).ToList();
+        if (chosen.Count == 0 || IsFindingUnindexed) return;
+
+        IsFindingUnindexed = true;
+        UnindexedProgress = 0;
+        UnindexedProgressTotal = chosen.Count;
+        UnindexedStatusText = $"Adding {chosen.Count} comic{(chosen.Count == 1 ? "" : "s")}...";
+        try
+        {
+            var progress = new Progress<int>(done =>
+            {
+                UnindexedProgress = done;
+                UnindexedStatusText = $"Adding comics ({done}/{chosen.Count})...";
+            });
+            int added = await Task.Run(() => _scannerService.IndexComicsAsync(chosen.Select(c => (c.Path, c.Format)).ToList(), progress));
+
+            foreach (var item in chosen)
+            {
+                item.PropertyChanged -= Unindexed_PropertyChanged;
+                _allUnindexed.Remove(item);
+            }
+            ApplyUnindexedFilter();
+            LibraryViewModel.NotifyLibraryThumbnailsChanged();
+            RefreshCacheSize();
+            int failed = chosen.Count - added;
+            UnindexedStatusText = failed > 0 ? $"Added {added}. {failed} couldn't be opened." : $"Added {added} comic{(added == 1 ? "" : "s")} back to the library.";
+            ShowNotification("Comics Added", failed > 0
+                    ? $"Added {added} comic{(added == 1 ? "" : "s")}. {failed} couldn't be opened and were skipped."
+                    : $"Added {added} comic{(added == 1 ? "" : "s")} to your library.",
+                failed > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Couldn't Add Comics", ex.Message, InfoBarSeverity.Error);
+        }
+        finally
+        {
+            IsFindingUnindexed = false;
+            UnindexedProgress = 0;
+        }
     }
 
     [RelayCommand]

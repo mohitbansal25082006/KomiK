@@ -12,7 +12,9 @@
 
 <br />
 
-<a href="https://github.com/mohitbansal25082006/KomiK/releases/latest/download/Komik-Setup.exe"><img src="https://img.shields.io/badge/⬇_DOWNLOAD_FOR_WINDOWS-~60_MB-FFD700?style=for-the-badge&labelColor=0A0A0F" alt="Download for Windows" height="42" /></a>
+<a href="https://github.com/mohitbansal25082006/KomiK/releases/latest/download/Komik-Setup.exe"><img src="https://img.shields.io/badge/⬇_DOWNLOAD_FOR_WINDOWS-~75_MB-FFD700?style=for-the-badge&labelColor=0A0A0F" alt="Download for Windows" height="42" /></a>
+&nbsp;
+<a href="https://komik-website-taupe.vercel.app/"><img src="https://img.shields.io/badge/🌐_LIVE_WEBSITE-TRY_THE_READER-00C2FF?style=for-the-badge&labelColor=0A0A0F" alt="Visit the live website" height="42" /></a>
 
 <br /><br />
 
@@ -34,11 +36,18 @@ built with **WinUI 3 (Windows App SDK)** and **C# / .NET 8** and designed around
 
 </sub>
 
-<img src="komik-website/public/readme/stats.svg" alt="8 formats · 6 parallel decoders · 6 LUT presets · 0 network calls · 0 accounts · 27 automated test suites" width="100%" />
+<img src="komik-website/public/readme/stats.svg" alt="8 formats · 6 parallel decoders · 6 LUT presets · 0 network calls · 0 accounts · 41 automated tests" width="100%" />
 
 <br />
 
-**🌐 Live website:** **[komik-website-taupe.vercel.app](https://komik-website-taupe.vercel.app/)**
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://komik-website-taupe.vercel.app/"><b>🌐&nbsp; Try Komik in your browser&nbsp; →</b></a><br />
+      <sub>Read the complete demo comic in a working replica of the Komik reader. No install needed.</sub>
+    </td>
+  </tr>
+</table>
 
 </div>
 
@@ -54,36 +63,52 @@ built with **WinUI 3 (Windows App SDK)** and **C# / .NET 8** and designed around
 
 <div align="center">
 
-<img src="komik-website/public/readme/app-reader.jpg" alt="Komik reader in two-page spread mode with the floating toolbar and page scrubber" width="100%" />
+<img src="komik-website/public/readme/app-library.jpg" alt="Komik library: comic-style cover grid with reading progress, filter chips, tags and the ADD menu" width="100%" />
 
-<sub><b>The reader.</b> A two-page spread with the floating Fluent toolbar and the page scrubber. The chrome auto-hides while you read.</sub>
+<sub><b>The library.</b> A comic-style cover grid with progress badges, favorites, filter chips, <b>Tags</b> and <b>Manage Tags</b>, plus Stats, Duplicates and Series &amp; Volumes one click away.</sub>
 
 <br /><br />
 
 <table>
   <tr>
     <td width="50%" align="center">
-      <img src="komik-website/public/readme/app-library.jpg" alt="Komik library grid with cover thumbnails and filter chips" width="100%" /><br />
-      <sub><b>Library.</b> Cover grid, filter chips, and the one-button <b>ADD</b> menu, <b>Rescan</b>, <b>Convert</b>, <b>Stats</b>, <b>Duplicates</b> and <b>Series &amp; Volumes</b>.</sub>
+      <img src="komik-website/public/readme/app-reader.jpg" alt="Komik reader in two-page spread mode with the floating toolbar and page scrubber" width="100%" /><br />
+      <sub><b>The reader.</b> A two-page spread with the floating toolbar and scrubber. The chrome auto-hides while you read.</sub>
     </td>
     <td width="50%" align="center">
       <img src="komik-website/public/readme/app-webtoon.jpg" alt="Komik webtoon continuous vertical scroll mode" width="100%" /><br />
-      <sub><b>Webtoon mode.</b> Continuous vertical scrolling powered by the 6-worker parallel decoder.</sub>
+      <sub><b>Webtoon mode.</b> One long vertical strip, decoded in parallel. Zoom keeps your place, and comics reopen at the saved page.</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <img src="komik-website/public/readme/app-series.jpg" alt="Komik Series and Volumes screen" width="100%" /><br />
-      <sub><b>Series &amp; Volumes.</b> Issues grouped automatically when titles match 90% or more, with one-click <b>Read Next</b>.</sub>
+      <img src="komik-website/public/readme/app-series.jpg" alt="Komik Series screen with Continuation Series and By Creator sections" width="100%" /><br />
+      <sub><b>Series &amp; Volumes.</b> <b>Continuation Series</b> and <b>By Creator</b> sections, with progress and a one-click <b>Continue</b> / <b>Read next</b>.</sub>
     </td>
     <td width="50%" align="center">
-      <img src="komik-website/public/readme/app-stats.jpg" alt="Komik Reading Insights and Statistics dashboard" width="100%" /><br />
-      <sub><b>Reading Insights.</b> Time read, pages, streaks, Komik Wrapped highlights and your Top 20, all computed locally.</sub>
+      <img src="komik-website/public/readme/app-series-detail.jpg" alt="Komik series detail with cover banner, progress and edit actions" width="100%" /><br />
+      <sub><b>Series detail.</b> Gap check, progress, <b>Edit</b>, <b>Cover</b> and <b>Add Comics</b>, with the next issue marked <b>Up next</b>.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="komik-website/public/readme/app-stats.jpg" alt="Komik Reading Insights and Komik Wrapped dashboard" width="100%" /><br />
+      <sub><b>Reading Insights.</b> Active reading time, pages, streaks, Komik Wrapped and Top Series with exact progress, all computed locally.</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="komik-website/public/readme/app-tags.jpg" alt="Komik Manage Tags screen with search, sort, used and unused filters" width="100%" /><br />
+      <sub><b>Manage Tags.</b> Search, sort, used / unused filters, rename, merge and bulk-delete unused tags. Built for big tag lists.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="komik-website/public/readme/app-settings.jpg" alt="Komik settings: How Comics Open with layout and direction tiles" width="100%" /><br />
+      <sub><b>Settings → How Comics Open.</b> Page by page, two-page spread or webtoon, combined with comic (left to right) or manga (right to left). Everything saves instantly.</sub>
     </td>
   </tr>
 </table>
 
-<sub>The screenshots show <b>Cyberpunk Chronicles #01</b>, an original 12-page demo comic made for the Komik website and packed into real <code>.cbz</code> files.</sub>
+<sub>Every screenshot uses an isolated demo library of original mock comics, including <b>Cyberpunk Chronicles</b>, the demo comic made for the Komik website, packed into real <code>.cbz</code> files.</sub>
 
 </div>
 
@@ -91,7 +116,15 @@ built with **WinUI 3 (Windows App SDK)** and **C# / .NET 8** and designed around
 
 ### 🌐 Interactive Promotional Website
 
-Visit the live site — **[komik-website-taupe.vercel.app](https://komik-website-taupe.vercel.app/)** — for a fully working replica of the reader. Visitors can read the whole demo comic in the browser, with spreads, manga RTL, webtoon mode, color presets, bookmarks, dialogue search and full screen.
+<div align="center">
+
+<a href="https://komik-website-taupe.vercel.app/"><img src="https://img.shields.io/badge/🌐_OPEN_THE_LIVE_DEMO-READ_A_COMIC_NOW-FF1F6D?style=for-the-badge&labelColor=0A0A0F" alt="Open the live demo website" height="38" /></a>
+
+<sub>Spreads · manga RTL · webtoon · color presets · bookmarks · dialogue search · full screen</sub>
+
+</div>
+
+The website holds a fully working replica of the reader, so visitors can read the whole demo comic in the browser before installing anything.
 
 <div align="center">
 <img src="komik-website/public/readme/screenshot-hero.jpg" alt="Komik website hero" width="100%" />
@@ -173,16 +206,19 @@ Plus **Brightness** (-100…+100), **Contrast** (0.5…2.0) and **Warmth** (-100
 - **Watched folders** with recursive indexing into local SQLite
 - **Cover grid** and **detailed list** views
 - Instant search, plus filter chips: All · Continue Reading · Favorites · Completed · Unread · Tags
+- **Tag manager** with search, sort, usage counts, rename, merge and "delete unused"
+- Friendly empty screens for every filter, and a colored sticker showing the active filter and its match count
 - Sort by title (A–Z / Z–A), recently read, date added, page count or file size
 - Disk-backed thumbnail cache for near-instant covers
-- **Non-destructive:** removing a library entry never deletes your file
+- **Non-destructive:** removing a library entry never deletes your file, and removed comics can be added back from Settings
 
 </td>
 <td width="50%" valign="top">
 
 #### ⚙️ Settings, details & shell integration
-- Theme override: System · Light · Dark (with Mica)
-- Reading & library defaults, monitored folders, thumbnail cache tools
+- Comic-style theme in **Light** (default) or **Dark**, or follow Windows
+- **How Comics Open:** page by page, two-page spread or webtoon, left to right or manga right to left
+- Reading & library defaults, page colors, monitored folders, thumbnail cache tools (all saved instantly)
 - **Comic Details** editor: title, series, issue #, writers, artists, publisher, release date, summary
 - **File associations**, so double-clicking a comic in Explorer opens it in Komik
 - Command-line launch: `Komik.exe "<path-to-comic>"`
@@ -198,16 +234,21 @@ Plus **Brightness** (-100…+100), **Contrast** (0.5…2.0) and **Warmth** (-100
 
 | # | Feature | What it does |
 | :-: | :-- | :-- |
-| 1 | 📚 **Series & Volumes screen** | A dedicated screen that auto-groups runs and tankōbon volumes at **≥ 90% title similarity** (Levenshtein + normalization). It has its own search, sort, **+ New Series** builder and **+ Add Comics**. |
-| 2 | ⚡ **Parallel Webtoon engine** | A 6-worker concurrent decoder with outward viewport priority and a fix for the old scroll-reset loop. |
-| 3 | 📊 **Reading Stats & Komik Wrapped** | Lifetime time read, pages, completed comics, current and longest streak, 14-day velocity and the Top 20 comics and series. |
-| 4 | 👥 **Duplicate Manager** | Finds cross-format copies (`.cbz` vs `.pdf` vs `.cbr`) by size, page count and **≥ 95%** title similarity. **Keep All** or remove from disk. |
-| 5 | 🔍 **Offline OCR** | Windows' built-in `Windows.Media.Ocr` powers dialogue search with jump-to-page and a selectable text overlay. No cloud APIs. |
-| 6 | 🗜️ **Archive → CBZ converter** | Lossless repacking of CBR / CB7 / ZIP / RAR / 7Z and image folders, plus PDF rasterization, into clean zero-padded CBZ files. |
-| 7 | 🧭 **Responsive top bar** | A single accent **ADD** dropdown (Add Folder / Add Comic), horizontal mouse-wheel scrolling and a layout that adapts to any window width. |
-| 8 | 🎨 **Brand crest** | One vector logo shared by the app icon, shell assets, settings page, installer and website. |
-| 9 | 🪟 **Window memory** | Restores size, position and maximized state on every launch. |
-| 10 | 💾 **Portable backups** | A `.komikbackup` JSON file with history, bookmarks, notes, favorites, tags and settings, imported without conflicts. |
+| 1 | 🎨 **Comic-style app** | Halftone panels, ink borders, stickers and Bangers lettering across the library, reader, dialogs and toasts, in Light (now the default) and Dark. Cards lift and tilt, panels pop in, and menus open instantly. |
+| 2 | 📚 **Series & Volumes** | Two sections: **Continuation Series** (issues, volumes, chapters and sequels, typo-tolerant, with gap detection) and **By Creator**. A creator collection can move to Continuation Series, but never the reverse. |
+| 3 | ✏️ **Series editing** | Edit any series: rename, drag the reading order, auto-order, pick the cover, remove comics, toggle auto-update. **+ Add Comics** has search and filters, and a right-click menu works on every comic inside a series. |
+| 4 | 🏷️ **Tag manager** | Search, sort by name or use, used / unused filters, rename, merge and delete. Tagging a comic is instant, and pressing Enter creates a new tag. |
+| 5 | 🧭 **Smarter filters** | Every empty filter, tag or search shows a comic-style screen with a helpful next step. The active filter appears as a colored sticker with its match count and a clear button. |
+| 6 | 📖 **How Comics Open** | Choose page by page, two-page spread or webtoon, plus comic (left to right) or manga (right to left), globally in Settings. Comics open that way at their saved page. |
+| 7 | ⚡ **Parallel Webtoon engine** | A 6-worker concurrent decoder with outward viewport priority, an animated auto-hiding toolbar, live zoom percentage and zoom that keeps your place. |
+| 8 | 📊 **Reading Stats & Komik Wrapped** | Active reading time (idle capped), pages actually viewed, streaks, periods and **Top Series** with exact page-based progress. |
+| 9 | 👥 **Duplicate Manager** | Scores copies by identical bytes, same series and issue, or same cleaned title, explains why, and recommends the copy to keep. Deleting works even when a file was just in use. |
+| 10 | 🔍 **Offline OCR** | Windows' built-in `Windows.Media.Ocr` groups speech bubbles in reading order (right to left for manga), tiles tall pages and filters art noise. Dialogue search jumps to the page. No cloud APIs. |
+| 11 | ♻️ **Add back removed comics** | Removed comics are remembered and skipped by rescans. Settings lists every comic in your folders that isn't in the library, so you can bring them back. |
+| 12 | 🗜️ **Archive → CBZ converter** | Lossless repacking of CBR / CB7 / ZIP / RAR / 7Z and image folders, plus PDF rasterization, into clean zero-padded CBZ files. |
+| 13 | 🧭 **Responsive top bar** | A single accent **ADD** dropdown (Add Folder / Add Comic), horizontal mouse-wheel scrolling and a layout that adapts to any window width. |
+| 14 | 🪟 **Window memory** | Restores size, position and maximized state on every launch. |
+| 15 | 💾 **Portable backups** | A `.komikbackup` JSON file with history, bookmarks, notes, favorites, tags and settings, imported without conflicts. |
 
 <img src="komik-website/public/readme/divider.svg" alt="" width="100%" />
 
@@ -250,7 +291,7 @@ Plus **Brightness** (-100…+100), **Contrast** (0.5…2.0) and **Warmth** (-100
 | :-- | :-- |
 | **OS** | Windows 10 1809 (build 17763)+ or Windows 11 |
 | **Architecture** | x64 (ARM64 via Windows 11 x64 emulation) |
-| **Installer** | ~60 MB, fully self-contained |
+| **Installer** | ~75 MB, fully self-contained |
 | **Prerequisites** | **None.** .NET 8 and the Windows App SDK runtime are bundled |
 
 <sub>Windows 11 is recommended for native Mica backdrops.</sub>
@@ -334,6 +375,8 @@ flowchart LR
         THUMB["ThumbnailService"]
         CONV["FormatConversionService"]
         DUP["DuplicateDetectionService"]
+        SER["SeriesDetectionService"]
+        STATS["ReadingStatsCalculator"]
         OCR["OcrService"]
     end
 
@@ -347,6 +390,8 @@ flowchart LR
     LVM --> SCAN
     LVM --> CONV
     LVM --> DUP
+    LVM --> SER
+    LVM --> STATS
     SCAN --> THUMB
     LVM --> DB
     MVM --> DB
@@ -479,7 +524,10 @@ CREATE TABLE IF NOT EXISTS IgnoredDuplicates (
 CREATE TABLE IF NOT EXISTS ManualSeries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT UNIQUE NOT NULL COLLATE NOCASE,
-    date_created TEXT NOT NULL
+    date_created TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'story',      -- 'story' (continuation) or 'creator'
+    auto_update INTEGER NOT NULL DEFAULT 0,
+    source_key TEXT                          -- the automatic group it was saved from
 );
 
 CREATE TABLE IF NOT EXISTS ManualSeriesComics (
@@ -491,7 +539,21 @@ CREATE TABLE IF NOT EXISTS ManualSeriesComics (
     FOREIGN KEY(comic_id) REFERENCES Comics(id) ON DELETE CASCADE
 );
 
--- Indexes: Comics(file_path, title, is_favorite, last_read_at), ComicTags(comic_id, tag_id)
+CREATE TABLE IF NOT EXISTS ManualSeriesExclusions (
+    series_id INTEGER NOT NULL,
+    comic_id INTEGER NOT NULL,
+    PRIMARY KEY(series_id, comic_id),
+    FOREIGN KEY(series_id) REFERENCES ManualSeries(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS RemovedComics (
+    file_path TEXT PRIMARY KEY COLLATE NOCASE,
+    title TEXT,
+    date_removed TEXT NOT NULL
+);
+
+-- Indexes: Comics(file_path, title, is_favorite, last_read_at), ComicTags(comic_id, tag_id),
+-- ComicCollections, Bookmarks, ComicMetadata, ReadingSessions(comic_id, session_date), ManualSeriesComics(comic_id)
 ```
 
 </details>
@@ -519,11 +581,11 @@ dotnet build Komik.sln -c Release -p:Platform=x64
 ### 🧪 Run the automated test suite
 
 ```powershell
-dotnet run --project Komik.Tests/Komik.Tests.csproj -c Debug
+dotnet run --project Komik.Tests/Komik.Tests.csproj -c Release
 ```
 
 <details>
-<summary><b>What the 27 test suites cover (click to expand)</b></summary>
+<summary><b>What the 41 automated tests cover (click to expand)</b></summary>
 <br />
 
 | # | Suite |
@@ -555,6 +617,20 @@ dotnet run --project Komik.Tests/Komik.Tests.csproj -c Debug
 | 25 | Reading sessions & statistics |
 | 26 | Portable backup JSON export & restore |
 | 27 | Manual series creation, retrieval & deletion |
+| 28 | `ComicIdentityParser` parses series, volumes, issues, chapters and years |
+| 29 | `SeriesDetectionService` groups, orders, merges typos and finds gaps |
+| 30 | `DuplicateDetectionService` scores copies, avoids false positives and recommends the best copy |
+| 31 | `ReadingSessionTracker` counts active time with an idle cap and distinct pages |
+| 32 | `ReadingStatsCalculator` uses local days, streaks, periods and real series totals |
+| 33 | `LibraryRepository` upserts live reading sessions and loads metadata in bulk |
+| 34 | Continuations and creator collections across the whole library |
+| 35 | Manual series with duplicate names get unique names |
+| 36 | Manual series: creator section, auto-update, exclusions and going back to automatic |
+| 37 | Removed comics are remembered, skipped by rescans and can be added back |
+| 38 | Tags: usage counts, rename, merge and delete |
+| 39 | Manual series rename keeps names unique |
+| 40 | OCR layout groups speech bubbles in reading order and tiles tall pages |
+| 41 | Top Series follow series grouping with exact page-based progress |
 
 </details>
 
@@ -579,11 +655,11 @@ The finished installer lands in **`shipping\Komik-Setup.exe`**.
 <a id="-the-komik-website"></a>
 <img src="komik-website/public/readme/section-website.svg" alt="The Komik website" width="100%" />
 
-The marketing and download site lives in [`komik-website/`](komik-website/) and is live at **[komik-website-taupe.vercel.app](https://komik-website-taupe.vercel.app/)**. It's built as a **living comic book**, and its centerpiece is a working replica of the Komik reader that holds a complete, original 12-page comic.
+The marketing and download site lives in [`komik-website/`](komik-website/) and is **[live on the web](https://komik-website-taupe.vercel.app/)**. It's built as a **living comic book**, and its centerpiece is a working replica of the Komik reader that holds a complete, original 12-page comic.
 
 | | |
 | :-- | :-- |
-| **Live site** | **[komik-website-taupe.vercel.app](https://komik-website-taupe.vercel.app/)** |
+| **Live site** | **[🌐 Open the Komik website →](https://komik-website-taupe.vercel.app/)** |
 | **Stack** | Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS |
 | **Motion** | GSAP 3 (ScrollTrigger + SplitText) · Lenis smooth scroll · Framer Motion |
 | **Look** | Bangers & Comic Neue lettering · halftone screens · CMYK ink palette · speed lines |
@@ -602,7 +678,7 @@ npm run build    # production build
 <summary><b>Configuration & deployment</b></summary>
 <br />
 
-- **Live deployment:** [komik-website-taupe.vercel.app](https://komik-website-taupe.vercel.app/)
+- **Live deployment:** [Komik website on Vercel](https://komik-website-taupe.vercel.app/)
 - **Download links** are centralized in `komik-website/lib/config.ts`:
   - Installer: `https://github.com/mohitbansal25082006/KomiK/releases/latest/download/Komik-Setup.exe`
   - Releases: `https://github.com/mohitbansal25082006/KomiK/releases`
@@ -628,6 +704,7 @@ Komik is released under the **MIT License**. See [`LICENSE`](LICENSE).
 - [SharpCompress](https://github.com/adamhathcock/sharpcompress) for pure managed archive handling
 - [Docnet.Core](https://github.com/GowenGit/docnet) (PDFium) for PDF rendering
 - [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) and [Win2D](https://github.com/microsoft/Win2D)
+- [Bangers](https://github.com/googlefonts/bangers) by The Bangers Project Authors (SIL Open Font License 1.1) for the comic lettering
 - The [Windows 11 Fluent Design System](https://learn.microsoft.com/windows/apps/design/)
 
 <div align="center">
@@ -636,7 +713,9 @@ Komik is released under the **MIT License**. See [`LICENSE`](LICENSE).
 
 **Created & maintained by [Mohit Bansal](https://github.com/mohitbansal25082006)** · Built natively for Windows with WinUI 3 & .NET 8
 
-**🌐 [komik-website-taupe.vercel.app](https://komik-website-taupe.vercel.app/)**
+<a href="https://github.com/mohitbansal25082006/KomiK/releases/latest/download/Komik-Setup.exe"><img src="https://img.shields.io/badge/⬇_DOWNLOAD-KOMIK_1.1.0-FFD700?style=for-the-badge&labelColor=0A0A0F" alt="Download Komik 1.1.0" /></a>
+&nbsp;
+<a href="https://komik-website-taupe.vercel.app/"><img src="https://img.shields.io/badge/🌐_WEBSITE-OPEN-00C2FF?style=for-the-badge&labelColor=0A0A0F" alt="Open the Komik website" /></a>
 
 <sub>If Komik made your reading better, drop a ⭐ on the repo. It helps other readers find it.</sub>
 

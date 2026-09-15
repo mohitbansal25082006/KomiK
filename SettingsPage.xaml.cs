@@ -26,6 +26,7 @@ public sealed partial class SettingsPage : Page
         await ViewModel.InitializeAsync();
         ViewModel.IsNotificationOpen = false;
         SyncThemeTiles();
+        SyncReadingTiles(animate: false);
         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
             _isInitializing = false;
@@ -55,6 +56,43 @@ public sealed partial class SettingsPage : Page
         }
     }
 
+    private void ReaderModeTile_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: string tag } && int.TryParse(tag, out int index))
+        {
+            ViewModel.ReaderViewModeIndex = index;
+            SyncReadingTiles(animate: true);
+            if (!_isInitializing) _ = ViewModel.SaveSettingsAsync();
+        }
+    }
+
+    private void DirectionTile_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: string tag } && int.TryParse(tag, out int index))
+        {
+            ViewModel.ReadingDirectionIndex = index;
+            SyncReadingTiles(animate: true);
+            if (!_isInitializing) _ = ViewModel.SaveSettingsAsync();
+        }
+    }
+
+    /// <summary>Lights up the chosen layout and direction and spells out how comics will open.</summary>
+    private void SyncReadingTiles(bool animate)
+    {
+        ReaderSingleTile.IsChecked = ViewModel.ReaderViewModeIndex == 0;
+        ReaderSpreadTile.IsChecked = ViewModel.ReaderViewModeIndex == 1;
+        ReaderWebtoonTile.IsChecked = ViewModel.ReaderViewModeIndex == 2;
+        DirectionWesternTile.IsChecked = ViewModel.ReadingDirectionIndex != 1;
+        DirectionMangaTile.IsChecked = ViewModel.ReadingDirectionIndex == 1;
+
+        string layout = ViewModel.ReaderViewModeIndex switch { 1 => "as a two-page spread", 2 => "as a webtoon strip", _ => "page by page" };
+        string direction = ViewModel.ReadingDirectionIndex == 1 ? "manga style, right to left" : "left to right";
+        ReadingModeSummaryText.Text = ViewModel.ReaderViewModeIndex == 2
+            ? $"Comics open {layout}, scrolling down{(ViewModel.ReadingDirectionIndex == 1 ? "; speech bubbles are read right to left" : string.Empty)}."
+            : $"Comics open {layout}, {direction}.";
+        if (animate) Helpers.MotionHelper.PlayReveal(ReadingModeSummary);
+    }
+
     private void SyncThemeTiles()
     {
         ThemeSystemTile.IsChecked = ViewModel.ThemeIndex == 0;
@@ -73,6 +111,7 @@ public sealed partial class SettingsPage : Page
     private void NavReading_Click(object sender, RoutedEventArgs e) => JumpTo(ReadingSection);
     private void NavFolders_Click(object sender, RoutedEventArgs e) => JumpTo(FoldersSection);
     private void NavCovers_Click(object sender, RoutedEventArgs e) => JumpTo(CoversSection);
+    private void NavAddBack_Click(object sender, RoutedEventArgs e) => JumpTo(AddBackSection);
     private void NavBackup_Click(object sender, RoutedEventArgs e) => JumpTo(BackupSection);
     private void NavAbout_Click(object sender, RoutedEventArgs e) => JumpTo(AboutSection);
 

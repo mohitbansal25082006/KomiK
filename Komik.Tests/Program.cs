@@ -944,7 +944,7 @@ public static class Program
 
                 // 1. Initial defaults
                 var initial = await repo.GetAppSettingsAsync();
-                if (initial.Theme != "Default") throw new Exception($"Expected default Theme 'Default', got '{initial.Theme}'");
+                if (initial.Theme != "Light") throw new Exception($"Expected default Theme 'Light', got '{initial.Theme}'");
                 if (initial.DefaultFitMode != "FitToHeight") throw new Exception($"Expected default FitMode 'FitToHeight', got '{initial.DefaultFitMode}'");
                 if (initial.DefaultReadingDirection != "LeftToRight") throw new Exception($"Expected default ReadingDirection 'LeftToRight', got '{initial.DefaultReadingDirection}'");
                 if (initial.DefaultViewMode != "Grid") throw new Exception($"Expected default ViewMode 'Grid', got '{initial.DefaultViewMode}'");

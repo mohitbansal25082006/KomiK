@@ -400,5 +400,163 @@ public static class LibraryIntelligenceTests
             await repo.DeleteManualSeriesAsync(sid);
             if ((await repo.GetManualSeriesAsync()).Count != 0) throw new Exception("Make automatic (delete manual) failed");
         });
+
+        await runTest("Removed Comics Are Remembered, Skipped by Rescans and Can Be Added Back", async () =>
+        {
+            string dir = Path.Combine(tempDir, "removed_lib");
+            Directory.CreateDirectory(dir);
+            string MakeCbz(string name)
+            {
+                string path = Path.Combine(dir, name);
+                if (File.Exists(path)) File.Delete(path);
+                using var zip = System.IO.Compression.ZipFile.Open(path, System.IO.Compression.ZipArchiveMode.Create);
+                var entry = zip.CreateEntry("001.png");
+                using var es = entry.Open();
+                es.Write(Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAMAASsJTYQAAAAASUVORK5CYII="));
+                return path;
+            }
+            string keep = MakeCbz("Keep 01.cbz");
+            string drop = MakeCbz("Drop 01.cbz");
+
+            using var repo = new LibraryRepository(Path.Combine(tempDir, "removed.db"));
+            await repo.InitializeAsync();
+            var scanner = new LibraryScannerService(repo, thumbnailService: new ThumbnailService(Path.Combine(tempDir, "removed_thumbs")));
+            await scanner.ScanFolderAsync(dir);
+            if (await repo.GetTotalComicCountAsync() != 2) throw new Exception("Initial scan should index 2 comics");
+
+            var dropped = await repo.GetComicByPathAsync(drop) ?? throw new Exception("comic missing");
+            await repo.RemoveComicAsync(dropped.Id);
+            if (!(await repo.GetRemovedComicPathsAsync()).Contains(drop)) throw new Exception("Removal not remembered");
+
+            await scanner.RescanAllAsync();
+            if (await repo.GetTotalComicCountAsync() != 1) throw new Exception("Rescan must not bring a removed comic back");
+
+            var sources = await scanner.FindComicSourcesAsync(new[] { dir });
+            if (sources.Count != 2) throw new Exception($"Discovery should find 2 comics, found {sources.Count}");
+            var notInLibrary = sources.Where(s => s.Path != keep).ToList();
+            int added = await scanner.IndexComicsAsync(notInLibrary);
+            if (added != 1 || await repo.GetTotalComicCountAsync() != 2) throw new Exception("Adding back failed");
+            if ((await repo.GetRemovedComicPathsAsync()).Contains(drop)) throw new Exception("Adding back should forget the removal");
+
+            // Library-only removal is remembered too; deleting the file removes it for good.
+            var again = await repo.GetComicByPathAsync(drop) ?? throw new Exception("comic missing");
+            await repo.DeleteComicAsync(again.Id, deleteFileFromDisk: false);
+            if (!(await repo.GetRemovedComicPathsAsync()).Contains(drop) || !File.Exists(drop)) throw new Exception("Library-only delete should keep the file and remember it");
+            await scanner.IndexComicsAsync(new[] { (drop, ComicSourceType.ZipArchive) });
+            var third = await repo.GetComicByPathAsync(drop) ?? throw new Exception("comic missing");
+            await repo.DeleteComicAsync(third.Id, deleteFileFromDisk: true);
+            if (File.Exists(drop)) throw new Exception("File was not deleted");
+            if (await repo.GetComicByPathAsync(drop) != null) throw new Exception("Deleted comic still in library");
+        });
+
+        await runTest("Tags: Usage Counts, Rename, Merge and Delete", async () =>
+        {
+            using var repo = new LibraryRepository(Path.Combine(tempDir, "tags_v2.db"));
+            await repo.InitializeAsync();
+            long c1 = await repo.InsertComicAsync(new ComicEntity { Title = "T1", FilePath = @"C:\T\1.cbz", Format = ComicSourceType.ZipArchive, PageCount = 3 });
+            long c2 = await repo.InsertComicAsync(new ComicEntity { Title = "T2", FilePath = @"C:\T\2.cbz", Format = ComicSourceType.ZipArchive, PageCount = 3 });
+            await repo.AddTagToComicAsync(c1, "Manga");
+            await repo.AddTagToComicAsync(c2, "Manga");
+            await repo.AddTagToComicAsync(c2, "Shonen");
+            await repo.CreateTagAsync("Unused");
+            var usage = await repo.GetTagUsageAsync();
+            if (usage["manga"] != 2 || usage["Shonen"] != 1 || usage["Unused"] != 0) throw new Exception("Usage counts wrong");
+
+            await repo.RenameTagAsync("Shonen", "Shounen");
+            usage = await repo.GetTagUsageAsync();
+            if (usage.ContainsKey("Shonen") || usage["Shounen"] != 1) throw new Exception("Rename failed");
+
+            await repo.RenameTagAsync("Shounen", "Manga");
+            usage = await repo.GetTagUsageAsync();
+            if (usage.ContainsKey("Shounen") || usage["Manga"] != 2) throw new Exception("Merge failed (a comic must not be counted twice)");
+
+            await repo.DeleteTagAsync("Manga");
+            if ((await repo.GetTagsForComicAsync(c1)).Count != 0) throw new Exception("Deleted tag still on comic");
+        });
+
+        await runTest("Manual Series Rename Keeps Names Unique", async () =>
+        {
+            using var repo = new LibraryRepository(Path.Combine(tempDir, "rename_series.db"));
+            await repo.InitializeAsync();
+            long c1 = await repo.InsertComicAsync(new ComicEntity { Title = "R1", FilePath = @"C:\R\1.cbz", Format = ComicSourceType.ZipArchive, PageCount = 3 });
+            long a = await repo.CreateManualSeriesAsync("Alpha", new[] { c1 });
+            long b = await repo.CreateManualSeriesAsync("Beta", new[] { c1 });
+            string renamed = await repo.RenameManualSeriesAsync(b, "alpha");
+            if (renamed != "alpha (2)") throw new Exception($"Clash should become 'alpha (2)', got '{renamed}'");
+            if (await repo.RenameManualSeriesAsync(a, "Alpha Prime") != "Alpha Prime") throw new Exception("Plain rename failed");
+        });
+
+        await runTest("OCR Layout Groups Speech Bubbles in Reading Order and Tiles Tall Pages", () =>
+        {
+            var page = new OcrPageResult();
+            page.Lines.Add(new OcrLineBox { Text = "HELLO THERE,", X = 40, Y = 50, Width = 200, Height = 20 });
+            page.Lines.Add(new OcrLineBox { Text = "FRIEND!", X = 60, Y = 74, Width = 120, Height = 20 });
+            page.Lines.Add(new OcrLineBox { Text = "WHO ARE YOU?", X = 600, Y = 60, Width = 180, Height = 20 });
+            page.Lines.Add(new OcrLineBox { Text = "THE END", X = 300, Y = 700, Width = 150, Height = 22 });
+
+            OcrLayout.BuildBlocks(page, rightToLeft: false, joinWithoutSpaces: false);
+            if (page.Blocks.Count != 3) throw new Exception($"Expected 3 bubbles, got {page.Blocks.Count}");
+            if (page.Blocks[0].Text != "HELLO THERE, FRIEND!" || page.Blocks[1].Text != "WHO ARE YOU?" || page.Blocks[2].Text != "THE END")
+                throw new Exception("Western order wrong: " + string.Join(" | ", page.Blocks.Select(b => b.Text)));
+
+            OcrLayout.BuildBlocks(page, rightToLeft: true, joinWithoutSpaces: false);
+            if (page.Blocks[0].Text != "WHO ARE YOU?") throw new Exception("Manga order should start top-right");
+            if (!page.ContainsText("hellothere")) throw new Exception("Search should ignore spacing");
+
+            var tiles = OcrLayout.PlanTiles(10000, 3000, 300);
+            if (tiles[0] != (0, 3000) || tiles[^1].Top + tiles[^1].Height != 10000) throw new Exception("Tiles must cover the whole strip");
+            for (int i = 1; i < tiles.Count; i++)
+            {
+                if (tiles[i].Top >= tiles[i - 1].Top + tiles[i - 1].Height) throw new Exception("Tiles must overlap");
+            }
+            if (OcrLayout.PlanTiles(900, 3000, 300).Count != 1) throw new Exception("Short page should be one tile");
+            foreach (var noise in new[] { "rrrwruur", "111011'", "~", "xkcdqrtw" })
+            {
+                if (!OcrLayout.LooksLikeNoise(noise)) throw new Exception($"'{noise}' should be treated as noise");
+            }
+            foreach (var real in new[] { "WHY ME?", "OK", "THE END... OF ISSUE #01", "NEON SPRAWL, 2089.", "WHOOSH!", "BZZT", "SHHHHH", "こんにちは" })
+            {
+                if (OcrLayout.LooksLikeNoise(real)) throw new Exception($"'{real}' is real text");
+            }
+            return Task.CompletedTask;
+        });
+
+        await runTest("Top Series Follow Series Grouping With Books Opened and Finished", () =>
+        {
+            var now = new DateTime(2026, 9, 15, 12, 0, 0, DateTimeKind.Utc);
+            var comics = new List<ComicEntity>
+            {
+                new() { Id = 1, Title = "Orbit 01", FilePath = "a", PageCount = 20, IsCompleted = true },
+                new() { Id = 2, Title = "Orbit 02", FilePath = "b", PageCount = 20, LastReadPage = 5 },
+                new() { Id = 3, Title = "Orbit 03", FilePath = "c", PageCount = 20 },
+                new() { Id = 4, Title = "Lonely Book", FilePath = "d", PageCount = 30 }
+            };
+            var sessions = new List<ReadingSessionRecord>
+            {
+                new(1, now.AddHours(-5), 600, 20),
+                new(2, now.AddHours(-2), 300, 6),
+                new(4, now.AddHours(-1), 120, 4)
+            };
+            var membership = new Dictionary<long, SeriesMembership>
+            {
+                [1] = new("orbit", "Orbit", 3),
+                [2] = new("orbit", "Orbit", 3),
+                [3] = new("orbit", "Orbit", 3)
+            };
+            var summary = ReadingStatsCalculator.Calculate(sessions, comics, null, now, TimeZoneInfo.Utc, membership);
+            var top = summary.TopSeries;
+            if (top.Count != 2 || top[0].SeriesName != "Orbit" || top[0].PagesRead != 26) throw new Exception("Top series grouping wrong");
+            if (!top[0].IsSeries || top[0].TotalIssues != 3 || top[0].IssuesRead != 2 || top[0].IssuesCompleted != 1) throw new Exception("Series book counts wrong");
+            if (top[0].BooksDisplay != "Opened 2 of 3 · finished 1") throw new Exception("Books display wrong: " + top[0].BooksDisplay);
+            if (top[1].IsSeries || top[1].KindLabel != "ONE BOOK") throw new Exception("Standalone book should not be labelled a series");
+            if (top[0].LastReadUtc != now.AddHours(-2)) throw new Exception("Last read time wrong");
+            // Orbit: 20 (finished) + 6 (page 6 of #02) of 60 pages = 43%; Lonely Book unread so far = 0%.
+            if (top[0].SeriesPagesRead != 26 || top[0].SeriesTotalPages != 60 || top[0].SeriesCompletionDisplay != "43% read")
+                throw new Exception($"Series percent wrong: {top[0].SeriesPagesDisplay} {top[0].SeriesCompletionDisplay}");
+            comics[3].LastReadPage = 4;
+            var again = ReadingStatsCalculator.Calculate(sessions, comics, null, now, TimeZoneInfo.Utc, membership);
+            if (again.TopSeries[1].SeriesCompletionDisplay != "17% read") throw new Exception("Single book percent wrong: " + again.TopSeries[1].SeriesCompletionDisplay);
+            return Task.CompletedTask;
+        });
     }
 }

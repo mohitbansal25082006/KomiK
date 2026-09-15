@@ -10,7 +10,7 @@ export const APP_CONFIG = {
   releasesUrl: "https://github.com/mohitbansal25082006/KomiK/releases",
   downloadUrl: "https://github.com/mohitbansal25082006/KomiK/releases/latest/download/Komik-Setup.exe",
   installerName: "Komik-Setup.exe",
-  installerSize: "~60 MB",
+  installerSize: "~75 MB",
   systemRequirements: "Windows 10 version 1809+ or Windows 11 (64-bit)",
   supportedFormats: [
     { ext: ".CBZ", desc: "Comic Book ZIP", badge: "Universal" },

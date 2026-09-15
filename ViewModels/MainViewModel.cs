@@ -167,18 +167,28 @@ public partial class MainViewModel : ObservableObject
                 ? ReadingDirection.RightToLeft
                 : ReadingDirection.LeftToRight;
 
+            // Settings decide how every comic opens: page by page, as a two-page spread or as a webtoon strip.
+            ViewMode = settings.DefaultReaderViewMode switch
+            {
+                "DoublePage" => ViewMode.DoublePage,
+                "Webtoon" => ViewMode.VerticalContinuous,
+                _ => ViewMode.SinglePage
+            };
+
             if (Enum.TryParse<ReadingPreset>(settings.DefaultReadingPreset, out var parsedPreset))
             {
-                ColorSettings.Preset = parsedPreset;
-            }
-            else if (settings.DefaultNightMode)
-            {
-                ColorSettings.Preset = ReadingPreset.NightMode;
+                ColorSettings.ApplyPreset(parsedPreset);
             }
             else
             {
-                ColorSettings.Preset = ReadingPreset.Original;
+                ColorSettings.ApplyPreset(settings.DefaultNightMode ? ReadingPreset.NightMode : ReadingPreset.Original);
             }
+
+            // The page-color numbers chosen in Settings (older builds stored contrast as a percent).
+            ColorSettings.Brightness = settings.DefaultBrightness;
+            ColorSettings.Contrast = settings.DefaultContrast > 3 ? settings.DefaultContrast / 100.0 : settings.DefaultContrast;
+            ColorSettings.Warmth = settings.DefaultWarmth;
+            _ocrService.RightToLeft = ReadingDirection == ReadingDirection.RightToLeft;
 
 
             RequestedTheme = settings.Theme switch
@@ -255,6 +265,52 @@ public partial class MainViewModel : ObservableObject
 
     public string ZoomDisplayString => $"{Math.Round(ZoomFactor * 100)}%";
 
+    partial void OnZoomFactorChanged(double value) => OnPropertyChanged(nameof(ZoomDisplayString));
+
+    partial void OnReadingDirectionChanged(ReadingDirection value)
+    {
+        _ocrService.RightToLeft = value == ReadingDirection.RightToLeft;
+        if (IsOcrLayerVisible) QueueOcrForCurrentPage();
+    }
+
+    partial void OnViewModeChanged(ViewMode value)
+    {
+        OnPropertyChanged(nameof(IsWebtoonMode));
+        OnPropertyChanged(nameof(IsNotWebtoonMode));
+        OnPropertyChanged(nameof(IsDoublePageMode));
+        OnPropertyChanged(nameof(IsSinglePageMode));
+    }
+
+    public bool IsNotWebtoonMode => !IsWebtoonMode;
+
+    /// <summary>Raised once a comic has loaded and its resume page is set.</summary>
+    public event Action? ComicOpened;
+
+    /// <summary>Leaving the reader: release the archive so the file can be moved or deleted right away.</summary>
+    public void CloseComic()
+    {
+        _pageLoadCts?.Cancel();
+        _webtoonCts?.Cancel();
+        _ocrCts?.Cancel();
+        _ocrSearchCts?.Cancel();
+        _sessionCheckpointTimer?.Stop();
+        try
+        {
+            CurrentComic?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainViewModel] Dispose comic failed: {ex.Message}");
+        }
+        CurrentComic = null;
+        _pageCache.Clear();
+        _cacheEvictionQueue.Clear();
+        WebtoonPages.Clear();
+        CurrentPageImage = null;
+        SecondPageImage = null;
+        _ocrService.ClearCache();
+    }
+
     [RelayCommand]
     public async Task OpenFileAsync()
     {
@@ -312,6 +368,8 @@ public partial class MainViewModel : ObservableObject
             _ocrService.ClearCache();
             CurrentPageOcrResult = null;
             IsOcrLayerVisible = false;
+            OcrBlocks.Clear();
+            OcrSearchResults.Clear();
 
             // Check database for existing reading progress and bookmarks
 
@@ -370,6 +428,7 @@ public partial class MainViewModel : ObservableObject
             {
                 _ = LoadWebtoonPagesAsync();
             }
+            ComicOpened?.Invoke();
 
             TriggerOverlayNotification();
         }
@@ -577,6 +636,36 @@ public partial class MainViewModel : ObservableObject
         ShowToast($"Reading Theme: {preset}");
     }
 
+    private CancellationTokenSource? _ocrCts;
+    private CancellationTokenSource? _ocrSearchCts;
+
+    /// <summary>Speech bubbles and captions of the current page, in reading order.</summary>
+    public ObservableCollection<OcrTextBlock> OcrBlocks { get; } = new();
+
+    public IReadOnlyList<OcrLanguageOption> OcrLanguages => _ocrService.Languages;
+
+    [ObservableProperty]
+    private OcrLanguageOption? _selectedOcrLanguage;
+
+    partial void OnSelectedOcrLanguageChanged(OcrLanguageOption? value)
+    {
+        _ocrService.LanguageTag = value?.Tag;
+        if (IsOcrLayerVisible) QueueOcrForCurrentPage();
+    }
+
+    [ObservableProperty]
+    private double _ocrSearchProgress;
+
+    [ObservableProperty]
+    private string _ocrStatusText = string.Empty;
+
+    public bool HasOcrBlocks => OcrBlocks.Count > 0;
+    public bool OcrFoundNothing => IsOcrLayerVisible && !IsOcrLoading && OcrBlocks.Count == 0;
+    public string OcrPanelTitle => $"PAGE {CurrentPageIndex + 1} TEXT";
+
+    partial void OnIsOcrLoadingChanged(bool value) => OnPropertyChanged(nameof(OcrFoundNothing));
+    partial void OnIsOcrLayerVisibleChanged(bool value) => OnPropertyChanged(nameof(OcrFoundNothing));
+
     [RelayCommand]
     public async Task ToggleOcrLayerAsync()
     {
@@ -584,36 +673,93 @@ public partial class MainViewModel : ObservableObject
 
         if (IsOcrLayerVisible)
         {
+            _ocrCts?.Cancel();
             IsOcrLayerVisible = false;
             CurrentPageOcrResult = null;
+            OcrBlocks.Clear();
             return;
         }
 
+        IsOcrLayerVisible = true;
+        await RecognizeCurrentPageAsync(announce: true);
+    }
+
+    /// <summary>While the text panel is open it follows the page you are on (also while scrolling a webtoon).</summary>
+    private void QueueOcrForCurrentPage()
+    {
+        _ocrCts?.Cancel();
+        var cts = _ocrCts = new CancellationTokenSource();
+        App.DispatcherQueue?.TryEnqueue(async () =>
+        {
+            try
+            {
+                await Task.Delay(350, cts.Token);
+                if (!cts.IsCancellationRequested && IsOcrLayerVisible) await RecognizeCurrentPageAsync(announce: false, cts.Token);
+            }
+            catch (OperationCanceledException) { }
+        });
+    }
+
+    private async Task RecognizeCurrentPageAsync(bool announce, CancellationToken token = default)
+    {
+        if (CurrentComic == null) return;
+        int page = CurrentPageIndex;
         IsOcrLoading = true;
+        OcrStatusText = $"Reading page {page + 1}...";
+        OnPropertyChanged(nameof(OcrPanelTitle));
         try
         {
-            var pageData = await GetPageDataWithCacheAsync(CurrentPageIndex, CancellationToken.None);
-            var ocrRes = await _ocrService.RecognizePageAsync(CurrentPageIndex, pageData);
-            CurrentPageOcrResult = ocrRes;
-            IsOcrLayerVisible = ocrRes != null && ocrRes.Words.Count > 0;
-            if (ocrRes == null || ocrRes.Words.Count == 0)
+            var pageData = await GetPageDataWithCacheAsync(page, token);
+            var result = await _ocrService.RecognizePageAsync(page, pageData, token);
+            if (token.IsCancellationRequested || page != CurrentPageIndex) return;
+
+            CurrentPageOcrResult = result;
+            OcrBlocks.Clear();
+            if (result != null)
             {
-                ShowToast("No speech or text detected on this page.");
+                foreach (var block in result.Blocks) OcrBlocks.Add(block);
             }
-            else
+            OcrStatusText = result?.SummaryDisplay ?? (_ocrService.IsOcrSupported ? "No text found" : "Windows OCR isn't available. Add a language with OCR in Windows Settings.");
+            if (announce)
             {
-                ShowToast($"Detected {ocrRes.Words.Count} words on page.");
+                ShowToast(result == null || result.Blocks.Count == 0
+                    ? "No speech or text found on this page."
+                    : $"Found {result.Blocks.Count} text block{(result.Blocks.Count == 1 ? "" : "s")} on page {page + 1}.");
             }
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            ShowToast($"OCR error: {ex.Message}");
+            OcrStatusText = $"OCR error: {ex.Message}";
+            if (announce) ShowToast($"OCR error: {ex.Message}");
         }
         finally
         {
-            IsOcrLoading = false;
+            if (page == CurrentPageIndex || token.IsCancellationRequested) IsOcrLoading = false;
+            OnPropertyChanged(nameof(HasOcrBlocks));
+            OnPropertyChanged(nameof(OcrFoundNothing));
         }
     }
+
+    [RelayCommand]
+    public async Task RereadOcrPageAsync()
+    {
+        _ocrService.ClearCache();
+        await RecognizeCurrentPageAsync(announce: true);
+    }
+
+    [RelayCommand]
+    public void CopyOcrBlock(OcrTextBlock? block)
+    {
+        if (block == null || string.IsNullOrWhiteSpace(block.Text)) return;
+        var data = new Windows.ApplicationModel.DataTransfer.DataPackage();
+        data.SetText(block.Text);
+        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data);
+        ShowToast($"Copied text block {block.Number}");
+    }
+
+    [RelayCommand]
+    public void CancelOcrSearch() => _ocrSearchCts?.Cancel();
 
     [RelayCommand]
     public async Task SearchInComicOcrAsync(string? query)
@@ -621,23 +767,25 @@ public partial class MainViewModel : ObservableObject
         string q = query ?? OcrSearchQuery;
         if (CurrentComic == null || string.IsNullOrWhiteSpace(q)) return;
 
+        _ocrSearchCts?.Cancel();
+        var cts = _ocrSearchCts = new CancellationTokenSource();
         IsSearchingOcr = true;
+        OcrSearchProgress = 0;
         OcrSearchResults.Clear();
         try
         {
-            var matches = await _ocrService.SearchInComicAsync(CurrentComic, q);
+            var progress = new Progress<double>(p => OcrSearchProgress = p);
+            var matches = await _ocrService.SearchInComicAsync(CurrentComic, q, progress, cts.Token,
+                (index, token) => GetPageDataWithCacheAsync(index, token));
             foreach (var m in matches)
             {
                 OcrSearchResults.Add(m);
             }
-            if (matches.Count == 0)
-            {
-                ShowToast($"No matches found for '{q}'");
-            }
-            else
-            {
-                ShowToast($"Found {matches.Count} matching page(s)");
-            }
+            ShowToast(matches.Count == 0 ? $"No matches found for '{q}'" : $"Found '{q}' on {matches.Count} page{(matches.Count == 1 ? "" : "s")}");
+        }
+        catch (OperationCanceledException)
+        {
+            ShowToast("Search stopped");
         }
         catch (Exception ex)
         {
@@ -645,7 +793,7 @@ public partial class MainViewModel : ObservableObject
         }
         finally
         {
-            IsSearchingOcr = false;
+            if (ReferenceEquals(cts, _ocrSearchCts)) IsSearchingOcr = false;
         }
     }
 
@@ -972,6 +1120,9 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnCurrentPageIndexChanged(int value)
     {
+        NotifyStateChanged();
+        if (IsOcrLayerVisible) QueueOcrForCurrentPage();
+        if (IsWebtoonMode) QueueProgressSave();
         if (!_sessionTracker.IsActive) return;
         _sessionTracker.RecordPageView(value);
         if (IsDoublePageMode && value + 1 < TotalPages)
@@ -1047,6 +1198,13 @@ public partial class MainViewModel : ObservableObject
         _pageLoadCts?.Cancel();
         _pageLoadCts = new CancellationTokenSource();
         var ct = _pageLoadCts.Token;
+
+        // Webtoon pages render in the strip; decoding the single-page image as well only slows scrolling.
+        if (IsWebtoonMode)
+        {
+            _ = PrefetchAdjacentPagesAsync(CurrentPageIndex, ct);
+            return;
+        }
 
         try
         {
@@ -1156,6 +1314,7 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(CanGoPrevious));
         OnPropertyChanged(nameof(PageDisplayString));
         OnPropertyChanged(nameof(CurrentPageNumber));
+        OnPropertyChanged(nameof(OcrPanelTitle));
     }
 
     #endregion

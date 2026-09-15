@@ -10,6 +10,9 @@ namespace Komik.Services;
 /// <summary>A stored reading session row.</summary>
 public sealed record ReadingSessionRecord(long ComicId, DateTime StartUtc, int DurationSeconds, int PagesRead);
 
+/// <summary>Which series a comic belongs to, as shown on the Series screen.</summary>
+public sealed record SeriesMembership(string Key, string Name, int TotalIssues);
+
 /// <summary>
 /// Turns raw reading sessions and library state into <see cref="ReadingStatsSummary"/>.
 /// Pure and time-zone aware: every "day" is a local calendar day, and nothing is estimated or invented.
@@ -21,7 +24,8 @@ public static class ReadingStatsCalculator
         IReadOnlyList<ComicEntity> comics,
         IReadOnlyDictionary<long, ComicMetadataEntity>? metadata,
         DateTime nowUtc,
-        TimeZoneInfo? zone = null)
+        TimeZoneInfo? zone = null,
+        IReadOnlyDictionary<long, SeriesMembership>? membership = null)
     {
         zone ??= TimeZoneInfo.Local;
         DateTime nowLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(nowUtc, DateTimeKind.Utc), zone);
@@ -204,22 +208,84 @@ public static class ReadingStatsCalculator
             return identity;
         }
 
+        // Library size of each parsed series, for "opened 3 of 12" when no Series-screen grouping is supplied.
+        var keyCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+        if (membership == null)
+        {
+            foreach (var c in comics)
+            {
+                var id = IdentityOf(c);
+                string k = id.SeriesKey.Length > 0 ? id.SeriesKey : ComicIdentityParser.MakeKey(c.Title);
+                keyCounts[k] = keyCounts.TryGetValue(k, out var n) ? n + 1 : 1;
+            }
+        }
+
         foreach (var session in valid)
         {
             if (!comicById.TryGetValue(session.ComicId, out var comic)) continue;
-            var identity = IdentityOf(comic);
-            string key = identity.SeriesKey.Length > 0 ? identity.SeriesKey : ComicIdentityParser.MakeKey(comic.Title);
+            string key;
+            string name;
+            int total;
+            if (membership != null && membership.TryGetValue(comic.Id, out var member))
+            {
+                key = "series:" + member.Key;
+                name = member.Name;
+                total = member.TotalIssues;
+            }
+            else if (membership != null)
+            {
+                key = "book:" + comic.Id.ToString(CultureInfo.InvariantCulture);
+                name = comic.Title;
+                total = 1;
+            }
+            else
+            {
+                var identity = IdentityOf(comic);
+                key = identity.SeriesKey.Length > 0 ? identity.SeriesKey : ComicIdentityParser.MakeKey(comic.Title);
+                name = string.IsNullOrWhiteSpace(identity.SeriesName) ? comic.Title : identity.SeriesName;
+                total = keyCounts.TryGetValue(key, out var n) ? n : 1;
+            }
+
             if (!seriesStats.TryGetValue(key, out var acc))
             {
-                acc = new SeriesAccumulator(string.IsNullOrWhiteSpace(identity.SeriesName) ? comic.Title : identity.SeriesName);
+                acc = new SeriesAccumulator(name) { TotalIssues = Math.Max(1, total) };
                 seriesStats[key] = acc;
             }
+            if (session.StartUtc > acc.LastReadUtc) acc.LastReadUtc = session.StartUtc;
 
             acc.Pages += session.PagesRead;
             acc.Seconds += session.DurationSeconds;
             acc.ComicIds.Add(comic.Id);
             if (LocalOf(session.StartUtc).Year == today.Year) acc.YearSeconds += session.DurationSeconds;
             acc.Cover ??= comic.ThumbnailPath;
+        }
+
+        // Every comic of each ranked series (not only the ones with sessions), for page-accurate progress.
+        var membersByKey = new Dictionary<string, List<ComicEntity>>(StringComparer.Ordinal);
+        foreach (var c in comics)
+        {
+            string key;
+            if (membership != null)
+            {
+                key = membership.TryGetValue(c.Id, out var m) ? "series:" + m.Key : "book:" + c.Id.ToString(CultureInfo.InvariantCulture);
+            }
+            else
+            {
+                var id = IdentityOf(c);
+                key = id.SeriesKey.Length > 0 ? id.SeriesKey : ComicIdentityParser.MakeKey(c.Title);
+            }
+            if (!membersByKey.TryGetValue(key, out var list)) membersByKey[key] = list = new List<ComicEntity>();
+            list.Add(c);
+        }
+
+        static int PagesReadOf(ComicEntity c) =>
+            c.PageCount <= 0 ? 0 : c.IsCompleted ? c.PageCount : c.LastReadPage > 0 ? Math.Min(c.PageCount, c.LastReadPage + 1) : 0;
+
+        foreach (var (key, acc) in seriesStats)
+        {
+            if (!membersByKey.TryGetValue(key, out var members)) continue;
+            acc.SeriesPagesRead = members.Sum(PagesReadOf);
+            acc.SeriesTotalPages = members.Sum(m => Math.Max(0, m.PageCount));
         }
 
         var ranked = seriesStats.Values
@@ -242,7 +308,12 @@ public static class ReadingStatsCalculator
                 IssuesRead = s.ComicIds.Count,
                 IssuesCompleted = s.ComicIds.Count(id => comicById.TryGetValue(id, out var c) && c.IsCompleted),
                 Share = (double)s.Pages / topPages,
-                CoverThumbnailPath = s.Cover
+                CoverThumbnailPath = s.Cover,
+                TotalIssues = Math.Max(s.TotalIssues, s.ComicIds.Count),
+                IsSeries = Math.Max(s.TotalIssues, s.ComicIds.Count) > 1,
+                LastReadUtc = s.LastReadUtc,
+                SeriesPagesRead = s.SeriesPagesRead,
+                SeriesTotalPages = s.SeriesTotalPages
             });
         }
 
@@ -292,5 +363,9 @@ public static class ReadingStatsCalculator
         public int YearSeconds { get; set; }
         public HashSet<long> ComicIds { get; } = new();
         public string? Cover { get; set; }
+        public int TotalIssues { get; set; } = 1;
+        public DateTime LastReadUtc { get; set; } = DateTime.MinValue;
+        public int SeriesPagesRead { get; set; }
+        public int SeriesTotalPages { get; set; }
     }
 }

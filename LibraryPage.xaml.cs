@@ -114,7 +114,6 @@ public sealed partial class LibraryPage : Page
 
         // Coming back from the reader keeps the series view, section and open series exactly as they were.
         await ViewModel.InitializeAsync(refreshOnly: e.NavigationMode == NavigationMode.Back);
-        UpdateFlyoutMenus();
         UpdateViewModeUi();
         Bindings.Update();
         ApplyResponsiveLayout(ActualWidth);
@@ -161,6 +160,7 @@ public sealed partial class LibraryPage : Page
         {
             EmptyFilterContainer.Visibility = ViewModel.ShowEmptyFilter ? Visibility.Visible : Visibility.Collapsed;
         }
+        if (EmptyFilterContainer != null) UpdateEmptyBurstAnimation();
         if (SeriesGridView != null)
         {
             SeriesGridView.Visibility = ViewModel.ShowSeriesGrid ? Visibility.Visible : Visibility.Collapsed;
@@ -186,6 +186,7 @@ public sealed partial class LibraryPage : Page
     private void ShowAllComics_Click(object sender, RoutedEventArgs e)
     {
         SearchBox.Text = string.Empty;
+        if (ViewModel.IsSeriesView) ViewModel.CloseSeriesView();
         ViewModel.FilterAll();
     }
 
@@ -208,7 +209,9 @@ public sealed partial class LibraryPage : Page
             e.PropertyName == nameof(ViewModel.HasComics) ||
             e.PropertyName == nameof(ViewModel.HasNoComics) ||
             e.PropertyName == nameof(ViewModel.ShowEmptyLibrary) ||
-            e.PropertyName == nameof(ViewModel.ShowEmptyFilter))
+            e.PropertyName == nameof(ViewModel.ShowEmptyFilter) ||
+            e.PropertyName == nameof(ViewModel.SearchText) ||
+            e.PropertyName == nameof(ViewModel.TotalComicCount))
         {
             UpdateActiveFilterUi();
             UpdateViewModeUi();
@@ -216,8 +219,7 @@ public sealed partial class LibraryPage : Page
         }
         else if (e.PropertyName == nameof(ViewModel.AvailableTags))
         {
-            UpdateFlyoutMenus();
-            UpdateViewModeUi();
+                UpdateViewModeUi();
             Bindings.Update();
         }
     }
@@ -251,7 +253,10 @@ public sealed partial class LibraryPage : Page
     {
         if (e.Key != Windows.System.VirtualKey.Escape || e.Handled) return;
 
-        if (ViewModel.IsAddComicsToSeriesDialogOpen) ViewModel.CloseAddComicsToSeriesDialog();
+        if (ViewModel.IsComicTagsOpen) ViewModel.CloseComicTags();
+        else if (ViewModel.IsManageTagsOpen) ViewModel.CloseManageTags();
+        else if (ViewModel.IsEditSeriesDialogOpen) ViewModel.CloseEditSeries();
+        else if (ViewModel.IsAddComicsToSeriesDialogOpen) ViewModel.CloseAddComicsToSeriesDialog();
         else if (ViewModel.IsCreateSeriesDialogOpen) ViewModel.CloseCreateSeriesDialog();
         else if (ViewModel.IsStatsDialogOpen) ViewModel.CloseReadingStats();
         else if (ViewModel.IsDuplicateManagerOpen) ViewModel.CloseDuplicateManager();
@@ -278,101 +283,6 @@ public sealed partial class LibraryPage : Page
         if (sender is Button { Tag: DuplicateComicGroup group })
         {
             _ = ViewModel.DismissDuplicateGroupAsync(group);
-        }
-    }
-
-    private async void ResolveDuplicateGroup_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement { Tag: DuplicateComicGroup group } || group.RecommendedKeep is not { } keep) return;
-
-        var extras = group.CopyItems.Where(c => !c.IsRecommended).ToList();
-        var recycle = new CheckBox { Content = "Move the extra files to the Recycle Bin", IsChecked = true, Margin = new Thickness(0, 12, 0, 0) };
-        var body = new StackPanel { Spacing = 6 };
-        body.Children.Add(new TextBlock { Text = "Keep this copy:", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-        body.Children.Add(new TextBlock { Text = $"{keep.Title} ({keep.FormatBadge}, {keep.PageCountFormatted}, {keep.FileSizeFormatted})\n{keep.FilePath}", TextWrapping = TextWrapping.Wrap, Opacity = 0.85 });
-        body.Children.Add(new TextBlock { Text = extras.Count == 1 ? "Remove 1 extra copy:" : $"Remove {extras.Count} extra copies:", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 0) });
-        foreach (var extra in extras)
-        {
-            body.Children.Add(new TextBlock { Text = $"• {extra.Title} ({extra.FormatBadge}, {extra.FileSizeFormatted})\n   {extra.FilePath}", TextWrapping = TextWrapping.Wrap, Opacity = 0.85 });
-        }
-        body.Children.Add(new TextBlock { Text = "Reading progress and favorites from the removed copies carry over to the kept copy.", TextWrapping = TextWrapping.Wrap, Opacity = 0.7, Margin = new Thickness(0, 8, 0, 0) });
-        body.Children.Add(recycle);
-
-        var dialog = new ContentDialog
-        {
-            Title = "Keep the best copy?",
-            Content = new ScrollViewer { Content = body, MaxHeight = 380 },
-            PrimaryButtonText = "Keep Best Copy",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = XamlRoot
-        };
-
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
-        {
-            await ViewModel.ResolveDuplicateGroupAsync(group, recycle.IsChecked == true);
-        }
-    }
-
-    private async void ResolveAllDuplicates_Click(object sender, RoutedEventArgs e)
-    {
-        if (!ViewModel.HasDuplicates) return;
-
-        int high = ViewModel.DuplicateGroups.Count(g => g.IsHighConfidence);
-        int total = ViewModel.DuplicateGroups.Count;
-        var onlyHigh = new RadioButton { Content = $"Only identical files and same-issue matches ({high} group{(high == 1 ? "" : "s")})", IsChecked = true, GroupName = "dupscope" };
-        var everything = new RadioButton { Content = $"Every group, including possible matches ({total})", GroupName = "dupscope" };
-        var recycle = new CheckBox { Content = "Move the extra files to the Recycle Bin", IsChecked = true, Margin = new Thickness(0, 10, 0, 0) };
-
-        var body = new StackPanel { Spacing = 8 };
-        body.Children.Add(new TextBlock { Text = "Komik keeps the best copy in each group (reading progress, favorites, page count and format decide) and removes the rest.", TextWrapping = TextWrapping.Wrap });
-        body.Children.Add(onlyHigh);
-        body.Children.Add(everything);
-        body.Children.Add(recycle);
-
-        var dialog = new ContentDialog
-        {
-            Title = "Clean up duplicates?",
-            Content = body,
-            PrimaryButtonText = "Clean Up",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = XamlRoot
-        };
-
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
-        {
-            await ViewModel.ResolveAllDuplicatesAsync(recycle.IsChecked == true, highConfidenceOnly: onlyHigh.IsChecked == true);
-        }
-    }
-
-    private async void RemoveDuplicateCopy_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement { Tag: DuplicateCopyItem item }) return;
-
-        var dialog = new ContentDialog
-        {
-            Title = "Remove this copy?",
-            Content = new TextBlock
-            {
-                Text = $"{item.Title} ({item.FormatBadge}, {item.PageCountFormatted}, {item.FileSizeFormatted})\n{item.FilePath}\n\nIts reading progress and favorite carry over to the best remaining copy.",
-                TextWrapping = TextWrapping.Wrap
-            },
-            PrimaryButtonText = "Move to Recycle Bin",
-            SecondaryButtonText = "Remove from Library Only",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Close,
-            XamlRoot = XamlRoot
-        };
-
-        var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Primary)
-        {
-            await ViewModel.RemoveDuplicateCopyAsync(item.Comic, deleteFile: true);
-        }
-        else if (result == ContentDialogResult.Secondary)
-        {
-            await ViewModel.RemoveDuplicateCopyAsync(item.Comic, deleteFile: false);
         }
     }
 
@@ -546,6 +456,7 @@ public sealed partial class LibraryPage : Page
     private void ClearTagFilter_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.FilterByTag(null);
+        TagFilterFlyout.Hide();
     }
 
     private void ClearActiveFilter_Click(object sender, RoutedEventArgs e)
@@ -569,66 +480,84 @@ public sealed partial class LibraryPage : Page
         }
     }
 
+    /// <summary>Colored sticker next to the filter chips: which filter or tag is on, how many comics match, and a clear button.</summary>
     private void UpdateActiveFilterUi()
     {
-        if (ViewModel.FilterCompletedOnly)
+        (string Kind, string Text, string Glyph, byte R, byte G, byte B)? state =
+            !string.IsNullOrWhiteSpace(ViewModel.SearchText) ? ("SEARCH", $"\u201C{ViewModel.SearchText.Trim()}\u201D", "\uE721", 0x00, 0xC2, 0xFF)
+            : !string.IsNullOrEmpty(ViewModel.SelectedTag) ? ("TAG", ViewModel.SelectedTag!, "\uE8EC", 0xFF, 0xD7, 0x00)
+            : ViewModel.FilterCompletedOnly ? ("FILTER", "Completed", "\uE73E", 0x2E, 0xE5, 0x9D)
+            : ViewModel.FilterInProgressOnly ? ("FILTER", "Continue Reading", "\uE768", 0x00, 0xC2, 0xFF)
+            : ViewModel.FilterUnreadOnly ? ("FILTER", "Unread", "\uE8A5", 0xFF, 0x9F, 0x1C)
+            : ViewModel.FilterFavoritesOnly ? ("FILTER", "Favorites", "\uEB52", 0xFF, 0x4D, 0x8D)
+            : null;
+
+        bool tagOn = !string.IsNullOrEmpty(ViewModel.SelectedTag);
+        if (tagOn)
         {
-            ActiveFilterText.Text = "Filter: Completed";
-            ActiveFilterBadge.Visibility = Visibility.Visible;
-        }
-        else if (!string.IsNullOrEmpty(ViewModel.SelectedTag))
-        {
-            ActiveFilterText.Text = $"Tag: {ViewModel.SelectedTag}";
-            ActiveFilterBadge.Visibility = Visibility.Visible;
-        }
-        else if (ViewModel.FilterInProgressOnly)
-        {
-            ActiveFilterText.Text = "Filter: Continue Reading";
-            ActiveFilterBadge.Visibility = Visibility.Visible;
-        }
-        else if (ViewModel.FilterUnreadOnly)
-        {
-            ActiveFilterText.Text = "Filter: Unread";
-            ActiveFilterBadge.Visibility = Visibility.Visible;
-        }
-        else if (ViewModel.FilterFavoritesOnly)
-        {
-            ActiveFilterText.Text = "Filter: Favorites";
-            ActiveFilterBadge.Visibility = Visibility.Visible;
+            TagsDropDown.Background = Chip(0xFF, 0xD7, 0x00);
+            TagsDropDown.Foreground = ChipInk;
+            TagsDropDown.BorderBrush = ChipInk;
         }
         else
         {
-            ActiveFilterBadge.Visibility = Visibility.Collapsed;
+            TagsDropDown.ClearValue(Control.BackgroundProperty);
+            TagsDropDown.ClearValue(Control.ForegroundProperty);
+            TagsDropDown.ClearValue(Control.BorderBrushProperty);
         }
+
+        if (state is not { } s || ViewModel.IsSeriesView)
+        {
+            ActiveFilterBadge.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        ActiveFilterKind.Text = s.Kind;
+        ActiveFilterText.Text = s.Text;
+        ActiveFilterGlyph.Glyph = s.Glyph;
+        ActiveFilterBadge.Background = Chip(s.R, s.G, s.B);
+        int count = ViewModel.Comics.Count;
+        ActiveFilterCount.Text = count == 1 ? "1 comic" : $"{count} comics";
+        ToolTipService.SetToolTip(ActiveFilterBadge, $"{(s.Kind == "FILTER" ? "Showing" : s.Kind == "TAG" ? "Comics tagged" : "Search for")} {s.Text}: {ActiveFilterCount.Text}");
+        ActiveFilterBadge.Visibility = Visibility.Visible;
     }
 
-    private void UpdateFlyoutMenus()
+    private async void EmptyFilterAction_Click(object sender, RoutedEventArgs e)
     {
-        // Tags Flyout
-        TagsFlyout.Items.Clear();
-        var newTagItem = new MenuFlyoutItem { Text = "+ New Tag...", Icon = new FontIcon { Glyph = "\uE710" } };
-        newTagItem.Click += CreateNewTag_Click;
-        TagsFlyout.Items.Add(newTagItem);
-
-        var manageTagsItem = new MenuFlyoutItem { Text = "Manage Tags...", Icon = new FontIcon { Glyph = "\uE8EC" } };
-        manageTagsItem.Click += ManageTags_Click;
-        TagsFlyout.Items.Add(manageTagsItem);
-
-        TagsFlyout.Items.Add(new MenuFlyoutSeparator());
-
-        var allTagsItem = new MenuFlyoutItem { Text = "All Tags" };
-        allTagsItem.Click += ClearTagFilter_Click;
-        TagsFlyout.Items.Add(allTagsItem);
-
-        if (ViewModel.AvailableTags.Count > 0)
+        if (ViewModel.IsSeriesView || !string.IsNullOrWhiteSpace(ViewModel.SearchText))
         {
-            TagsFlyout.Items.Add(new MenuFlyoutSeparator());
-            foreach (var tag in ViewModel.AvailableTags)
+            SearchBox.Text = string.Empty;
+        }
+        await ViewModel.RunEmptyFilterActionAsync();
+    }
+
+    /// <summary>The empty-screen burst rocks gently while it's on screen.</summary>
+    private Microsoft.UI.Xaml.Media.Animation.Storyboard? _emptyBurstWiggle;
+
+    private void UpdateEmptyBurstAnimation()
+    {
+        bool visible = EmptyFilterContainer.Visibility == Visibility.Visible;
+        if (visible && _emptyBurstWiggle == null)
+        {
+            var rock = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation
             {
-                var item = new MenuFlyoutItem { Text = tag };
-                item.Click += (s, ev) => ViewModel.FilterByTag(tag);
-                TagsFlyout.Items.Add(item);
-            }
+                From = -7,
+                To = 7,
+                Duration = new Duration(TimeSpan.FromSeconds(1.8)),
+                AutoReverse = true,
+                RepeatBehavior = Microsoft.UI.Xaml.Media.Animation.RepeatBehavior.Forever,
+                EasingFunction = new Microsoft.UI.Xaml.Media.Animation.SineEase { EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseInOut }
+            };
+            _emptyBurstWiggle = new Microsoft.UI.Xaml.Media.Animation.Storyboard();
+            _emptyBurstWiggle.Children.Add(rock);
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(rock, EmptyBurstRotate);
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(rock, "Angle");
+            _emptyBurstWiggle.Begin();
+        }
+        else if (!visible && _emptyBurstWiggle != null)
+        {
+            _emptyBurstWiggle.Stop();
+            _emptyBurstWiggle = null;
         }
     }
 
@@ -641,10 +570,15 @@ public sealed partial class LibraryPage : Page
         if (sender is MenuFlyout flyout)
         {
             var target = flyout.Target as FrameworkElement;
-            var comic = (target?.DataContext as ComicEntity) ?? (target?.Tag as ComicEntity);
+            var comic = (target?.DataContext as ComicEntity) ?? (target?.DataContext as SeriesIssueItem)?.Comic ?? (target?.Tag as ComicEntity);
 
             bool isCbz = comic != null &&
                 (comic.FilePath.EndsWith(".cbz", StringComparison.OrdinalIgnoreCase) || comic.FormatBadge == "CBZ");
+
+            // Inside an open series the menu also offers series actions.
+            bool inSeries = target?.DataContext is SeriesIssueItem && ViewModel.SelectedSeriesGroup != null;
+            ContextSetCoverItem.Visibility = inSeries ? Visibility.Visible : Visibility.Collapsed;
+            ContextRemoveFromSeriesItem.Visibility = inSeries && ViewModel.SelectedSeriesGroup!.IsManual ? Visibility.Visible : Visibility.Collapsed;
 
             foreach (var item in flyout.Items)
             {
@@ -660,6 +594,7 @@ public sealed partial class LibraryPage : Page
     private ComicEntity? GetComicFromMenuSender(object sender)
     {
         if (sender is MenuFlyoutItem { DataContext: ComicEntity comic }) return comic;
+        if (sender is MenuFlyoutItem { DataContext: SeriesIssueItem issue }) return issue.Comic;
         if (sender is FrameworkElement { Tag: ComicEntity tagComic }) return tagComic;
         return null;
     }
@@ -682,13 +617,13 @@ public sealed partial class LibraryPage : Page
     private void ContextFavorite_Click(object sender, RoutedEventArgs e)
     {
         var comic = GetComicFromMenuSender(sender);
-        if (comic != null) _ = ViewModel.ToggleFavoriteAsync(comic);
+        if (comic != null) _ = RunThenRefreshSeriesAsync(ViewModel.ToggleFavoriteAsync(comic));
     }
 
     private void ContextToggleCompleted_Click(object sender, RoutedEventArgs e)
     {
         var comic = GetComicFromMenuSender(sender);
-        if (comic != null) _ = ViewModel.ToggleCompletedStatusAsync(comic);
+        if (comic != null) _ = RunThenRefreshSeriesAsync(ViewModel.ToggleCompletedStatusAsync(comic));
     }
 
     private async void ContextRestart_Click(object sender, RoutedEventArgs e)
@@ -697,6 +632,7 @@ public sealed partial class LibraryPage : Page
         if (comic != null)
         {
             await ViewModel.RestartComicAsync(comic);
+            RefreshSeriesIfShown();
             ViewModel.ShowNotification("Reading Progress Reset", $"Restarted '{comic.Title}' from page 1.", InfoBarSeverity.Informational);
         }
     }
@@ -706,239 +642,8 @@ public sealed partial class LibraryPage : Page
         var comic = GetComicFromMenuSender(sender);
         if (comic != null)
         {
-            await ShowComicTagsDialogAsync(comic);
+            await ViewModel.OpenComicTagsAsync(comic);
         }
-    }
-
-    private async void CreateNewTag_Click(object sender, RoutedEventArgs e)
-    {
-        string? name = await PromptTextInputAsync("New Tag", "Enter the name of your new tag:");
-        if (!string.IsNullOrWhiteSpace(name))
-        {
-            await ViewModel.CreateTagAsync(name);
-            UpdateFlyoutMenus();
-            ViewModel.ShowNotification("Tag Created", $"Created tag '{name}'.", InfoBarSeverity.Success);
-        }
-    }
-
-    private async void ManageTags_Click(object sender, RoutedEventArgs e)
-    {
-        await ShowManageTagsDialogAsync();
-    }
-
-    private async Task ShowComicTagsDialogAsync(ComicEntity comic)
-    {
-        var tags = await ViewModel.Repository.GetAllTagsAsync();
-        var currentComicTags = new HashSet<string>(await ViewModel.Repository.GetTagsForComicAsync(comic.Id), StringComparer.OrdinalIgnoreCase);
-
-        var stack = new StackPanel { Spacing = 10, Width = 380 };
-        stack.Children.Add(new TextBlock
-        {
-            Text = $"Select tags for '{comic.Title}':",
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            TextWrapping = TextWrapping.Wrap
-        });
-
-        var checkBoxesPanel = new StackPanel { Spacing = 6 };
-        var scrollViewer = new ScrollViewer { Content = checkBoxesPanel, MaxHeight = 220, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-
-        void PopulateCheckBoxes()
-        {
-            checkBoxesPanel.Children.Clear();
-            if (tags.Count == 0)
-            {
-                checkBoxesPanel.Children.Add(new TextBlock
-                {
-                    Text = "No tags created yet. Create one below!",
-                    FontSize = 12,
-                    Opacity = 0.75,
-                    Margin = new Thickness(0, 4, 0, 4)
-                });
-            }
-            else
-            {
-                foreach (var t in tags)
-                {
-                    var cb = new CheckBox
-                    {
-                        Content = t,
-                        IsChecked = currentComicTags.Contains(t),
-                        Margin = new Thickness(0, 2, 0, 2)
-                    };
-                    string capturedTag = t;
-                    cb.Checked += async (s, e) =>
-                    {
-                        currentComicTags.Add(capturedTag);
-                        await ViewModel.AddTagToComicAsync(comic, capturedTag);
-                    };
-                    cb.Unchecked += async (s, e) =>
-                    {
-                        currentComicTags.Remove(capturedTag);
-                        await ViewModel.RemoveTagFromComicAsync(comic, capturedTag);
-                    };
-                    checkBoxesPanel.Children.Add(cb);
-                }
-            }
-        }
-
-        PopulateCheckBoxes();
-        stack.Children.Add(scrollViewer);
-
-        // Inline create new tag
-        var newBox = new TextBox { PlaceholderText = "New tag name (e.g. Manga, Superhero)...", HorizontalAlignment = HorizontalAlignment.Stretch };
-        var addBtn = new Button { Content = "Add", Height = 32, Padding = new Thickness(14, 0, 14, 0) };
-        addBtn.Click += async (s, e) =>
-        {
-            string newName = newBox.Text.Trim();
-            if (!string.IsNullOrEmpty(newName))
-            {
-                await ViewModel.CreateTagAsync(newName);
-                await ViewModel.AddTagToComicAsync(comic, newName);
-                currentComicTags.Add(newName);
-                tags = await ViewModel.Repository.GetAllTagsAsync();
-                PopulateCheckBoxes();
-                newBox.Text = string.Empty;
-                UpdateFlyoutMenus();
-            }
-        };
-
-        var addGrid = new Grid { ColumnSpacing = 8, Margin = new Thickness(0, 8, 0, 0) };
-        addGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        addGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        Grid.SetColumn(newBox, 0);
-        Grid.SetColumn(addBtn, 1);
-        addGrid.Children.Add(newBox);
-        addGrid.Children.Add(addBtn);
-        stack.Children.Add(addGrid);
-
-        var dialog = new ContentDialog
-        {
-            Title = "Manage Tags",
-            Content = stack,
-            CloseButtonText = "Done",
-            XamlRoot = this.XamlRoot
-        };
-
-        await dialog.ShowAsync();
-        UpdateFlyoutMenus();
-    }
-
-    private async Task ShowManageTagsDialogAsync()
-    {
-        var mainStack = new StackPanel { Spacing = 14, Width = 420 };
-
-        var tagHeader = new TextBlock { Text = "Tags", FontWeight = Microsoft.UI.Text.FontWeights.Bold, FontSize = 16 };
-        var tagDescription = new TextBlock
-        {
-            Text = "Categorize comics by genre, publisher, format, or theme.",
-            FontSize = 12,
-            Opacity = 0.75,
-            Margin = new Thickness(0, -6, 0, 4)
-        };
-
-        var tagListPanel = new StackPanel { Spacing = 4 };
-        var tagScroll = new ScrollViewer { Content = tagListPanel, MaxHeight = 220, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-
-        var newTagBox = new TextBox { PlaceholderText = "New tag name (e.g. Manga, Superhero)...", HorizontalAlignment = HorizontalAlignment.Stretch };
-        var addTagBtn = new Button { Content = "Add Tag", Height = 32, Padding = new Thickness(16, 0, 16, 0) };
-
-        async Task RefreshTagsUiAsync()
-        {
-            tagListPanel.Children.Clear();
-            var tags = await ViewModel.Repository.GetAllTagsAsync();
-            if (tags.Count == 0)
-            {
-                tagListPanel.Children.Add(new TextBlock
-                {
-                    Text = "No tags created yet. Add your first tag below.",
-                    FontSize = 12,
-                    Opacity = 0.75,
-                    Margin = new Thickness(4)
-                });
-            }
-            else
-            {
-                foreach (var t in tags)
-                {
-                    int count = await ViewModel.Repository.GetComicCountForTagAsync(t);
-                    var itemGrid = new Grid { Padding = new Thickness(6, 4, 6, 4) };
-                    itemGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                    itemGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-                    var label = new TextBlock
-                    {
-                        Text = $"{t}  ({count} {(count == 1 ? "comic" : "comics")})",
-                        VerticalAlignment = VerticalAlignment.Center,
-                        FontSize = 12
-                    };
-
-                    var delBtn = new Button
-                    {
-                        Content = new FontIcon { Glyph = "\uE74D", FontSize = 11 },
-                        Height = 26,
-                        Width = 26,
-                        Padding = new Thickness(0)
-                    };
-                    ToolTipService.SetToolTip(delBtn, $"Delete tag '{t}'");
-
-                    string capturedTag = t;
-                    delBtn.Click += async (s, e) =>
-                    {
-                        await ViewModel.DeleteTagAsync(capturedTag);
-                        await RefreshTagsUiAsync();
-                        UpdateFlyoutMenus();
-                    };
-
-                    Grid.SetColumn(label, 0);
-                    Grid.SetColumn(delBtn, 1);
-                    itemGrid.Children.Add(label);
-                    itemGrid.Children.Add(delBtn);
-                    tagListPanel.Children.Add(itemGrid);
-                }
-            }
-        }
-
-        addTagBtn.Click += async (s, e) =>
-        {
-            string name = newTagBox.Text.Trim();
-            if (!string.IsNullOrEmpty(name))
-            {
-                await ViewModel.CreateTagAsync(name);
-                newTagBox.Text = string.Empty;
-                await RefreshTagsUiAsync();
-                UpdateFlyoutMenus();
-            }
-        };
-
-        var addTagGrid = new Grid { ColumnSpacing = 8 };
-        addTagGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        addTagGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        Grid.SetColumn(newTagBox, 0);
-        Grid.SetColumn(addTagBtn, 1);
-        addTagGrid.Children.Add(newTagBox);
-        addTagGrid.Children.Add(addTagBtn);
-
-        var tagBorder = new Border
-        {
-            Background = GetThemeBrush("CardBackgroundFillColorSecondaryBrush", FallbackCardSecondary),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(12),
-            Child = new StackPanel { Spacing = 8, Children = { tagHeader, tagDescription, tagScroll, addTagGrid } }
-        };
-
-        await RefreshTagsUiAsync();
-        mainStack.Children.Add(tagBorder);
-
-        var dialog = new ContentDialog
-        {
-            Title = "Manage Tags",
-            Content = mainStack,
-            CloseButtonText = "Done",
-            XamlRoot = this.XamlRoot
-        };
-
-        await dialog.ShowAsync();
-        UpdateFlyoutMenus();
     }
 
     private async void ContextConvertToCbz_Click(object sender, RoutedEventArgs e)
@@ -1152,274 +857,6 @@ public sealed partial class LibraryPage : Page
 
         var result = await dialog.ShowAsync();
         return result == ContentDialogResult.Primary ? textBox.Text.Trim() : null;
-    }
-
-    private async Task ShowComicDetailsDialogAsync(ComicEntity comic)
-    {
-        var metadata = await ViewModel.GetComicMetadataAsync(comic.Id);
-
-        // --- Left Column: Cover & File Stats ---
-        var coverGrid = new Grid
-        {
-            CornerRadius = new CornerRadius(8),
-            Height = 220,
-            Width = 150,
-            HorizontalAlignment = HorizontalAlignment.Center
-        };
-
-        var placeholderBorder = new Border
-        {
-            Background = GetThemeBrush("CardBackgroundFillColorSecondaryBrush", FallbackCardSecondary),
-            CornerRadius = new CornerRadius(8),
-            Child = new FontIcon
-            {
-                Glyph = "\uE82D",
-                FontSize = 36,
-                Opacity = 0.75,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center
-            }
-        };
-        coverGrid.Children.Add(placeholderBorder);
-
-        if (!string.IsNullOrWhiteSpace(comic.ThumbnailPath) && File.Exists(comic.ThumbnailPath))
-        {
-            var coverImage = new Image
-            {
-                Source = new BitmapImage(new Uri(comic.ThumbnailPath)),
-                Stretch = Stretch.UniformToFill,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            coverGrid.Children.Add(coverImage);
-        }
-
-        var statsPanel = new StackPanel
-        {
-            Spacing = 4,
-            Margin = new Thickness(0, 10, 0, 0),
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-
-        // Format & Page count
-        statsPanel.Children.Add(new TextBlock
-        {
-            Text = $"{comic.FormatBadge} • {comic.PageCountFormatted}",
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            FontSize = 12,
-            HorizontalAlignment = HorizontalAlignment.Center
-        });
-
-        // File size
-        statsPanel.Children.Add(new TextBlock
-        {
-            Text = $"Size: {comic.FileSizeFormatted}",
-            FontSize = 11,
-            Opacity = 0.75,
-            HorizontalAlignment = HorizontalAlignment.Center
-        });
-
-        // Reading progress info
-        statsPanel.Children.Add(new TextBlock
-        {
-            Text = comic.IsCompleted ? "Status: Completed" : (comic.IsInProgress ? $"Status: Page {comic.LastReadPage + 1}/{comic.PageCount}" : "Status: Unread"),
-            FontSize = 11,
-            Foreground = comic.IsCompleted ? new SolidColorBrush(Windows.UI.Color.FromArgb(255, 16, 124, 65)) : GetThemeBrush("TextFillColorSecondaryBrush", FallbackTextSecondary),
-            HorizontalAlignment = HorizontalAlignment.Center
-        });
-
-        // Date Added
-        statsPanel.Children.Add(new TextBlock
-        {
-            Text = $"Added: {comic.DateAdded:d}",
-            FontSize = 10,
-            Foreground = GetThemeBrush("TextFillColorTertiaryBrush", FallbackTextTertiary),
-            HorizontalAlignment = HorizontalAlignment.Center
-        });
-
-        if (comic.IsMissing)
-        {
-            statsPanel.Children.Add(new TextBlock
-            {
-                Text = "⚠ File Missing / Offline",
-                FontSize = 11,
-                Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 209, 52, 56)),
-                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Margin = new Thickness(0, 4, 0, 0)
-            });
-        }
-
-        var leftPanel = new StackPanel
-        {
-            Width = 150,
-            Children = { coverGrid, statsPanel }
-        };
-
-        // --- Right Column: Editable Metadata Fields ---
-        var rightPanel = new StackPanel
-        {
-            Spacing = 8,
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-
-        var titleBox = new TextBox
-        {
-            Header = "Title",
-            Text = metadata?.Title ?? comic.Title,
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-        rightPanel.Children.Add(titleBox);
-
-        var seriesRow = new Grid { ColumnSpacing = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
-        seriesRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) });
-        seriesRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-        var seriesBox = new TextBox
-        {
-            Header = "Series",
-            Text = metadata?.SeriesName ?? string.Empty,
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-        Grid.SetColumn(seriesBox, 0);
-        seriesRow.Children.Add(seriesBox);
-
-        var issueBox = new TextBox
-        {
-            Header = "Issue #",
-            Text = metadata?.IssueNumber ?? string.Empty,
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-        Grid.SetColumn(issueBox, 1);
-        seriesRow.Children.Add(issueBox);
-        rightPanel.Children.Add(seriesRow);
-
-        var creditsRow = new Grid { ColumnSpacing = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
-        creditsRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        creditsRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-        var writerBox = new TextBox
-        {
-            Header = "Writer(s)",
-            Text = metadata?.Writers ?? string.Empty,
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-        Grid.SetColumn(writerBox, 0);
-        creditsRow.Children.Add(writerBox);
-
-        var artistBox = new TextBox
-        {
-            Header = "Artist(s)",
-            Text = metadata?.Artists ?? string.Empty,
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-        Grid.SetColumn(artistBox, 1);
-        creditsRow.Children.Add(artistBox);
-        rightPanel.Children.Add(creditsRow);
-
-        var pubRow = new Grid { ColumnSpacing = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
-        pubRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });
-        pubRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-        var pubBox = new TextBox
-        {
-            Header = "Publisher",
-            Text = metadata?.Publisher ?? string.Empty,
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-        Grid.SetColumn(pubBox, 0);
-        pubRow.Children.Add(pubBox);
-
-        var dateBox = new TextBox
-        {
-            Header = "Year / Date",
-            Text = metadata?.ReleaseDate ?? string.Empty,
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-        Grid.SetColumn(dateBox, 1);
-        pubRow.Children.Add(dateBox);
-        rightPanel.Children.Add(pubRow);
-
-        var summaryBox = new TextBox
-        {
-            Header = "Summary / Synopsis",
-            Text = metadata?.Summary ?? string.Empty,
-            AcceptsReturn = true,
-            TextWrapping = TextWrapping.Wrap,
-            Height = 72,
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-        rightPanel.Children.Add(summaryBox);
-
-        var pathBox = new TextBox
-        {
-            Header = "File Location",
-            Text = comic.FilePath,
-            IsReadOnly = true,
-            FontSize = 11,
-            Opacity = 0.75,
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-        rightPanel.Children.Add(pathBox);
-
-        // --- Dialog Layout Grid ---
-        var mainGrid = new Grid
-        {
-            ColumnSpacing = 16,
-            Width = 540
-        };
-        mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
-        mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-        Grid.SetColumn(leftPanel, 0);
-        mainGrid.Children.Add(leftPanel);
-
-        Grid.SetColumn(rightPanel, 1);
-        mainGrid.Children.Add(rightPanel);
-
-        var scrollViewer = new ScrollViewer
-        {
-            Content = mainGrid,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            MaxHeight = 520
-        };
-
-        var dialog = new ContentDialog
-        {
-            Title = "Comic Details",
-            Content = scrollViewer,
-            PrimaryButtonText = "Save",
-            SecondaryButtonText = "Read Comic",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = this.XamlRoot
-        };
-
-        var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Primary || result == ContentDialogResult.Secondary)
-        {
-            var updatedMeta = metadata ?? new ComicMetadataEntity { ComicId = comic.Id };
-            updatedMeta.Title = string.IsNullOrWhiteSpace(titleBox.Text) ? comic.Title : titleBox.Text.Trim();
-            updatedMeta.SeriesName = string.IsNullOrWhiteSpace(seriesBox.Text) ? null : seriesBox.Text.Trim();
-            updatedMeta.IssueNumber = string.IsNullOrWhiteSpace(issueBox.Text) ? null : issueBox.Text.Trim();
-            updatedMeta.Writers = string.IsNullOrWhiteSpace(writerBox.Text) ? null : writerBox.Text.Trim();
-            updatedMeta.Artists = string.IsNullOrWhiteSpace(artistBox.Text) ? null : artistBox.Text.Trim();
-            updatedMeta.Publisher = string.IsNullOrWhiteSpace(pubBox.Text) ? null : pubBox.Text.Trim();
-            updatedMeta.ReleaseDate = string.IsNullOrWhiteSpace(dateBox.Text) ? null : dateBox.Text.Trim();
-            updatedMeta.Summary = string.IsNullOrWhiteSpace(summaryBox.Text) ? null : summaryBox.Text.Trim();
-            updatedMeta.LastUpdated = DateTime.UtcNow;
-
-            await ViewModel.SaveComicMetadataAsync(updatedMeta, comic);
-
-            if (result == ContentDialogResult.Secondary)
-            {
-                OnComicSelectedForReading(comic.FilePath);
-            }
-            else
-            {
-                ViewModel.ShowNotification("Metadata Saved", $"Updated details for '{comic.Title}'.", InfoBarSeverity.Success);
-            }
-        }
     }
 
     private void HorizontalScrollViewer_PointerWheelChanged(object sender, PointerRoutedEventArgs e)

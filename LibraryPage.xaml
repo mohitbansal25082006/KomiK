@@ -50,10 +50,98 @@
             <Setter Property="Padding" Value="6,2" />
         </Style>
 
-        <MenuFlyout x:Key="ComicContextMenu" Opening="ComicContextMenu_Opening">
+        <!-- Filter chips built on a horizontal ListView: the picked chip turns yellow -->
+        <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#FFD700" />
+        <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#FFE24D" />
+        <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="#F5C800" />
+        <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="#0B0B12" />
+        <SolidColorBrush x:Key="ListViewItemForegroundSelectedPointerOver" Color="#0B0B12" />
+        <x:Boolean x:Key="ListViewItemSelectionIndicatorVisualEnabled">False</x:Boolean>
+
+        <Style x:Key="ComicChipBarStyle" TargetType="ListView">
+            <Setter Property="SelectionMode" Value="Single" />
+            <Setter Property="ScrollViewer.HorizontalScrollMode" Value="Enabled" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Hidden" />
+            <Setter Property="ScrollViewer.VerticalScrollMode" Value="Disabled" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="ItemsPanel">
+                <Setter.Value>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="6" />
+                    </ItemsPanelTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="MinHeight" Value="32" />
+                        <Setter Property="MinWidth" Value="0" />
+                        <Setter Property="Padding" Value="14,0" />
+                        <Setter Property="CornerRadius" Value="16" />
+                        <Setter Property="BorderThickness" Value="2,2,3,3" />
+                        <Setter Property="BorderBrush" Value="{ThemeResource KomikInkStrokeBrush}" />
+                        <Setter Property="Background" Value="{ThemeResource KomikPanelSunkenBrush}" />
+                        <Setter Property="FontWeight" Value="SemiBold" />
+                        <Setter Property="FontSize" Value="12" />
+                        <Setter Property="helpers:MotionHelper.PressPop" Value="True" />
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- One comic in the create / add pickers -->
+        <DataTemplate x:Key="CandidateCardTemplate" x:DataType="models:ManualSeriesComicItem">
+            <Grid Width="150" Height="246" Margin="4" helpers:MotionHelper.HoverLift="True" ToolTipService.ToolTip="{x:Bind Comic.Title}">
+                <Border Margin="5,5,0,0" CornerRadius="11" Background="{ThemeResource KomikShadowBrush}" Opacity="0.55" />
+                <Border Margin="0,0,5,5" CornerRadius="11" Background="{ThemeResource KomikPanelBrush}" BorderBrush="{ThemeResource KomikInkStrokeBrush}" BorderThickness="2" Padding="5">
+                    <Grid RowSpacing="4">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="170" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid CornerRadius="7" Background="{ThemeResource KomikPanelSunkenBrush}">
+                            <FontIcon Glyph="&#xE82D;" FontSize="24" Foreground="{ThemeResource KomikSubtleTextBrush}" />
+                            <Image Source="{x:Bind Comic.ThumbnailPath, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" helpers:MotionHelper.HoverRole="Zoom" />
+                            <Border Background="#8CFFD700" Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+                            <Border HorizontalAlignment="Center" VerticalAlignment="Center" Padding="10,1,10,0" CornerRadius="6" Background="#FFD700" BorderBrush="#0B0B12" BorderThickness="2.5,2.5,4,4" Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
+                                <Border.RenderTransform>
+                                    <RotateTransform Angle="-8" />
+                                </Border.RenderTransform>
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <FontIcon Glyph="&#xE73E;" FontSize="12" Foreground="#0B0B12" />
+                                    <TextBlock Text="PICKED" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" CharacterSpacing="40" Foreground="#0B0B12" />
+                                </StackPanel>
+                            </Border>
+                            <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5" CornerRadius="4" Background="#E60B0B12" Padding="5,0">
+                                <TextBlock Text="{x:Bind Comic.FormatBadge}" FontSize="9" FontWeight="Bold" Foreground="White" />
+                            </Border>
+                            <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="5" Width="22" Height="22" CornerRadius="11" Background="#E60B0B12" BorderBrush="#FFD700" BorderThickness="1.5">
+                                <FontIcon Glyph="&#xE73E;" FontSize="11" Foreground="#FFD700" Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+                            </Border>
+                        </Grid>
+                        <StackPanel Grid.Row="1" Spacing="1" VerticalAlignment="Center" Padding="2,0">
+                            <TextBlock Text="{x:Bind Comic.Title}" FontWeight="SemiBold" FontSize="11" MaxLines="2" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" />
+                            <TextBlock Text="{x:Bind Caption}" FontSize="10" Foreground="{ThemeResource KomikSubtleTextBrush}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </DataTemplate>
+
+        <MenuFlyout x:Key="ComicContextMenu" Opening="ComicContextMenu_Opening" ShouldConstrainToRootBounds="True" AreOpenCloseAnimationsEnabled="True">
             <MenuFlyoutItem Text="Read Comic" Click="ContextRead_Click">
                 <MenuFlyoutItem.Icon>
                     <FontIcon Glyph="&#xE8E5;" />
+                </MenuFlyoutItem.Icon>
+            </MenuFlyoutItem>
+            <MenuFlyoutItem x:Name="ContextSetCoverItem" Text="Use as Series Cover" Click="ContextSetCover_Click" Visibility="Collapsed">
+                <MenuFlyoutItem.Icon>
+                    <FontIcon Glyph="&#xEB9F;" />
+                </MenuFlyoutItem.Icon>
+            </MenuFlyoutItem>
+            <MenuFlyoutItem x:Name="ContextRemoveFromSeriesItem" Text="Remove from This Series" Click="ContextRemoveFromSeries_Click" Visibility="Collapsed">
+                <MenuFlyoutItem.Icon>
+                    <FontIcon Glyph="&#xE738;" />
                 </MenuFlyoutItem.Icon>
             </MenuFlyoutItem>
             <MenuFlyoutItem Text="Comic Details..." Click="ContextDetails_Click">
@@ -257,7 +345,7 @@
                             <TextBlock Text="ADD" FontWeight="Bold" FontSize="12" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
                         </StackPanel>
                         <DropDownButton.Flyout>
-                            <MenuFlyout Placement="Bottom">
+                            <MenuFlyout Placement="Bottom" ShouldConstrainToRootBounds="True" AreOpenCloseAnimationsEnabled="True">
                                 <MenuFlyoutItem Text="Add Folder..." Command="{x:Bind ViewModel.AddFolderCommand}">
                                     <MenuFlyoutItem.Icon>
                                         <FontIcon Glyph="&#xE8F4;" />
@@ -294,7 +382,7 @@
                             <TextBlock Text="Convert..." FontSize="12" />
                         </StackPanel>
                         <DropDownButton.Flyout>
-                            <MenuFlyout Placement="Bottom">
+                            <MenuFlyout Placement="Bottom" ShouldConstrainToRootBounds="True" AreOpenCloseAnimationsEnabled="True">
                                 <MenuFlyoutItem Text="Convert Comic File (CBR, CB7, PDF)..." Click="ConvertStandaloneFile_Click">
                                     <MenuFlyoutItem.Icon>
                                         <FontIcon Glyph="&#xE8A5;" />
@@ -344,7 +432,7 @@
                         <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Duplicate Detection Info">
                             <FontIcon Glyph="&#xE946;" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             <Button.Flyout>
-                                <Flyout Placement="Bottom">
+                                <Flyout Placement="Bottom" ShouldConstrainToRootBounds="True" AreOpenCloseAnimationsEnabled="True">
                                     <StackPanel Width="270" Spacing="8">
                                         <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                             <FontIcon Glyph="&#xE7BA;" FontSize="15" Foreground="#F59E0B" />
@@ -379,7 +467,7 @@
                         <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Series &amp; Volumes Info">
                             <FontIcon Glyph="&#xE946;" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             <Button.Flyout>
-                                <Flyout Placement="Bottom">
+                                <Flyout Placement="Bottom" ShouldConstrainToRootBounds="True" AreOpenCloseAnimationsEnabled="True">
                                     <StackPanel Width="270" Spacing="8">
                                         <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                             <FontIcon Glyph="&#xE8B9;" FontSize="15" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
@@ -416,7 +504,7 @@
                             ToolTipService.ToolTip="Sort collection details">
                             <FontIcon Glyph="&#xE946;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             <Button.Flyout>
-                                <Flyout Placement="Bottom">
+                                <Flyout Placement="Bottom" ShouldConstrainToRootBounds="True" AreOpenCloseAnimationsEnabled="True">
                                     <StackPanel Width="260" Spacing="6">
                                         <TextBlock Text="Library Sorting" FontWeight="Bold" FontSize="13" />
                                         <TextBlock Text="Sort your collection by title using natural numeric order (e.g. #2 before #10), date added, recently read, page count, or file size." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -560,7 +648,7 @@
                     <Button Style="{StaticResource InfoButtonStyle}" ToolTipService.ToolTip="Series &amp; Volumes Info">
                         <FontIcon Glyph="&#xE946;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         <Button.Flyout>
-                            <Flyout Placement="Bottom">
+                            <Flyout Placement="Bottom" ShouldConstrainToRootBounds="True" AreOpenCloseAnimationsEnabled="True">
                                 <StackPanel Width="270" Spacing="8">
                                     <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                         <FontIcon Glyph="&#xE8B9;" FontSize="15" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
@@ -722,15 +810,98 @@
 
                 <!-- Tags Dropdown / List -->
                 <DropDownButton
-                    Content="Tags"
+                    x:Name="TagsDropDown"
                     CornerRadius="16"
                     Padding="12,6"
-                    FontSize="12">
+                    FontSize="12"
+                    AutomationProperties.Name="Tags"
+                    ToolTipService.ToolTip="Filter the library by a tag">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE8EC;" FontSize="11" Foreground="{ThemeResource KomikMagentaBrush}" />
+                        <TextBlock Text="{x:Bind ViewModel.TagFilterButtonText, Mode=OneWay}" FontSize="12" MaxWidth="170" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
                     <DropDownButton.Flyout>
-                        <MenuFlyout x:Name="TagsFlyout" Placement="Bottom">
-                            <MenuFlyoutItem Text="All Tags" Click="ClearTagFilter_Click" />
-                            <MenuFlyoutSeparator />
-                        </MenuFlyout>
+                        <Flyout x:Name="TagFilterFlyout" Placement="BottomEdgeAlignedLeft" Opened="TagFilterFlyout_Opened" ShouldConstrainToRootBounds="True" AreOpenCloseAnimationsEnabled="True">
+                            <Grid Width="320" RowSpacing="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="FILTER BY TAG" Style="{StaticResource ComicSectionTitleStyle}" FontSize="20" />
+                                        <TextBlock Text="{x:Bind ViewModel.TagSummaryDisplay, Mode=OneWay}" FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" VerticalAlignment="Center" Padding="10,5" Click="ManageTags_Click" ToolTipService.ToolTip="Create, rename and delete tags">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE713;" FontSize="11" />
+                                            <TextBlock Text="Manage" FontSize="12" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                                <AutoSuggestBox
+                                    x:Name="TagFilterSearchBox"
+                                    Grid.Row="1"
+                                    QueryIcon="Find"
+                                    PlaceholderText="Search tags..."
+                                    Text="{x:Bind ViewModel.TagFilterSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Grid.Row="2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,6" Click="ClearTagFilter_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE71C;" FontSize="12" />
+                                        <TextBlock Text="All comics (no tag filter)" FontSize="12" />
+                                    </StackPanel>
+                                </Button>
+                                <Grid Grid.Row="3">
+                                    <ListView
+                                        ItemsSource="{x:Bind ViewModel.TagFilterItems, Mode=OneWay}"
+                                        MaxHeight="340"
+                                        SelectionMode="None"
+                                        IsItemClickEnabled="True"
+                                        ItemClick="TagFilterItem_Click"
+                                        Visibility="{x:Bind ViewModel.HasTagFilterResults, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
+                                        <ListView.ItemContainerStyle>
+                                            <Style TargetType="ListViewItem">
+                                                <Setter Property="Padding" Value="6,0" />
+                                                <Setter Property="MinHeight" Value="38" />
+                                                <Setter Property="CornerRadius" Value="8" />
+                                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                            </Style>
+                                        </ListView.ItemContainerStyle>
+                                        <ListView.ItemTemplate>
+                                            <DataTemplate x:DataType="models:TagChipItem">
+                                                <Grid ColumnSpacing="10">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Width="24" Height="24" CornerRadius="12" Background="#FFD700" BorderBrush="#0B0B12" BorderThickness="1.5" VerticalAlignment="Center">
+                                                        <FontIcon Glyph="&#xE8EC;" FontSize="10" Foreground="#0B0B12" />
+                                                    </Border>
+                                                    <TextBlock Grid.Column="1" Text="{x:Bind Name}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind Name}" />
+                                                    <Border Grid.Column="2" Style="{StaticResource ComicPillStyle}" Padding="8,1" VerticalAlignment="Center">
+                                                        <TextBlock Text="{x:Bind Count, Mode=OneWay}" FontSize="11" FontWeight="Bold" />
+                                                    </Border>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListView.ItemTemplate>
+                                    </ListView>
+                                    <TextBlock
+                                        Text="{x:Bind ViewModel.TagFilterEmptyText, Mode=OneWay}"
+                                        Visibility="{x:Bind ViewModel.HasTagFilterResults, Mode=OneWay, Converter={StaticResource InvertedBoolToVisConverter}}"
+                                        FontSize="12"
+                                        Foreground="{ThemeResource KomikSubtleTextBrush}"
+                                        TextWrapping="Wrap"
+                                        Margin="4,8" />
+                                </Grid>
+                            </Grid>
+                        </Flyout>
                     </DropDownButton.Flyout>
                 </DropDownButton>
 
@@ -754,24 +925,39 @@
                     </Button>
                 </StackPanel>
 
-                <!-- Active Filter Indicator Badge if filtered -->
+                <!-- Active filter sticker: what is filtered, how many comics match, and a quick clear -->
                 <Border
                     x:Name="ActiveFilterBadge"
                     Visibility="Collapsed"
-                    CornerRadius="12"
-                    Background="{ThemeResource AccentFillColorDefaultBrush}"
-                    Padding="10,4">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock x:Name="ActiveFilterText" FontSize="11" Foreground="White" FontWeight="SemiBold" />
+                    VerticalAlignment="Center"
+                    CornerRadius="17"
+                    Background="#FFD700"
+                    BorderBrush="#0B0B12"
+                    BorderThickness="2,2,3,3"
+                    Padding="4,3"
+                    helpers:MotionHelper.RevealOnShow="True">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Border Width="24" Height="24" CornerRadius="12" Background="#0B0B12" VerticalAlignment="Center">
+                            <FontIcon x:Name="ActiveFilterGlyph" Glyph="&#xE71C;" FontSize="11" Foreground="White" />
+                        </Border>
+                        <TextBlock x:Name="ActiveFilterKind" FontFamily="{StaticResource KomikDisplayFont}" FontSize="15" CharacterSpacing="50" Foreground="#0B0B12" VerticalAlignment="Center" />
+                        <TextBlock x:Name="ActiveFilterText" FontSize="12" FontWeight="Bold" Foreground="#0B0B12" VerticalAlignment="Center" MaxWidth="220" TextTrimming="CharacterEllipsis" />
+                        <Border CornerRadius="9" Background="#0B0B12" Padding="7,1" VerticalAlignment="Center">
+                            <TextBlock x:Name="ActiveFilterCount" FontSize="10" FontWeight="Bold" Foreground="White" />
+                        </Border>
                         <Button
                             Click="ClearActiveFilter_Click"
-                            Padding="2"
-                            Width="18"
-                            Height="18"
-                            CornerRadius="9"
-                            Background="Transparent"
-                            BorderThickness="0">
-                            <FontIcon Glyph="&#xE711;" FontSize="8" Foreground="White" />
+                            Width="24"
+                            Height="24"
+                            Padding="0"
+                            CornerRadius="12"
+                            Background="#FFFDF6"
+                            BorderBrush="#0B0B12"
+                            BorderThickness="1.5"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Clear filter"
+                            ToolTipService.ToolTip="Clear this filter">
+                            <FontIcon Glyph="&#xE711;" FontSize="9" Foreground="#0B0B12" />
                         </Button>
                     </StackPanel>
                 </Border>
@@ -910,63 +1096,75 @@
             </Border>
         </Grid>
 
-        <!-- EMPTY FILTER / SEARCH RESULTS (when filter or search returns 0 matching comics) -->
+        <!-- EMPTY FILTER / SEARCH RESULTS (a filter, tag, search or series view with nothing to show) -->
         <Grid
             Grid.Row="4"
             x:Name="EmptyFilterContainer"
             Canvas.ZIndex="10"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
-            Visibility="{x:Bind ViewModel.ShowEmptyFilter, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
+            Margin="16"
+            Visibility="{x:Bind ViewModel.ShowEmptyFilter, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
+            helpers:MotionHelper.RevealOnShow="True">
+            <Border Margin="9,9,0,0" CornerRadius="22" Background="{ThemeResource KomikShadowBrush}" />
+            <Border Margin="0,0,9,9" CornerRadius="22" Background="{ThemeResource KomikPanelBrush}" BorderBrush="{ThemeResource KomikInkStrokeBrush}" BorderThickness="3" MaxWidth="580">
+                <Grid>
+                    <Border CornerRadius="19" Background="{StaticResource KomikSpeedLinesBrush}" Opacity="0.05" IsHitTestVisible="False" />
+                    <Border CornerRadius="19" Background="{StaticResource KomikHalftoneBrush}" Opacity="0.08" IsHitTestVisible="False" />
+                    <StackPanel Spacing="14" Padding="36,26,36,30" HorizontalAlignment="Center">
+                        <Grid Width="180" Height="150" HorizontalAlignment="Center">
+                            <Grid x:Name="EmptyBurst" Width="140" Height="140" RenderTransformOrigin="0.5,0.5">
+                                <Grid.RenderTransform>
+                                    <RotateTransform x:Name="EmptyBurstRotate" Angle="0" />
+                                </Grid.RenderTransform>
+                                <Polygon Points="70.0,4.0 81.1,21.3 98.6,10.5 101.2,30.9 121.6,28.8 115.0,48.3 134.3,55.3 120.0,70.0 134.3,84.7 115.0,91.7 121.6,111.2 101.2,109.1 98.6,129.5 81.1,118.7 70.0,136.0 58.9,118.7 41.4,129.5 38.8,109.1 18.4,111.2 25.0,91.7 5.7,84.7 20.0,70.0 5.7,55.3 25.0,48.3 18.4,28.8 38.8,30.9 41.4,10.5 58.9,21.3" Fill="#0B0B12" Margin="6,6,-6,-6" Opacity="0.85" />
+                                <Polygon Points="70.0,4.0 81.1,21.3 98.6,10.5 101.2,30.9 121.6,28.8 115.0,48.3 134.3,55.3 120.0,70.0 134.3,84.7 115.0,91.7 121.6,111.2 101.2,109.1 98.6,129.5 81.1,118.7 70.0,136.0 58.9,118.7 41.4,129.5 38.8,109.1 18.4,111.2 25.0,91.7 5.7,84.7 20.0,70.0 5.7,55.3 25.0,48.3 18.4,28.8 38.8,30.9 41.4,10.5 58.9,21.3" Fill="{x:Bind ViewModel.EmptyFilterAccent, Mode=OneWay, Converter={StaticResource HexToBrushConverter}}" Stroke="#0B0B12" StrokeThickness="3" StrokeLineJoin="Round" />
+                            </Grid>
+                            <Border Width="74" Height="74" CornerRadius="37" Background="#FFFDF6" BorderBrush="#0B0B12" BorderThickness="3,3,5,5" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <FontIcon Glyph="{x:Bind ViewModel.EmptyFilterGlyph, Mode=OneWay}" FontSize="32" Foreground="#0B0B12" />
+                            </Border>
+                            <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,-18,0" Background="#FF1F6D" BorderBrush="#0B0B12" BorderThickness="2,2,3,3" CornerRadius="6" Padding="8,1">
+                                <Border.RenderTransform>
+                                    <RotateTransform Angle="8" />
+                                </Border.RenderTransform>
+                                <TextBlock Text="{x:Bind ViewModel.EmptyFilterSticker, Mode=OneWay}" FontFamily="{StaticResource KomikDisplayFont}" FontSize="15" CharacterSpacing="50" Foreground="White" />
+                            </Border>
+                        </Grid>
 
-            <Border
-                Width="480"
-                Padding="36,36"
-                CornerRadius="16"
-                Background="{ThemeResource LayerFillColorDefaultBrush}"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="1">
-
-                <StackPanel Spacing="18" HorizontalAlignment="Center">
-                    <Border
-                        Width="72"
-                        Height="72"
-                        CornerRadius="36"
-                        Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1"
-                        HorizontalAlignment="Center">
-                        <FontIcon Glyph="{x:Bind ViewModel.EmptyFilterGlyph, Mode=OneWay}" FontSize="30" Foreground="{ThemeResource AccentFillColorDefaultBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-
-                    <StackPanel Spacing="8" HorizontalAlignment="Center">
                         <TextBlock
                             Text="{x:Bind ViewModel.EmptyFilterTitle, Mode=OneWay}"
-                            FontSize="22"
-                            FontWeight="Bold"
+                            Style="{StaticResource ComicDisplayTextStyle}"
+                            FontSize="34"
+                            LineHeight="38"
                             HorizontalAlignment="Center"
-                            TextAlignment="Center" />
+                            TextAlignment="Center"
+                            TextWrapping="Wrap"
+                            MaxWidth="480" />
                         <TextBlock
                             Text="{x:Bind ViewModel.EmptyFilterSubtitle, Mode=OneWay}"
                             FontSize="13"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Foreground="{ThemeResource KomikSubtleTextBrush}"
                             HorizontalAlignment="Center"
                             TextWrapping="Wrap"
                             TextAlignment="Center"
-                            MaxWidth="400" />
-                    </StackPanel>
+                            MaxWidth="440" />
 
-                    <Button
-                        Click="ShowAllComics_Click"
-                        Height="38"
-                        Padding="20,0"
-                        HorizontalAlignment="Center">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <FontIcon Glyph="&#xE71C;" FontSize="13" />
-                            <TextBlock Text="Show All Comics" FontWeight="SemiBold" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
+                        <helpers:WrapPanel HorizontalAlignment="Center" HorizontalSpacing="10" VerticalSpacing="8" Margin="0,6,0,0">
+                            <Button Style="{StaticResource ComicPrimaryButtonStyle}" Click="ShowAllComics_Click" AutomationProperties.Name="{x:Bind ViewModel.EmptyFilterPrimaryText, Mode=OneWay}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE71C;" FontSize="13" />
+                                    <TextBlock Text="{x:Bind ViewModel.EmptyFilterPrimaryText, Mode=OneWay}" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource ComicGhostButtonStyle}" Click="EmptyFilterAction_Click" Visibility="{x:Bind ViewModel.HasEmptyFilterAction, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" AutomationProperties.Name="{x:Bind ViewModel.EmptyFilterActionText, Mode=OneWay}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="{x:Bind ViewModel.EmptyFilterActionGlyph, Mode=OneWay}" FontSize="13" />
+                                    <TextBlock Text="{x:Bind ViewModel.EmptyFilterActionText, Mode=OneWay}" />
+                                </StackPanel>
+                            </Button>
+                        </helpers:WrapPanel>
+                    </StackPanel>
+                </Grid>
             </Border>
         </Grid>
 
@@ -1153,11 +1351,6 @@
                                         HorizontalAlignment="Center"
                                         VerticalAlignment="Center"
                                         helpers:MotionHelper.HoverRole="Zoom" />
-                                    <Border Width="90" Height="90" HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="{StaticResource KomikHalftoneCornerBrush}" Opacity="0.22" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
-                                        <Border.RenderTransform>
-                                            <ScaleTransform ScaleX="-1" ScaleY="-1" />
-                                        </Border.RenderTransform>
-                                    </Border>
                                     <Rectangle helpers:MotionHelper.HoverRole="Shine" IsHitTestVisible="False" Width="90" HorizontalAlignment="Left">
                                         <Rectangle.Fill>
                                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,0.3">
@@ -1435,8 +1628,13 @@
                     </Grid.RowDefinitions>
 
                     <!-- Banner -->
-                    <Grid Grid.Row="0" CornerRadius="16,16,0,0" Height="262">
-                        <Image Source="{x:Bind ViewModel.SelectedSeriesGroup.CoverThumbnailPath, Mode=OneWay, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" Height="262" VerticalAlignment="Center" Opacity="0.5" />
+                    <Grid Grid.Row="0" CornerRadius="16,16,0,0" MinHeight="262">
+                        <!-- Painted as a background so a large cover can never stretch the banner -->
+                        <Border Opacity="0.5">
+                            <Border.Background>
+                                <ImageBrush ImageSource="{x:Bind ViewModel.SelectedSeriesGroup.CoverThumbnailPath, Mode=OneWay, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" AlignmentY="Center" />
+                            </Border.Background>
+                        </Border>
                         <Border Background="{StaticResource KomikSeriesBannerFadeBrush}" />
                         <Border Background="{StaticResource KomikHalftoneBrush}" Opacity="0.12" />
 
@@ -1556,9 +1754,80 @@
                                         </StackPanel>
                                     </Button>
                                     <Button
+                                        Style="{StaticResource ComicGhostButtonStyle}"
+                                        Command="{x:Bind ViewModel.OpenEditSeriesCommand}"
+                                        CommandParameter="{x:Bind ViewModel.SelectedSeriesGroup, Mode=OneWay}"
+                                        AutomationProperties.Name="Edit Series"
+                                        ToolTipService.ToolTip="Rename, change section, cover and reading order">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE70F;" FontSize="12" />
+                                            <TextBlock Text="Edit" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button
+                                        x:Name="ChangeCoverButton"
+                                        Style="{StaticResource ComicGhostButtonStyle}"
+                                        AutomationProperties.Name="Change Cover"
+                                        ToolTipService.ToolTip="Use the cover of any comic in this series">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xEB9F;" FontSize="12" />
+                                            <TextBlock Text="Cover" />
+                                        </StackPanel>
+                                        <Button.Flyout>
+                                            <Flyout x:Name="CoverPickerFlyout" Placement="Bottom" Opened="CoverPickerFlyout_Opened" ShouldConstrainToRootBounds="True" AreOpenCloseAnimationsEnabled="True">
+                                                <Grid Width="560" RowSpacing="10">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <Grid ColumnSpacing="10">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel>
+                                                            <TextBlock Text="PICK A COVER" Style="{StaticResource ComicSectionTitleStyle}" FontSize="22" />
+                                                            <TextBlock Text="Click any comic to use its cover for this series." FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" />
+                                                        </StackPanel>
+                                                        <Button Grid.Column="1" VerticalAlignment="Center" Padding="10,5" Command="{x:Bind ViewModel.ResetSeriesCoverCommand}" CommandParameter="{x:Bind ViewModel.SelectedSeriesGroup, Mode=OneWay}" Click="CoverReset_Click">
+                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                <FontIcon Glyph="&#xE777;" FontSize="11" />
+                                                                <TextBlock Text="Automatic" FontSize="12" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                    </Grid>
+                                                    <GridView
+                                                        x:Name="CoverPickerGrid"
+                                                        Grid.Row="1"
+                                                        MaxHeight="440"
+                                                        SelectionMode="None"
+                                                        IsItemClickEnabled="True"
+                                                        ItemClick="CoverPickerItem_Click"
+                                                        ItemsSource="{x:Bind ViewModel.SelectedSeriesGroup.IssueItems, Mode=OneWay}">
+                                                        <GridView.ItemTemplate>
+                                                            <DataTemplate x:DataType="models:SeriesIssueItem">
+                                                                <Grid Width="116" Height="196" RowSpacing="4">
+                                                                    <Grid.RowDefinitions>
+                                                                        <RowDefinition Height="160" />
+                                                                        <RowDefinition Height="*" />
+                                                                    </Grid.RowDefinitions>
+                                                                    <Grid CornerRadius="8" BorderBrush="{ThemeResource KomikInkStrokeBrush}" BorderThickness="2" Background="{ThemeResource KomikPanelSunkenBrush}">
+                                                                        <FontIcon Glyph="&#xE82D;" FontSize="22" Foreground="{ThemeResource KomikSubtleTextBrush}" />
+                                                                        <Image Source="{x:Bind ThumbnailPath, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
+                                                                    </Grid>
+                                                                    <TextBlock Grid.Row="1" Text="{x:Bind Title}" FontSize="11" FontWeight="SemiBold" MaxLines="2" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </GridView.ItemTemplate>
+                                                    </GridView>
+                                                </Grid>
+                                            </Flyout>
+                                        </Button.Flyout>
+                                    </Button>
+                                    <Button
                                         Style="{StaticResource ComicAccentButtonStyle}"
-                                        Visibility="{x:Bind ViewModel.SelectedSeriesGroup.IsManual, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
                                         Command="{x:Bind ViewModel.OpenAddComicsToExistingSeriesCommand}"
+                                        AutomationProperties.Name="Add Comics"
                                         ToolTipService.ToolTip="Add comics from your library to this series">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <FontIcon Glyph="&#xE710;" FontSize="12" />
@@ -1605,7 +1874,7 @@
                         </GridView.ItemContainerTransitions>
                         <GridView.ItemTemplate>
                             <DataTemplate x:DataType="models:SeriesIssueItem">
-                                <Border Style="{StaticResource ComicCardStyle}" Width="158" Height="276" Margin="5">
+                                <Border Style="{StaticResource ComicCardStyle}" Width="158" Height="276" Margin="5" ContextFlyout="{StaticResource ComicContextMenu}">
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="196" />
@@ -1706,12 +1975,13 @@
                                         </Border.RenderTransform>
                                         <TextBlock Text="CASE FILE" Style="{StaticResource ComicStickerTextStyle}" Foreground="#0B0B12" />
                                     </Border>
-                                    <TextBlock Text="DUPLICATE DETECTIVE" Style="{StaticResource ComicDisplayTextStyle}" FontSize="38" LineHeight="40" Foreground="#FFD700" />
+                                    <TextBlock Text="DUPLICATE DETECTIVE" Style="{StaticResource ComicDisplayTextStyle}" FontSize="38" LineHeight="40" Foreground="{ThemeResource KomikWordmarkBrush}" />
                                 </StackPanel>
                                 <TextBlock
                                     Text="Matches identical files, the same issue across formats (series + volume + number from names or metadata) and near-identical titles. Numbered issues never match a different number, and every group suggests the best copy to keep."
                                     FontSize="12"
-                                    Foreground="#C9C9DD"
+                                    Foreground="{ThemeResource KomikHeroTextBrush}"
+                                    Opacity="0.8"
                                     TextWrapping="Wrap"
                                     MaxWidth="760"
                                     HorizontalAlignment="Left" />
@@ -2234,33 +2504,56 @@
 
                                 <ContentControl Style="{StaticResource ComicPanelStyle}" Padding="20">
                                     <StackPanel Spacing="12">
-                                        <TextBlock Text="TOP SERIES" Style="{StaticResource ComicSectionTitleStyle}" />
-                                        <TextBlock Text="Nothing read yet." FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" Visibility="{x:Bind ViewModel.StatsSummary.HasNoReadingData, Mode=OneWay, Converter={StaticResource BoolToVisConverter}, FallbackValue=Collapsed}" />
+                                        <Grid ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Text="TOP SERIES" Style="{StaticResource ComicSectionTitleStyle}" />
+                                                <TextBlock Text="The series and books you have read the most, ranked by pages read. Each row shows your reading time, how many of its books you opened and finished, and when you last read it." FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Style="{StaticResource ComicStickerStyle}" VerticalAlignment="Top" Padding="7,0" ToolTipService.ToolTip="Grouped the same way as the Series screen, including your manual series">
+                                                <TextBlock Text="ALL TIME" Style="{StaticResource ComicStickerTextStyle}" FontSize="12" />
+                                            </Border>
+                                        </Grid>
+                                        <TextBlock Text="Nothing read yet. Open a comic and your top series appear here." FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" Visibility="{x:Bind ViewModel.StatsSummary.HasNoReadingData, Mode=OneWay, Converter={StaticResource BoolToVisConverter}, FallbackValue=Collapsed}" />
                                         <ItemsControl ItemsSource="{x:Bind ViewModel.StatsSummary.TopSeries, Mode=OneWay}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate x:DataType="models:SeriesReadingStat">
-                                                    <Grid Padding="10,8" Margin="0,0,0,8" CornerRadius="10" Background="{ThemeResource KomikPanelSunkenBrush}" ColumnSpacing="14">
+                                                    <Grid Padding="12,10" Margin="0,0,0,10" CornerRadius="12" Background="{ThemeResource KomikPanelSunkenBrush}" BorderBrush="{ThemeResource KomikPanelStrokeBrush}" BorderThickness="1,1,2.5,2.5" ColumnSpacing="14" ToolTipService.ToolTip="{x:Bind ToolTipText}" helpers:MotionHelper.HoverLift="True">
                                                         <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="40" />
+                                                            <ColumnDefinition Width="44" />
                                                             <ColumnDefinition Width="Auto" />
                                                             <ColumnDefinition Width="*" />
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBlock Text="{x:Bind RankDisplay}" Style="{StaticResource ComicDisplayTextStyle}" FontSize="26" Foreground="{ThemeResource KomikYellowBrush}" />
-                                                        <Grid Grid.Column="1" Width="38" Height="54" CornerRadius="4">
+                                                        <TextBlock Text="{x:Bind RankDisplay}" Style="{StaticResource ComicDisplayTextStyle}" FontSize="30" VerticalAlignment="Center" Foreground="{ThemeResource KomikYellowBrush}" />
+                                                        <Grid Grid.Column="1" Width="46" Height="66" CornerRadius="6" BorderBrush="{ThemeResource KomikInkStrokeBrush}" BorderThickness="1.5">
                                                             <Border Background="{ThemeResource KomikPanelRaisedBrush}" />
                                                             <Image Source="{x:Bind CoverThumbnailPath, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
                                                         </Grid>
-                                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="5">
-                                                            <TextBlock Text="{x:Bind SeriesName}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" />
+                                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="4">
                                                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                                                <Rectangle Width="{x:Bind ShareBarWidth}" Height="6" RadiusX="3" RadiusY="3" Fill="{ThemeResource KomikCyanBrush}" VerticalAlignment="Center" />
-                                                                <TextBlock Text="{x:Bind FormattedIssues}" FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}" />
+                                                                <Border CornerRadius="4" Padding="5,0" Background="{ThemeResource KomikCyanBrush}" VerticalAlignment="Center">
+                                                                    <TextBlock Text="{x:Bind KindLabel}" FontFamily="{StaticResource KomikDisplayFont}" FontSize="11" CharacterSpacing="40" Foreground="#0B0B12" />
+                                                                </Border>
+                                                                <TextBlock Text="{x:Bind SeriesName}" FontWeight="Bold" FontSize="14" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                                             </StackPanel>
+                                                            <TextBlock Text="{x:Bind BooksDisplay}" FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}" TextTrimming="CharacterEllipsis" />
+                                                            <Grid ColumnSpacing="8">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <ProgressBar Value="{x:Bind SeriesCompletion}" Maximum="1" Height="6" MinHeight="6" CornerRadius="3" VerticalAlignment="Center" Foreground="{ThemeResource KomikGreenBrush}" Background="{ThemeResource KomikChartTrackBrush}" ToolTipService.ToolTip="{x:Bind SeriesPagesDisplay}" />
+                                                                <TextBlock Grid.Column="1" Text="{x:Bind SeriesCompletionDisplay}" FontSize="10" FontWeight="Bold" Foreground="{ThemeResource KomikGreenBrush}" />
+                                                            </Grid>
                                                         </StackPanel>
-                                                        <StackPanel Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Right">
-                                                            <TextBlock Text="{x:Bind FormattedPagesRead}" FontSize="13" FontWeight="Bold" Foreground="{ThemeResource KomikCyanBrush}" HorizontalAlignment="Right" />
-                                                            <TextBlock Text="{x:Bind FormattedDuration}" FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}" HorizontalAlignment="Right" />
+                                                        <StackPanel Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="2" MinWidth="104">
+                                                            <TextBlock Text="{x:Bind FormattedPagesRead}" FontSize="15" FontWeight="Bold" Foreground="{ThemeResource KomikCyanBrush}" HorizontalAlignment="Right" />
+                                                            <TextBlock Text="{x:Bind FormattedDuration}" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                                                            <TextBlock Text="{x:Bind LastReadDisplay}" FontSize="10" Foreground="{ThemeResource KomikSubtleTextBrush}" HorizontalAlignment="Right" />
                                                         </StackPanel>
                                                     </Grid>
                                                 </DataTemplate>
@@ -2323,8 +2616,8 @@
             Canvas.ZIndex="130"
             Background="{ThemeResource ModalScrimBrush}"
             Visibility="{x:Bind ViewModel.IsCreateSeriesDialogOpen, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
-            <ContentControl Style="{StaticResource ComicModalPanelStyle}" MaxWidth="980" Margin="24,20">
-                <Grid RowSpacing="14" Padding="24,20,24,20">
+            <ContentControl Style="{StaticResource ComicModalPanelStyle}" MaxWidth="1320" Margin="18,12" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                <Grid RowSpacing="12" Padding="22,16,22,16">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -2334,234 +2627,127 @@
                     </Grid.RowDefinitions>
 
                     <!-- Header -->
-                    <Grid Grid.Row="0" ColumnSpacing="12">
+                    <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel Spacing="2">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <Border Style="{StaticResource ComicStickerStyle}" Background="#FF1F6D" BorderBrush="#0B0B12" Padding="7,0">
-                                    <Border.RenderTransform>
-                                        <RotateTransform Angle="-5" />
-                                    </Border.RenderTransform>
-                                    <TextBlock Text="NEW!" Style="{StaticResource ComicStickerTextStyle}" Foreground="White" />
-                                </Border>
-                                <TextBlock Text="{x:Bind ViewModel.NewSeriesDialogTitle, Mode=OneWay}" Style="{StaticResource ComicSectionTitleStyle}" FontSize="30" TextWrapping="Wrap" />
-                            </StackPanel>
-                            <TextBlock Text="Pick what you are making, name it, and choose its comics. Smart pick finds them for you." FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" TextWrapping="Wrap" />
+                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <Border Style="{StaticResource ComicStickerStyle}" Background="#FF1F6D" BorderBrush="#0B0B12" Padding="7,0">
+                                <Border.RenderTransform>
+                                    <RotateTransform Angle="-5" />
+                                </Border.RenderTransform>
+                                <TextBlock Text="NEW!" Style="{StaticResource ComicStickerTextStyle}" Foreground="White" />
+                            </Border>
+                            <TextBlock Text="{x:Bind ViewModel.NewSeriesDialogTitle, Mode=OneWay}" Style="{StaticResource ComicSectionTitleStyle}" FontSize="26" VerticalAlignment="Center" />
                         </StackPanel>
-                        <Button
-                            Grid.Column="1"
-                            Style="{StaticResource ComicIconButtonStyle}"
-                            VerticalAlignment="Top"
-                            Command="{x:Bind ViewModel.CloseCreateSeriesDialogCommand}"
-                            ToolTipService.ToolTip="Close"
-                            AutomationProperties.Name="Close dialog">
+                        <Button Grid.Column="1" Style="{StaticResource ComicIconButtonStyle}" Command="{x:Bind ViewModel.CloseCreateSeriesDialogCommand}" ToolTipService.ToolTip="Close" AutomationProperties.Name="Close dialog">
                             <FontIcon Glyph="&#xE711;" FontSize="12" />
                         </Button>
                     </Grid>
 
-                    <!-- Step 1: kind -->
-                    <Grid Grid.Row="1" ColumnSpacing="12">
+                    <!-- Kind, name, smart pick, auto-update: one compact row -->
+                    <Grid Grid.Row="1" ColumnSpacing="10">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" MinWidth="160" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <ToggleButton
-                            x:Name="NewKindStoryToggle"
-                            IsChecked="{x:Bind ViewModel.NewSeriesIsStory, Mode=OneWay}"
-                            Click="NewKindStory_Click"
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Left"
-                            Padding="14,10"
-                            CornerRadius="12"
-                            BorderThickness="2,2,4,4"
-                            AutomationProperties.Name="Continuation series">
-                            <Grid ColumnSpacing="12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Border Width="40" Height="40" CornerRadius="20" Background="#00C2FF" BorderBrush="#0B0B12" BorderThickness="2">
-                                    <FontIcon Glyph="&#xE8B9;" FontSize="17" Foreground="#0B0B12" />
-                                </Border>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="CONTINUATION SERIES" FontFamily="{StaticResource KomikDisplayFont}" FontSize="18" CharacterSpacing="40" />
-                                    <TextBlock Text="One story across books: issues, volumes, parts, sequels" FontSize="11" Opacity="0.8" TextWrapping="Wrap" />
-                                </StackPanel>
-                            </Grid>
-                        </ToggleButton>
-                        <ToggleButton
-                            x:Name="NewKindCreatorToggle"
+                        <Border CornerRadius="14" BorderBrush="{ThemeResource KomikInkStrokeBrush}" BorderThickness="2,2,3,3" Background="{ThemeResource KomikPanelSunkenBrush}" Padding="3" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="3">
+                                <ToggleButton x:Name="NewKindStoryToggle" IsChecked="{x:Bind ViewModel.NewSeriesIsStory, Mode=OneWay}" Click="NewKindStory_Click" CornerRadius="11" Height="38" Padding="12,0" AutomationProperties.Name="Continuation series" ToolTipService.ToolTip="One story across books: issues, volumes, parts, sequels">
+                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                        <FontIcon Glyph="&#xE8B9;" FontSize="13" />
+                                        <TextBlock Text="SERIES" FontFamily="{StaticResource KomikDisplayFont}" FontSize="16" CharacterSpacing="40" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </ToggleButton>
+                                <ToggleButton x:Name="NewKindCreatorToggle" IsChecked="{x:Bind ViewModel.NewSeriesIsCreator, Mode=OneWay}" Click="NewKindCreator_Click" CornerRadius="11" Height="38" Padding="12,0" AutomationProperties.Name="Creator collection" ToolTipService.ToolTip="Everything by one author, artist or circle">
+                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                        <FontIcon Glyph="&#xE77B;" FontSize="13" />
+                                        <TextBlock Text="CREATOR" FontFamily="{StaticResource KomikDisplayFont}" FontSize="16" CharacterSpacing="40" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </ToggleButton>
+                            </StackPanel>
+                        </Border>
+                        <TextBox
                             Grid.Column="1"
-                            IsChecked="{x:Bind ViewModel.NewSeriesIsCreator, Mode=OneWay}"
-                            Click="NewKindCreator_Click"
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Left"
-                            Padding="14,10"
-                            CornerRadius="12"
-                            BorderThickness="2,2,4,4"
-                            AutomationProperties.Name="Creator collection">
-                            <Grid ColumnSpacing="12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Border Width="40" Height="40" CornerRadius="20" Background="#FF1F6D" BorderBrush="#0B0B12" BorderThickness="2">
-                                    <FontIcon Glyph="&#xE77B;" FontSize="17" Foreground="White" />
-                                </Border>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="CREATOR COLLECTION" FontFamily="{StaticResource KomikDisplayFont}" FontSize="18" CharacterSpacing="40" />
-                                    <TextBlock Text="Everything by one author, artist or circle" FontSize="11" Opacity="0.8" TextWrapping="Wrap" />
-                                </StackPanel>
-                            </Grid>
-                        </ToggleButton>
+                            FontSize="15"
+                            MinHeight="40"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Name"
+                            PlaceholderText="{x:Bind ViewModel.NewSeriesNamePlaceholder, Mode=OneWay}"
+                            Text="{x:Bind ViewModel.NewSeriesName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button Grid.Column="2" Style="{StaticResource ComicAccentButtonStyle}" MinHeight="40" Command="{x:Bind ViewModel.SmartSelectCandidatesCommand}" ToolTipService.ToolTip="Select every comic whose title or credited creator matches the name" AutomationProperties.Name="{x:Bind ViewModel.NewSeriesSmartPickText, Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE945;" FontSize="14" />
+                                <TextBlock x:Name="SmartPickLabel" Text="Smart pick" />
+                            </StackPanel>
+                        </Button>
+                        <Border Grid.Column="3" Style="{StaticResource ComicPillStyle}" CornerRadius="12" Padding="10,0,4,0" VerticalAlignment="Center" ToolTipService.ToolTip="Keep adding new comics that belong to it when your library changes. Removing a comic by hand keeps it out.">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE895;" FontSize="13" Foreground="{ThemeResource KomikCyanBrush}" VerticalAlignment="Center" />
+                                <TextBlock Text="Auto-update" FontWeight="Bold" FontSize="12" VerticalAlignment="Center" />
+                                <ToggleSwitch IsOn="{x:Bind ViewModel.NewSeriesAutoUpdate, Mode=TwoWay}" OnContent="On" OffContent="Off" MinWidth="0" Margin="6,-2,0,-2" AutomationProperties.Name="Auto-update" />
+                            </StackPanel>
+                        </Border>
                     </Grid>
 
-                    <!-- Step 2: name, smart pick, auto-update -->
-                    <Grid Grid.Row="2" ColumnSpacing="12" RowSpacing="10">
+                    <!-- Picker toolbar -->
+                    <Grid Grid.Row="2" ColumnSpacing="10" RowSpacing="8">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" MinWidth="160" />
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <TextBox
-                            Grid.Column="0"
-                            FontSize="15"
-                            MinHeight="40"
-                            Header="Name"
-                            PlaceholderText="{x:Bind ViewModel.NewSeriesNamePlaceholder, Mode=OneWay}"
-                            Text="{x:Bind ViewModel.NewSeriesName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        <Button
-                            Grid.Column="1"
-                            VerticalAlignment="Bottom"
-                            Style="{StaticResource ComicAccentButtonStyle}"
-                            MinHeight="40"
-                            Command="{x:Bind ViewModel.SmartSelectCandidatesCommand}"
-                            ToolTipService.ToolTip="Select every comic whose title or credited creator matches the name">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE945;" FontSize="14" />
-                                <TextBlock Text="{x:Bind ViewModel.NewSeriesSmartPickText, Mode=OneWay}" />
-                            </StackPanel>
-                        </Button>
-
-                        <Border Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource ComicPillStyle}" CornerRadius="12" Padding="12,4" HorizontalAlignment="Stretch">
-                            <Grid ColumnSpacing="10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <FontIcon Glyph="&#xE895;" FontSize="16" Foreground="{ThemeResource KomikCyanBrush}" />
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Auto-update" FontWeight="Bold" FontSize="13" />
-                                    <TextBlock Text="Keep adding new comics that belong to it when your library changes. Removing a comic by hand keeps it out." FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}" TextWrapping="Wrap" />
-                                </StackPanel>
-                                <ToggleSwitch Grid.Column="2" IsOn="{x:Bind ViewModel.NewSeriesAutoUpdate, Mode=TwoWay}" OnContent="On" OffContent="Off" MinWidth="0" />
-                            </Grid>
+                        <Border Style="{StaticResource ComicStickerStyle}" Padding="8,1">
+                            <TextBlock Text="{x:Bind ViewModel.SelectedCandidateCountDisplay, Mode=OneWay}" Style="{StaticResource ComicStickerTextStyle}" />
                         </Border>
-                    </Grid>
-
-                    <!-- Step 3: choose comics -->
-                    <Grid Grid.Row="3" RowSpacing="8">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-
-                        <Grid ColumnSpacing="10">
+                        <AutoSuggestBox Grid.Column="1" QueryIcon="Find" PlaceholderText="Search title, number, creator or folder..." Text="{x:Bind ViewModel.ManualSeriesSearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <ComboBox Grid.Column="2" MinWidth="150" ItemsSource="{x:Bind ViewModel.CandidateSortOptions}" SelectedIndex="{x:Bind ViewModel.CandidateSortIndex, Mode=TwoWay}" ToolTipService.ToolTip="Sort comics" />
+                        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6">
+                            <Button Padding="10,5" Command="{x:Bind ViewModel.SelectAllCandidatesCommand}" ToolTipService.ToolTip="Pick every comic currently shown">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE8B3;" FontSize="12" />
+                                    <TextBlock Text="Pick shown" />
+                                </StackPanel>
+                            </Button>
+                            <Button Padding="10,5" Command="{x:Bind ViewModel.ClearCandidateSelectionCommand}" ToolTipService.ToolTip="Clear the selection">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE894;" FontSize="12" />
+                                    <TextBlock Text="Clear" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                        <Grid Grid.Row="1" Grid.ColumnSpan="4" ColumnSpacing="12">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <Border Style="{StaticResource ComicStickerStyle}" Padding="8,1">
-                                <TextBlock Text="{x:Bind ViewModel.SelectedCandidateCountDisplay, Mode=OneWay}" Style="{StaticResource ComicStickerTextStyle}" />
-                            </Border>
-                            <AutoSuggestBox
-                                Grid.Column="1"
-                                QueryIcon="Find"
-                                PlaceholderText="Filter by title, number or creator..."
-                                Text="{x:Bind ViewModel.ManualSeriesSearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
-                                <Button Padding="10,5" FontSize="12" Command="{x:Bind ViewModel.SelectAllCandidatesCommand}" ToolTipService.ToolTip="Select every comic currently shown">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xE8B3;" FontSize="12" />
-                                        <TextBlock Text="All shown" />
-                                    </StackPanel>
-                                </Button>
-                                <Button Padding="10,5" FontSize="12" Command="{x:Bind ViewModel.ClearCandidateSelectionCommand}" ToolTipService.ToolTip="Clear the selection">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xE894;" FontSize="12" />
-                                        <TextBlock Text="Clear" />
-                                    </StackPanel>
-                                </Button>
-                            </StackPanel>
+                            <ListView Style="{StaticResource ComicChipBarStyle}" ItemsSource="{x:Bind ViewModel.CandidateStatusFilters}" SelectedItem="{x:Bind ViewModel.CandidateStatusFilter, Mode=TwoWay}" AutomationProperties.Name="Comic filter" />
+                            <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" MaxLines="2" FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}">
+                                <Run Text="{x:Bind ViewModel.CandidateShownDisplay, Mode=OneWay}" FontWeight="Bold" />
+                                <Run Text=" · " />
+                                <Run Text="{x:Bind ViewModel.CandidateScopeNote, Mode=OneWay}" />
+                            </TextBlock>
                         </Grid>
+                    </Grid>
 
-                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MinHeight="180">
-                            <ItemsControl ItemsSource="{x:Bind ViewModel.ManualSeriesCandidates, Mode=OneWay}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="146" ItemHeight="238" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="models:ManualSeriesComicItem">
-                                        <Button
-                                            Visibility="{x:Bind IsVisible, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
-                                            Click="CandidateCard_Click"
-                                            Tag="{x:Bind}"
-                                            Width="136"
-                                            Height="228"
-                                            Margin="5"
-                                            Padding="0"
-                                            CornerRadius="10"
-                                            BorderThickness="2,2,4,4"
-                                            HorizontalContentAlignment="Stretch"
-                                            VerticalContentAlignment="Stretch"
-                                            ToolTipService.ToolTip="{x:Bind Comic.Title}">
-                                            <Grid>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="160" />
-                                                    <RowDefinition Height="*" />
-                                                </Grid.RowDefinitions>
-                                                <Grid CornerRadius="8,8,0,0" Background="{ThemeResource KomikPanelSunkenBrush}">
-                                                    <FontIcon Glyph="&#xE82D;" FontSize="26" Foreground="{ThemeResource KomikSubtleTextBrush}" />
-                                                    <Image Source="{x:Bind Comic.ThumbnailPath, Mode=OneWay, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
-                                                    <Border Background="#99FFD700" Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
-                                                    <Border
-                                                        HorizontalAlignment="Center"
-                                                        VerticalAlignment="Center"
-                                                        Padding="10,1,10,0"
-                                                        CornerRadius="6"
-                                                        Background="#FFD700"
-                                                        BorderBrush="#0B0B12"
-                                                        BorderThickness="2.5,2.5,4,4"
-                                                        Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
-                                                        <Border.RenderTransform>
-                                                            <RotateTransform Angle="-8" />
-                                                        </Border.RenderTransform>
-                                                        <StackPanel Orientation="Horizontal" Spacing="5">
-                                                            <FontIcon Glyph="&#xE73E;" FontSize="12" Foreground="#0B0B12" />
-                                                            <TextBlock Text="PICKED" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" CharacterSpacing="40" Foreground="#0B0B12" />
-                                                        </StackPanel>
-                                                    </Border>
-                                                </Grid>
-                                                <StackPanel Grid.Row="1" Padding="7,5" Spacing="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="{x:Bind Comic.Title}" FontWeight="SemiBold" FontSize="11" MaxLines="2" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" />
-                                                    <TextBlock Text="{x:Bind Caption}" FontSize="10" Foreground="{ThemeResource KomikSubtleTextBrush}" MaxLines="1" TextTrimming="CharacterEllipsis" />
-                                                </StackPanel>
-                                            </Grid>
-                                        </Button>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
+                    <!-- Comics -->
+                    <Grid Grid.Row="3" CornerRadius="12" Background="{ThemeResource KomikPanelSunkenBrush}" BorderBrush="{ThemeResource KomikPanelStrokeBrush}" BorderThickness="1">
+                        <GridView
+                            Padding="10,10,4,10"
+                            ItemsSource="{x:Bind ViewModel.FilteredCandidates, Mode=OneWay}"
+                            ItemTemplate="{StaticResource CandidateCardTemplate}"
+                            SelectionMode="None"
+                            IsItemClickEnabled="True"
+                            ItemClick="CandidateGrid_ItemClick" />
+                        <TextBlock Text="{x:Bind ViewModel.CandidatesEmptyText, Mode=OneWay}" Visibility="{x:Bind ViewModel.HasNoCandidates, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource KomikSubtleTextBrush}" TextWrapping="Wrap" Margin="24" />
                     </Grid>
 
                     <!-- Footer -->
@@ -2573,7 +2759,7 @@
                         </Grid.ColumnDefinitions>
                         <Button Style="{StaticResource ComicGhostButtonStyle}" Content="Cancel" Command="{x:Bind ViewModel.CloseCreateSeriesDialogCommand}" />
                         <TextBlock Grid.Column="1" Text="Comics are put in reading order automatically." FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}" VerticalAlignment="Center" HorizontalAlignment="Right" TextWrapping="Wrap" />
-                        <Button Grid.Column="2" Style="{StaticResource ComicPrimaryButtonStyle}" Command="{x:Bind ViewModel.SaveManualSeriesCommand}" MinWidth="150">
+                        <Button Grid.Column="2" Style="{StaticResource ComicPrimaryButtonStyle}" Command="{x:Bind ViewModel.SaveManualSeriesCommand}" MinWidth="150" AutomationProperties.Name="CREATE">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon Glyph="&#xE710;" FontSize="13" />
                                 <TextBlock Text="CREATE" FontFamily="{StaticResource KomikDisplayFont}" FontSize="18" CharacterSpacing="60" />
@@ -2591,8 +2777,8 @@
             Canvas.ZIndex="135"
             Background="{ThemeResource ModalScrimBrush}"
             Visibility="{x:Bind ViewModel.IsAddComicsToSeriesDialogOpen, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
-            <ContentControl Style="{StaticResource ComicModalPanelStyle}" MaxWidth="880" MaxHeight="700" Margin="32">
-                <Grid RowSpacing="16" Padding="24">
+            <ContentControl Style="{StaticResource ComicModalPanelStyle}" MaxWidth="1320" Margin="18,12" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                <Grid RowSpacing="12" Padding="22,16,22,16">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -2600,154 +2786,582 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <!-- Header -->
-                    <Grid Grid.Row="0">
-                        <StackPanel Spacing="3">
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <FontIcon Glyph="&#xE710;" FontSize="18" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
-                                <TextBlock Text="ADD COMICS TO SERIES" Style="{StaticResource ComicSectionTitleStyle}" FontSize="28" />
+                    <Grid ColumnSpacing="14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid Width="46" Height="66" CornerRadius="8" BorderBrush="{ThemeResource KomikInkStrokeBrush}" BorderThickness="2" Background="{ThemeResource KomikPanelSunkenBrush}">
+                            <Image Source="{x:Bind ViewModel.SelectedSeriesGroup.CoverThumbnailPath, Mode=OneWay, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
+                        </Grid>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Border Style="{StaticResource ComicStickerStyle}" Background="#00C2FF" BorderBrush="#0B0B12" Padding="7,0">
+                                    <Border.RenderTransform>
+                                        <RotateTransform Angle="-4" />
+                                    </Border.RenderTransform>
+                                    <TextBlock Text="ADD" Style="{StaticResource ComicStickerTextStyle}" Foreground="#0B0B12" />
+                                </Border>
+                                <TextBlock Text="ADD COMICS" Style="{StaticResource ComicSectionTitleStyle}" FontSize="26" VerticalAlignment="Center" />
                             </StackPanel>
-                            <TextBlock Text="{x:Bind ViewModel.SelectedSeriesGroup.SeriesName, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <TextBlock Text="{x:Bind ViewModel.SelectedSeriesGroup.SeriesName, Mode=OneWay}" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource KomikSubtleTextBrush}" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
-                        <Button
-                            HorizontalAlignment="Right"
-                            Height="34" Width="34" Padding="0" CornerRadius="17"
-                            Command="{x:Bind ViewModel.CloseAddComicsToSeriesDialogCommand}">
+                        <Button Grid.Column="2" Style="{StaticResource ComicIconButtonStyle}" VerticalAlignment="Top" Command="{x:Bind ViewModel.CloseAddComicsToSeriesDialogCommand}" ToolTipService.ToolTip="Close" AutomationProperties.Name="Close dialog">
                             <FontIcon Glyph="&#xE711;" FontSize="12" />
                         </Button>
                     </Grid>
 
-                    <!-- Search / Filter Box -->
-                    <Grid Grid.Row="1">
-                        <AutoSuggestBox
-                            QueryIcon="Find"
-                            PlaceholderText="Filter comics to add..."
-                            Text="{x:Bind ViewModel.ManualSeriesSearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    </Grid>
-
-                    <!-- Comics Selection Grid with Thumbnails -->
-                    <Grid Grid.Row="2">
+                    <Grid Grid.Row="1" ColumnSpacing="10" RowSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" MinWidth="160" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-
-                        <!-- Selection Summary & Quick Actions -->
-                        <Grid Grid.Row="0" Margin="0,0,0,8">
-                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                <TextBlock Text="{x:Bind ViewModel.SelectedCandidateCount, Mode=OneWay}" FontWeight="Bold" Foreground="{ThemeResource AccentFillColorDefaultBrush}" FontSize="13" />
-                                <TextBlock Text="comics selected to add" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" VerticalAlignment="Center" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                                <Button
-                                    Content="Select All"
-                                    FontSize="11"
-                                    Padding="10,4"
-                                    Command="{x:Bind ViewModel.SelectAllCandidatesCommand}" />
-                                <Button
-                                    Content="Clear Selection"
-                                    FontSize="11"
-                                    Padding="10,4"
-                                    Command="{x:Bind ViewModel.ClearCandidateSelectionCommand}" />
-                            </StackPanel>
+                        <Border Style="{StaticResource ComicStickerStyle}" Padding="8,1">
+                            <TextBlock Text="{x:Bind ViewModel.SelectedCandidateCountDisplay, Mode=OneWay}" Style="{StaticResource ComicStickerTextStyle}" />
+                        </Border>
+                        <AutoSuggestBox Grid.Column="1" QueryIcon="Find" PlaceholderText="Search title, number, creator or folder..." Text="{x:Bind ViewModel.ManualSeriesSearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <ComboBox Grid.Column="2" MinWidth="150" ItemsSource="{x:Bind ViewModel.CandidateSortOptions}" SelectedIndex="{x:Bind ViewModel.CandidateSortIndex, Mode=TwoWay}" ToolTipService.ToolTip="Sort comics" />
+                        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6">
+                            <Button Padding="10,5" Command="{x:Bind ViewModel.SelectAllCandidatesCommand}" ToolTipService.ToolTip="Pick every comic currently shown">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE8B3;" FontSize="12" />
+                                    <TextBlock Text="Pick shown" />
+                                </StackPanel>
+                            </Button>
+                            <Button Padding="10,5" Command="{x:Bind ViewModel.ClearCandidateSelectionCommand}" ToolTipService.ToolTip="Clear the selection">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE894;" FontSize="12" />
+                                    <TextBlock Text="Clear" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                        <Grid Grid.Row="1" Grid.ColumnSpan="4" ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <ListView Style="{StaticResource ComicChipBarStyle}" ItemsSource="{x:Bind ViewModel.CandidateStatusFilters}" SelectedItem="{x:Bind ViewModel.CandidateStatusFilter, Mode=TwoWay}" AutomationProperties.Name="Comic filter" />
+                            <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" MaxLines="2" FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}">
+                                <Run Text="{x:Bind ViewModel.CandidateShownDisplay, Mode=OneWay}" FontWeight="Bold" />
+                                <Run Text=" · " />
+                                <Run Text="{x:Bind ViewModel.CandidateScopeNote, Mode=OneWay}" />
+                            </TextBlock>
                         </Grid>
+                    </Grid>
 
-                        <!-- Candidates Scroll / ItemsControl -->
-                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{x:Bind ViewModel.ManualSeriesCandidates, Mode=OneWay}">
+                    <Grid Grid.Row="2" CornerRadius="12" Background="{ThemeResource KomikPanelSunkenBrush}" BorderBrush="{ThemeResource KomikPanelStrokeBrush}" BorderThickness="1">
+                        <GridView
+                            Padding="10,10,4,10"
+                            ItemsSource="{x:Bind ViewModel.FilteredCandidates, Mode=OneWay}"
+                            ItemTemplate="{StaticResource CandidateCardTemplate}"
+                            SelectionMode="None"
+                            IsItemClickEnabled="True"
+                            ItemClick="CandidateGrid_ItemClick" />
+                        <TextBlock Text="{x:Bind ViewModel.CandidatesEmptyText, Mode=OneWay}" Visibility="{x:Bind ViewModel.HasNoCandidates, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource KomikSubtleTextBrush}" TextWrapping="Wrap" Margin="24" />
+                    </Grid>
+
+                    <Grid Grid.Row="3" ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Button Style="{StaticResource ComicGhostButtonStyle}" Content="Cancel" Command="{x:Bind ViewModel.CloseAddComicsToSeriesDialogCommand}" />
+                        <TextBlock Grid.Column="1" Text="New comics slot into reading order." FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                        <Button Grid.Column="2" Style="{StaticResource ComicPrimaryButtonStyle}" Command="{x:Bind ViewModel.SaveComicsToExistingSeriesCommand}" MinWidth="170" AutomationProperties.Name="Add to Series">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE710;" FontSize="13" />
+                                <TextBlock Text="ADD TO SERIES" FontFamily="{StaticResource KomikDisplayFont}" FontSize="18" CharacterSpacing="50" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Grid>
+            </ContentControl>
+        </Grid>
+
+        <!-- ==================== EDIT SERIES OVERLAY ==================== -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="5"
+            Canvas.ZIndex="136"
+            Background="{ThemeResource ModalScrimBrush}"
+            Visibility="{x:Bind ViewModel.IsEditSeriesDialogOpen, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
+            <ContentControl Style="{StaticResource ComicModalPanelStyle}" MaxWidth="1040" Margin="18,12" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                <Grid RowSpacing="12" Padding="22,16,22,16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="2">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Border Style="{StaticResource ComicStickerStyle}" Background="#2EE59D" BorderBrush="#0B0B12" Padding="7,0">
+                                    <Border.RenderTransform>
+                                        <RotateTransform Angle="-5" />
+                                    </Border.RenderTransform>
+                                    <TextBlock Text="EDIT" Style="{StaticResource ComicStickerTextStyle}" Foreground="#0B0B12" />
+                                </Border>
+                                <TextBlock Text="{x:Bind ViewModel.EditSeriesTitle, Mode=OneWay}" Style="{StaticResource ComicSectionTitleStyle}" FontSize="26" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock Text="{x:Bind ViewModel.EditSeriesHint, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Style="{StaticResource ComicIconButtonStyle}" VerticalAlignment="Top" Command="{x:Bind ViewModel.CloseEditSeriesCommand}" ToolTipService.ToolTip="Close" AutomationProperties.Name="Close dialog">
+                            <FontIcon Glyph="&#xE711;" FontSize="12" />
+                        </Button>
+                    </Grid>
+
+                    <Grid Grid.Row="1" ColumnSpacing="18">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid Width="104" Height="150" CornerRadius="10" BorderBrush="{ThemeResource KomikInkStrokeBrush}" BorderThickness="2.5,2.5,4,4" Background="{ThemeResource KomikPanelSunkenBrush}" ToolTipService.ToolTip="Cover: pick one with the star in the list">
+                            <FontIcon Glyph="&#xE8B9;" FontSize="26" Foreground="{ThemeResource KomikSubtleTextBrush}" />
+                            <Image Source="{x:Bind ViewModel.EditSeriesCoverPath, Mode=OneWay, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
+                            <Border Style="{StaticResource ComicStickerStyle}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="4" Padding="5,0">
+                                <TextBlock Text="COVER" Style="{StaticResource ComicStickerTextStyle}" FontSize="11" />
+                            </Border>
+                        </Grid>
+                        <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Center">
+                            <TextBox Header="Name" FontSize="15" AutomationProperties.Name="Series name" Text="{x:Bind ViewModel.EditSeriesName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <helpers:WrapPanel HorizontalSpacing="10" VerticalSpacing="8">
+                                <Border CornerRadius="14" BorderBrush="{ThemeResource KomikInkStrokeBrush}" BorderThickness="2,2,3,3" Background="{ThemeResource KomikPanelSunkenBrush}" Padding="3" ToolTipService.ToolTip="{x:Bind ViewModel.EditSeriesKindToolTip, Mode=OneWay}">
+                                    <StackPanel Orientation="Horizontal" Spacing="3">
+                                        <ToggleButton x:Name="EditKindStoryToggle" IsChecked="{x:Bind ViewModel.EditSeriesIsStory, Mode=OneWay}" Click="EditKindStory_Click" CornerRadius="11" Height="36" Padding="12,0" AutomationProperties.Name="Continuation series section">
+                                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                                <FontIcon Glyph="&#xE8B9;" FontSize="13" />
+                                                <TextBlock Text="CONTINUATION SERIES" FontFamily="{StaticResource KomikDisplayFont}" FontSize="15" CharacterSpacing="40" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </ToggleButton>
+                                        <ToggleButton x:Name="EditKindCreatorToggle" IsChecked="{x:Bind ViewModel.EditSeriesIsCreator, Mode=OneWay}" Click="EditKindCreator_Click" IsEnabled="{x:Bind ViewModel.EditSeriesCanBeCreator, Mode=OneWay}" CornerRadius="11" Height="36" Padding="12,0" AutomationProperties.Name="By creator section">
+                                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                                <FontIcon Glyph="{x:Bind ViewModel.EditSeriesCreatorGlyph, Mode=OneWay}" FontSize="13" />
+                                                <TextBlock Text="BY CREATOR" FontFamily="{StaticResource KomikDisplayFont}" FontSize="15" CharacterSpacing="40" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </ToggleButton>
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource ComicPillStyle}" CornerRadius="12" Padding="10,2,4,2">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE895;" FontSize="13" Foreground="{ThemeResource KomikCyanBrush}" VerticalAlignment="Center" />
+                                        <TextBlock Text="Auto-update" FontWeight="Bold" FontSize="12" VerticalAlignment="Center" />
+                                        <ToggleSwitch IsOn="{x:Bind ViewModel.EditSeriesAutoUpdate, Mode=TwoWay}" OnContent="On" OffContent="Off" MinWidth="0" Margin="6,-2,0,-2" AutomationProperties.Name="Auto-update" />
+                                    </StackPanel>
+                                </Border>
+                            </helpers:WrapPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.HasEditSeriesKindHint, Mode=OneWay}">
+                                <FontIcon Glyph="&#xE946;" FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" VerticalAlignment="Center" />
+                                <TextBlock Text="{x:Bind ViewModel.EditSeriesKindHint, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="2" ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="READING ORDER" Style="{StaticResource ComicSectionTitleStyle}" FontSize="20" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" TextTrimming="CharacterEllipsis">
+                            <Run Text="{x:Bind ViewModel.EditSeriesCountDisplay, Mode=OneWay}" FontWeight="Bold" />
+                            <Run Text="  ·  drag to reorder, or use the arrows  " />
+                            <Run Text="{x:Bind ViewModel.EditSeriesRemovedDisplay, Mode=OneWay}" Foreground="{ThemeResource KomikMagentaBrush}" />
+                        </TextBlock>
+                        <Button Grid.Column="2" Padding="10,5" Command="{x:Bind ViewModel.SortEditItemsAutomaticallyCommand}" ToolTipService.ToolTip="Put the comics in reading order automatically">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE8CB;" FontSize="12" />
+                                <TextBlock Text="Auto order" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+
+                    <ListView
+                        x:Name="EditSeriesList"
+                        Grid.Row="3"
+                        ItemsSource="{x:Bind ViewModel.EditSeriesItems, Mode=OneWay}"
+                        SelectionMode="None"
+                        CanDragItems="True"
+                        CanReorderItems="True"
+                        AllowDrop="True"
+                        DragItemsCompleted="EditSeriesList_DragItemsCompleted"
+                        CornerRadius="12"
+                        Padding="6"
+                        Background="{ThemeResource KomikPanelSunkenBrush}"
+                        BorderBrush="{ThemeResource KomikPanelStrokeBrush}"
+                        BorderThickness="1">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Padding" Value="4,2" />
+                                <Setter Property="Margin" Value="0,2" />
+                                <Setter Property="CornerRadius" Value="10" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:EditSeriesComicItem">
+                                <Grid ColumnSpacing="12" Padding="6" CornerRadius="10" Background="{ThemeResource KomikPanelBrush}" BorderBrush="{ThemeResource KomikPanelStrokeBrush}" BorderThickness="1,1,2,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon Glyph="&#xE76F;" FontSize="14" Foreground="{ThemeResource KomikSubtleTextBrush}" VerticalAlignment="Center" ToolTipService.ToolTip="Drag to move" />
+                                    <Border Grid.Column="1" Style="{StaticResource ComicStickerStyle}" MinWidth="44" Padding="6,0">
+                                        <TextBlock Text="{x:Bind PositionDisplay, Mode=OneWay}" Style="{StaticResource ComicStickerTextStyle}" HorizontalAlignment="Center" />
+                                    </Border>
+                                    <Grid Grid.Column="2" Width="38" Height="54" CornerRadius="5" Background="{ThemeResource KomikPanelSunkenBrush}">
+                                        <Image Source="{x:Bind Comic.ThumbnailPath, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
+                                    </Grid>
+                                    <StackPanel Grid.Column="3" VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock Text="{x:Bind Comic.Title}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind Comic.Title}" />
+                                        <TextBlock FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}" TextTrimming="CharacterEllipsis">
+                                            <Run Text="{x:Bind Comic.FormatBadge}" />
+                                            <Run Text=" · " />
+                                            <Run Text="{x:Bind Comic.PageCountFormatted}" />
+                                            <Run Text=" · " />
+                                            <Run Text="{x:Bind Comic.ProgressText}" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <Button Style="{StaticResource ComicIconButtonStyle}" Click="EditItemCover_Click" Tag="{x:Bind}" ToolTipService.ToolTip="Use as the series cover" AutomationProperties.Name="Use as cover">
+                                            <Grid>
+                                                <FontIcon Glyph="&#xE734;" FontSize="14" Visibility="{x:Bind IsCover, Mode=OneWay, Converter={StaticResource InvertedBoolToVisConverter}}" />
+                                                <FontIcon Glyph="&#xE735;" FontSize="14" Foreground="{ThemeResource KomikOrangeBrush}" Visibility="{x:Bind IsCover, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+                                            </Grid>
+                                        </Button>
+                                        <Button Style="{StaticResource ComicIconButtonStyle}" Click="EditItemUp_Click" Tag="{x:Bind}" ToolTipService.ToolTip="Move up" AutomationProperties.Name="Move up">
+                                            <FontIcon Glyph="&#xE70E;" FontSize="12" />
+                                        </Button>
+                                        <Button Style="{StaticResource ComicIconButtonStyle}" Click="EditItemDown_Click" Tag="{x:Bind}" ToolTipService.ToolTip="Move down" AutomationProperties.Name="Move down">
+                                            <FontIcon Glyph="&#xE70D;" FontSize="12" />
+                                        </Button>
+                                        <Button Style="{StaticResource ComicIconButtonStyle}" Click="EditItemRemove_Click" Tag="{x:Bind}" ToolTipService.ToolTip="Remove from this series (the comic stays in your library)" AutomationProperties.Name="Remove from series">
+                                            <FontIcon Glyph="&#xE711;" FontSize="12" Foreground="{ThemeResource KomikMagentaBrush}" />
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+
+                    <Grid Grid.Row="4" ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Button Style="{StaticResource ComicGhostButtonStyle}" Content="Cancel" Command="{x:Bind ViewModel.CloseEditSeriesCommand}" />
+                        <Button Grid.Column="2" Style="{StaticResource ComicPrimaryButtonStyle}" Command="{x:Bind ViewModel.SaveEditSeriesCommand}" MinWidth="150" AutomationProperties.Name="Save series">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE74E;" FontSize="13" />
+                                <TextBlock Text="SAVE" FontFamily="{StaticResource KomikDisplayFont}" FontSize="18" CharacterSpacing="60" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Grid>
+            </ContentControl>
+        </Grid>
+
+        <!-- ==================== MANAGE TAGS OVERLAY ==================== -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="5"
+            Canvas.ZIndex="140"
+            Background="{ThemeResource ModalScrimBrush}"
+            Visibility="{x:Bind ViewModel.IsManageTagsOpen, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
+            <ContentControl Style="{StaticResource ComicModalPanelStyle}" MaxWidth="1100" Margin="18,12" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                <Grid RowSpacing="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Header -->
+                    <Grid CornerRadius="16,16,0,0">
+                        <Border Background="{ThemeResource KomikHeroBrush}" />
+                        <Border Background="{StaticResource KomikHalftoneBrush}" Opacity="0.12" />
+                        <Grid Padding="24,16,18,16" ColumnSpacing="14" RowSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <StackPanel Spacing="2">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Border Style="{StaticResource ComicStickerStyle}" Background="#FF1F6D" BorderBrush="#0B0B12" Padding="7,0">
+                                        <Border.RenderTransform>
+                                            <RotateTransform Angle="-5" />
+                                        </Border.RenderTransform>
+                                        <TextBlock Text="LABELS" Style="{StaticResource ComicStickerTextStyle}" Foreground="White" />
+                                    </Border>
+                                    <TextBlock Text="MANAGE TAGS" Style="{StaticResource ComicDisplayTextStyle}" FontSize="32" LineHeight="34" Foreground="{ThemeResource KomikWordmarkBrush}" />
+                                </StackPanel>
+                                <TextBlock Text="{x:Bind ViewModel.TagSummaryDisplay, Mode=OneWay}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource KomikHeroTaglineBrush}" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Style="{StaticResource ComicIconButtonStyle}" VerticalAlignment="Top" Command="{x:Bind ViewModel.CloseManageTagsCommand}" ToolTipService.ToolTip="Close" AutomationProperties.Name="Close dialog">
+                                <FontIcon Glyph="&#xE711;" FontSize="12" />
+                            </Button>
+                            <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="NewTagBox" FontSize="14" MinHeight="40" PlaceholderText="New tag name (e.g. Manga, Superhero, Favorites 2026)..." AutomationProperties.Name="New tag name" Text="{x:Bind ViewModel.NewTagName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" KeyDown="NewTagBox_KeyDown" />
+                                <Button Grid.Column="1" Style="{StaticResource ComicPrimaryButtonStyle}" MinHeight="40" Command="{x:Bind ViewModel.CreateManagedTagCommand}" IsEnabled="{x:Bind ViewModel.CanCreateManagedTag, Mode=OneWay}" AutomationProperties.Name="Create tag">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE710;" FontSize="13" />
+                                        <TextBlock Text="CREATE TAG" FontFamily="{StaticResource KomikDisplayFont}" FontSize="17" CharacterSpacing="50" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </Grid>
+                    </Grid>
+
+                    <!-- Toolbar -->
+                    <Grid Grid.Row="1" Padding="22,0,22,0" ColumnSpacing="10" RowSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MinWidth="180" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <AutoSuggestBox QueryIcon="Find" PlaceholderText="Search tags..." Text="{x:Bind ViewModel.ManageTagSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Search tags" />
+                        <ComboBox Grid.Column="1" MinWidth="150" ItemsSource="{x:Bind ViewModel.TagSortOptions}" SelectedIndex="{x:Bind ViewModel.ManageTagSortIndex, Mode=TwoWay}" ToolTipService.ToolTip="Sort tags" />
+                        <Button Grid.Column="2" Style="{StaticResource ComicDangerButtonStyle}" Visibility="{x:Bind ViewModel.HasUnusedTags, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" Click="DeleteUnusedTags_Click" ToolTipService.ToolTip="Delete every tag that no comic uses">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE74D;" FontSize="12" />
+                                <TextBlock Text="{x:Bind ViewModel.DeleteUnusedTagsText, Mode=OneWay}" />
+                            </StackPanel>
+                        </Button>
+                        <Grid Grid.Row="1" Grid.ColumnSpan="3" ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <ListView Style="{StaticResource ComicChipBarStyle}" ItemsSource="{x:Bind ViewModel.TagUsageFilters}" SelectedItem="{x:Bind ViewModel.ManageTagUsageFilter, Mode=TwoWay}" AutomationProperties.Name="Tag usage filter" />
+                            <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.ManageTagShownDisplay, Mode=OneWay}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource KomikSubtleTextBrush}" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                        </Grid>
+                    </Grid>
+
+                    <!-- Tag cards -->
+                    <Grid Grid.Row="2" Margin="22,0,22,20" CornerRadius="12" Background="{ThemeResource KomikPanelSunkenBrush}" BorderBrush="{ThemeResource KomikPanelStrokeBrush}" BorderThickness="1">
+                        <GridView
+                            Padding="10,10,4,10"
+                            ItemsSource="{x:Bind ViewModel.ManageTagItems, Mode=OneWay}"
+                            SelectionMode="None"
+                            IsItemClickEnabled="True"
+                            ItemClick="ManageTagItem_Click">
+                            <GridView.ItemTemplate>
+                                <DataTemplate x:DataType="models:TagChipItem">
+                                    <Grid Width="286" Height="66" Padding="10,8" CornerRadius="12" Background="{ThemeResource KomikPanelBrush}" BorderBrush="{ThemeResource KomikInkStrokeBrush}" BorderThickness="1.5,1.5,3,3" ColumnSpacing="10" ToolTipService.ToolTip="Click to show the comics with this tag">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid Width="38" Height="38" VerticalAlignment="Center">
+                                            <Ellipse Fill="#FFD700" Stroke="#0B0B12" StrokeThickness="2" Visibility="{x:Bind IsUnused, Mode=OneWay, Converter={StaticResource InvertedBoolToVisConverter}}" />
+                                            <Ellipse Fill="{ThemeResource KomikPanelSunkenBrush}" Stroke="{ThemeResource KomikInkStrokeBrush}" StrokeThickness="2" StrokeDashArray="2,1.5" Visibility="{x:Bind IsUnused, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+                                            <FontIcon Glyph="&#xE8EC;" FontSize="14" Foreground="#0B0B12" Visibility="{x:Bind IsUnused, Mode=OneWay, Converter={StaticResource InvertedBoolToVisConverter}}" />
+                                            <FontIcon Glyph="&#xE8EC;" FontSize="14" Foreground="{ThemeResource KomikSubtleTextBrush}" Visibility="{x:Bind IsUnused, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+                                        </Grid>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                            <TextBlock Text="{x:Bind Name, Mode=OneWay}" FontWeight="Bold" FontSize="14" TextTrimming="CharacterEllipsis" MaxLines="1" ToolTipService.ToolTip="{x:Bind Name, Mode=OneWay}" />
+                                            <TextBlock Text="{x:Bind CountDisplay, Mode=OneWay}" FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                            <Button Style="{StaticResource ComicIconButtonStyle}" Click="RenameTag_Click" Tag="{x:Bind}" ToolTipService.ToolTip="Rename (use an existing name to merge)" AutomationProperties.Name="Rename tag">
+                                                <FontIcon Glyph="&#xE8AC;" FontSize="12" />
+                                            </Button>
+                                            <Button Style="{StaticResource ComicIconButtonStyle}" Click="DeleteTag_Click" Tag="{x:Bind}" ToolTipService.ToolTip="Delete tag" AutomationProperties.Name="Delete tag">
+                                                <FontIcon Glyph="&#xE74D;" FontSize="12" Foreground="{ThemeResource KomikMagentaBrush}" />
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </GridView.ItemTemplate>
+                        </GridView>
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" Visibility="{x:Bind ViewModel.HasManageTagResults, Mode=OneWay, Converter={StaticResource InvertedBoolToVisConverter}}">
+                            <FontIcon Glyph="&#xE8EC;" FontSize="40" Foreground="{ThemeResource KomikSubtleTextBrush}" />
+                            <TextBlock Text="{x:Bind ViewModel.ManageTagEmptyText, Mode=OneWay}" FontSize="13" Foreground="{ThemeResource KomikSubtleTextBrush}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="360" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </ContentControl>
+        </Grid>
+
+        <!-- ==================== COMIC TAGS OVERLAY ==================== -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="5"
+            Canvas.ZIndex="145"
+            Background="{ThemeResource ModalScrimBrush}"
+            Visibility="{x:Bind ViewModel.IsComicTagsOpen, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
+            <ContentControl Style="{StaticResource ComicModalPanelStyle}" MaxWidth="940" MaxHeight="820" Margin="18,12" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                <Grid RowSpacing="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Header with the comic -->
+                    <Grid CornerRadius="16,16,0,0">
+                        <Border Background="{ThemeResource KomikHeroBrush}" />
+                        <Border Background="{StaticResource KomikHalftoneBrush}" Opacity="0.12" />
+                        <Grid Padding="22,14,18,14" ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid Width="58" Height="82" CornerRadius="8" BorderBrush="#0B0B12" BorderThickness="2" Background="{ThemeResource KomikPanelSunkenBrush}">
+                                <Image Source="{x:Bind ViewModel.TagEditingComic.ThumbnailPath, Mode=OneWay, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
+                            </Grid>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Border Style="{StaticResource ComicStickerStyle}" Background="#00C2FF" BorderBrush="#0B0B12" Padding="7,0">
+                                        <Border.RenderTransform>
+                                            <RotateTransform Angle="-5" />
+                                        </Border.RenderTransform>
+                                        <TextBlock Text="TAGS" Style="{StaticResource ComicStickerTextStyle}" Foreground="#0B0B12" />
+                                    </Border>
+                                    <TextBlock Text="TAG THIS COMIC" Style="{StaticResource ComicDisplayTextStyle}" FontSize="30" LineHeight="32" Foreground="{ThemeResource KomikWordmarkBrush}" />
+                                </StackPanel>
+                                <TextBlock Text="{x:Bind ViewModel.TagEditingComic.Title, Mode=OneWay}" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource KomikHeroTextBrush}" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <Button Grid.Column="2" Style="{StaticResource ComicIconButtonStyle}" VerticalAlignment="Top" Command="{x:Bind ViewModel.CloseComicTagsCommand}" ToolTipService.ToolTip="Close" AutomationProperties.Name="Close dialog">
+                                <FontIcon Glyph="&#xE711;" FontSize="12" />
+                            </Button>
+                        </Grid>
+                    </Grid>
+
+                    <!-- Tags already on the comic -->
+                    <StackPanel Grid.Row="1" Padding="22,0" Spacing="6">
+                        <TextBlock Text="{x:Bind ViewModel.ComicTagCountDisplay, Mode=OneWay}" FontSize="12" FontWeight="Bold" />
+                        <TextBlock Text="No tags yet. Click a tag below or type a new one." FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" Visibility="{x:Bind ViewModel.ComicHasNoTags, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+                        <ScrollViewer MaxHeight="96" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.ComicAssignedTags, Mode=OneWay}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
-                                        <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="148" ItemHeight="224" />
+                                        <helpers:WrapPanel HorizontalSpacing="6" VerticalSpacing="6" />
                                     </ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="models:ManualSeriesComicItem">
-                                        <Border
-                                            Visibility="{x:Bind IsVisible, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
-                                            Width="140"
-                                            Height="216"
-                                            Margin="4"
-                                            CornerRadius="8"
-                                            BorderThickness="1"
-                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                                            <Button
-                                                Click="CandidateCard_Click"
-                                                Tag="{x:Bind}"
-                                                Padding="0"
-                                                HorizontalAlignment="Stretch"
-                                                VerticalAlignment="Stretch"
-                                                HorizontalContentAlignment="Stretch"
-                                                VerticalContentAlignment="Stretch"
-                                                Background="Transparent"
-                                                BorderThickness="0">
-                                                <Grid>
-                                                    <Grid.RowDefinitions>
-                                                        <RowDefinition Height="156" />
-                                                        <RowDefinition Height="*" />
-                                                    </Grid.RowDefinitions>
-
-                                                    <!-- Cover -->
-                                                    <Grid Grid.Row="0">
-                                                        <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" CornerRadius="8,8,0,0">
-                                                            <FontIcon Glyph="&#xE82D;" FontSize="28" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                                        </Border>
-                                                        <Image Source="{x:Bind Comic.ThumbnailPath, Mode=OneWay, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
-
-                                                        <!-- Selection Checkbox / Indicator (Top Right) -->
-                                                        <Border
-                                                            HorizontalAlignment="Right"
-                                                            VerticalAlignment="Top"
-                                                            Margin="6"
-                                                            Width="24"
-                                                            Height="24"
-                                                            CornerRadius="12"
-                                                            Background="#CC000000"
-                                                            BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                                                            BorderThickness="1.5">
-                                                            <FontIcon
-                                                                Glyph="&#xE73E;"
-                                                                FontSize="12"
-                                                                Foreground="{ThemeResource AccentFillColorDefaultBrush}"
-                                                                HorizontalAlignment="Center"
-                                                                VerticalAlignment="Center"
-                                                                Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
-                                                        </Border>
-                                                    </Grid>
-
-                                                    <!-- Title -->
-                                                    <StackPanel Grid.Row="1" Padding="6,4" VerticalAlignment="Center">
-                                                        <TextBlock Text="{x:Bind Comic.Title}" FontWeight="SemiBold" FontSize="11" MaxLines="2" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" />
-                                                    </StackPanel>
-
-                                                    <!-- Selected Highlight Border Overlay -->
-                                                    <Border
-                                                        Grid.RowSpan="2"
-                                                        BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                                                        BorderThickness="2"
-                                                        CornerRadius="8"
-                                                        IsHitTestVisible="False"
-                                                        Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
-                                                </Grid>
-                                            </Button>
-                                        </Border>
+                                    <DataTemplate x:DataType="models:TagChipItem">
+                                        <Button Click="ComicTagChip_Click" Tag="{x:Bind}" Padding="10,4,8,4" CornerRadius="14" Background="#FFD700" BorderBrush="#0B0B12" BorderThickness="2,2,3,3" ToolTipService.ToolTip="Remove this tag" AutomationProperties.Name="{x:Bind Name}">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{x:Bind Name, Mode=OneWay}" FontSize="12" FontWeight="Bold" Foreground="#0B0B12" MaxWidth="220" TextTrimming="CharacterEllipsis" />
+                                                <FontIcon Glyph="&#xE711;" FontSize="9" Foreground="#0B0B12" />
+                                            </StackPanel>
+                                        </Button>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
+                    </StackPanel>
+
+                    <!-- Search, create, filter -->
+                    <Grid Grid.Row="2" Padding="22,0" ColumnSpacing="10" RowSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MinWidth="180" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBox x:Name="ComicTagSearchBox" FontSize="14" MinHeight="40" PlaceholderText="Search tags, or type a new one and press Enter..." AutomationProperties.Name="Search or create tag" Text="{x:Bind ViewModel.ComicTagSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" KeyDown="ComicTagSearchBox_KeyDown" />
+                        <ComboBox Grid.Column="1" MinWidth="150" VerticalAlignment="Center" ItemsSource="{x:Bind ViewModel.TagSortOptions}" SelectedIndex="{x:Bind ViewModel.ComicTagSortIndex, Mode=TwoWay}" ToolTipService.ToolTip="Sort tags" />
+                        <Button Grid.Row="1" Grid.ColumnSpan="2" HorizontalAlignment="Left" Style="{StaticResource ComicAccentButtonStyle}" Visibility="{x:Bind ViewModel.CanCreateTagFromSearch, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" Command="{x:Bind ViewModel.CreateTagFromSearchCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE710;" FontSize="12" />
+                                <TextBlock Text="{x:Bind ViewModel.CreateTagFromSearchText, Mode=OneWay}" TextTrimming="CharacterEllipsis" MaxWidth="520" />
+                            </StackPanel>
+                        </Button>
+                        <ListView Grid.Row="2" Grid.ColumnSpan="2" Style="{StaticResource ComicChipBarStyle}" ItemsSource="{x:Bind ViewModel.ComicTagScopes}" SelectedItem="{x:Bind ViewModel.ComicTagScope, Mode=TwoWay}" AutomationProperties.Name="Tag scope" />
                     </Grid>
 
-                    <!-- Footer Actions -->
-                    <Grid Grid.Row="3">
-                        <Button
-                            Content="Cancel"
-                            Command="{x:Bind ViewModel.CloseAddComicsToSeriesDialogCommand}"
-                            HorizontalAlignment="Left" />
-                        <Button
-                            Content="Add to Series"
-                            Style="{StaticResource ComicPrimaryButtonStyle}"
-                            Command="{x:Bind ViewModel.SaveComicsToExistingSeriesCommand}"
-                            HorizontalAlignment="Right" />
+                    <!-- All tags as chips -->
+                    <Grid Grid.Row="3" Margin="22,0" CornerRadius="12" Background="{ThemeResource KomikPanelSunkenBrush}" BorderBrush="{ThemeResource KomikPanelStrokeBrush}" BorderThickness="1">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.ComicTagItems, Mode=OneWay}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <helpers:WrapPanel HorizontalSpacing="8" VerticalSpacing="8" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:TagChipItem">
+                                        <Button Click="ComicTagChip_Click" Tag="{x:Bind}" Padding="0" CornerRadius="16" BorderThickness="0" Background="Transparent" AutomationProperties.Name="{x:Bind Name}">
+                                            <Grid>
+                                                <Border CornerRadius="16" Padding="12,6" BorderBrush="{ThemeResource KomikInkStrokeBrush}" BorderThickness="2,2,3,3" Background="{ThemeResource KomikPanelBrush}" Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource InvertedBoolToVisConverter}}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                                        <FontIcon Glyph="&#xE710;" FontSize="10" Foreground="{ThemeResource KomikSubtleTextBrush}" />
+                                                        <TextBlock Text="{x:Bind Name, Mode=OneWay}" FontSize="13" FontWeight="SemiBold" MaxWidth="240" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{x:Bind Count, Mode=OneWay}" FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Border>
+                                                <Border CornerRadius="16" Padding="12,6" BorderBrush="#0B0B12" BorderThickness="2,2,3,3" Background="#FFD700" Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                                        <FontIcon Glyph="&#xE73E;" FontSize="11" Foreground="#0B0B12" />
+                                                        <TextBlock Text="{x:Bind Name, Mode=OneWay}" FontSize="13" FontWeight="Bold" Foreground="#0B0B12" MaxWidth="240" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{x:Bind Count, Mode=OneWay}" FontSize="11" Foreground="#3A3A48" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        <TextBlock Text="{x:Bind ViewModel.ComicTagEmptyText, Mode=OneWay}" Visibility="{x:Bind ViewModel.HasComicTagResults, Mode=OneWay, Converter={StaticResource InvertedBoolToVisConverter}}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource KomikSubtleTextBrush}" TextWrapping="Wrap" Margin="24" />
+                    </Grid>
+
+                    <Grid Grid.Row="4" Padding="22,0,22,18" ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Changes save instantly." FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Style="{StaticResource ComicGhostButtonStyle}" Click="ManageTags_Click" ToolTipService.ToolTip="Rename or delete tags">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE713;" FontSize="12" />
+                                <TextBlock Text="Manage Tags" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="2" Style="{StaticResource ComicPrimaryButtonStyle}" MinWidth="120" Command="{x:Bind ViewModel.CloseComicTagsCommand}" AutomationProperties.Name="Done">
+                            <TextBlock Text="DONE" FontFamily="{StaticResource KomikDisplayFont}" FontSize="18" CharacterSpacing="60" />
+                        </Button>
                     </Grid>
                 </Grid>
             </ContentControl>

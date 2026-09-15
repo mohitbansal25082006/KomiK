@@ -48,6 +48,8 @@ public interface ILibraryRepository : IDisposable
     Task CreateTagAsync(string tagName);
     Task DeleteTagAsync(string tagName);
     Task<int> GetComicCountForTagAsync(string tagName);
+    Task<IReadOnlyDictionary<string, int>> GetTagUsageAsync();
+    Task RenameTagAsync(string oldName, string newName);
 
     // Folder Collections
     Task<IReadOnlyList<string>> GetCollectionFoldersAsync();
@@ -105,6 +107,10 @@ public interface ILibraryRepository : IDisposable
     Task RemoveIgnoredDuplicatePairAsync(long comicId1, long comicId2);
     Task DeleteComicAsync(long comicId, bool deleteFileFromDisk);
 
+    // Comics the user removed from the library (rescans skip them until they are added back)
+    Task<HashSet<string>> GetRemovedComicPathsAsync();
+    Task ForgetRemovedComicAsync(string filePath);
+
     // Full Library Export & Import
     Task<string> ExportLibraryBackupJsonAsync();
     Task<(int comicsRestored, int bookmarksRestored, int tagsRestored)> ImportLibraryBackupJsonAsync(string jsonContent, bool overwriteExisting);
@@ -117,6 +123,7 @@ public interface ILibraryRepository : IDisposable
     Task SetManualSeriesOrderAsync(long seriesId, IReadOnlyList<long> orderedComicIds);
     Task AddComicsToManualSeriesAsync(long seriesId, IEnumerable<long> comicIds);
     Task RemoveComicFromManualSeriesAsync(long seriesId, long comicId);
+    Task<string> RenameManualSeriesAsync(long seriesId, string name);
     Task DeleteManualSeriesAsync(long seriesId);
 }
 

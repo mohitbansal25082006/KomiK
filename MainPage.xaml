@@ -188,63 +188,101 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- OCR Selectable Text Overlay Card -->
-                <Border
-                    x:Name="OcrTextOverlayCard"
-                    Visibility="{x:Bind ViewModel.IsOcrLayerVisible, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
-                    MaxWidth="420"
-                    MaxHeight="360"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Top"
-                    Margin="16,76,20,16"
-                    Padding="16"
-                    Background="{ThemeResource KomikReaderChromeBrush}"
-                    BorderBrush="{ThemeResource KomikReaderChromeStrokeBrush}"
-                    BorderThickness="2.5,2.5,4,4"
-                    CornerRadius="14"
-                    Canvas.ZIndex="50">
-                    <Grid RowSpacing="8">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <Grid Grid.Row="0">
-                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                <FontIcon Glyph="&#xE8C1;" FontSize="13" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
-                                <TextBlock Text="Recognized Page Dialogue" FontWeight="Bold" FontSize="13" />
-                            </StackPanel>
-                            <Button
-                                HorizontalAlignment="Right"
-                                Width="26" Height="26" Padding="0"
-                                Command="{x:Bind ViewModel.ToggleOcrLayerCommand}"
-                                ToolTipService.ToolTip="Close OCR Overlay">
-                                <FontIcon Glyph="&#xE711;" FontSize="10" />
+            </Grid>
+        </ScrollViewer>
+
+        <!-- ==================== OCR TEXT PANEL (floats over the page, follows the current page) ==================== -->
+        <Grid
+            x:Name="OcrTextOverlayCard"
+            Visibility="{x:Bind ViewModel.IsOcrLayerVisible, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
+            Width="400"
+            MaxHeight="620"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Margin="16,86,20,110"
+            Canvas.ZIndex="55"
+            helpers:MotionHelper.RevealOnShow="True">
+            <Border Margin="6,6,0,0" CornerRadius="16" Background="{ThemeResource KomikShadowBrush}" />
+            <Border Margin="0,0,6,6" CornerRadius="16" Background="{ThemeResource KomikReaderChromeBrush}" BorderBrush="{ThemeResource KomikReaderChromeStrokeBrush}" BorderThickness="2.5" Padding="14,12">
+                <Grid RowSpacing="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource ComicStickerStyle}" Padding="6,0">
+                            <TextBlock Text="OCR" Style="{StaticResource ComicStickerTextStyle}" FontSize="13" />
+                        </Border>
+                        <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.OcrPanelTitle, Mode=OneWay}" Style="{StaticResource ComicSectionTitleStyle}" FontSize="20" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                            <Button Style="{StaticResource ReaderIconButtonStyle}" Width="32" Height="32" Command="{x:Bind ViewModel.RereadOcrPageCommand}" ToolTipService.ToolTip="Read this page again" AutomationProperties.Name="Read page again">
+                                <FontIcon Glyph="&#xE72C;" FontSize="12" />
                             </Button>
-                        </Grid>
-                        <ScrollViewer Grid.Row="1" MaxHeight="240" VerticalScrollBarVisibility="Auto">
-                            <TextBox
-                                Text="{x:Bind ViewModel.CurrentPageOcrResult.FullText, Mode=OneWay}"
-                                IsReadOnly="True"
-                                TextWrapping="Wrap"
-                                BorderThickness="0"
-                                Background="Transparent"
-                                FontSize="12" />
-                        </ScrollViewer>
-                        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                            <Button
-                                Command="{x:Bind ViewModel.CopyCurrentPageTextCommand}"
-                                ToolTipService.ToolTip="Copy detected dialogue to clipboard">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <FontIcon Glyph="&#xE8C8;" FontSize="12" />
-                                    <TextBlock Text="Copy Text" FontSize="11" />
-                                </StackPanel>
+                            <Button Style="{StaticResource ReaderIconButtonStyle}" Width="32" Height="32" Command="{x:Bind ViewModel.ToggleOcrLayerCommand}" ToolTipService.ToolTip="Close" AutomationProperties.Name="Close OCR panel">
+                                <FontIcon Glyph="&#xE711;" FontSize="11" />
                             </Button>
                         </StackPanel>
                     </Grid>
-                </Border>
-            </Grid>
-        </ScrollViewer>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+                        <ProgressRing IsActive="{x:Bind ViewModel.IsOcrLoading, Mode=OneWay}" Width="16" Height="16" Visibility="{x:Bind ViewModel.IsOcrLoading, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+                        <TextBlock Text="{x:Bind ViewModel.OcrStatusText, Mode=OneWay}" FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+                        <Grid>
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.OcrBlocks, Mode=OneWay}">
+                                <ItemsControl.ItemContainerTransitions>
+                                    <TransitionCollection>
+                                        <EntranceThemeTransition IsStaggeringEnabled="True" FromVerticalOffset="14" />
+                                    </TransitionCollection>
+                                </ItemsControl.ItemContainerTransitions>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:OcrTextBlock">
+                                        <Grid Margin="0,0,0,8" ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid Width="26" Height="26" VerticalAlignment="Top" Margin="0,4,0,0">
+                                                <Ellipse Fill="#FFD700" Stroke="#0B0B12" StrokeThickness="2" />
+                                                <TextBlock Text="{x:Bind NumberDisplay}" FontFamily="{StaticResource KomikDisplayFont}" FontSize="13" Foreground="#0B0B12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Grid>
+                                            <Border Grid.Column="1" CornerRadius="14,14,14,4" Padding="12,8" Background="{ThemeResource KomikPanelBrush}" BorderBrush="{ThemeResource KomikInkStrokeBrush}" BorderThickness="1.5,1.5,2.5,2.5">
+                                                <TextBlock Text="{x:Bind Text}" FontSize="13" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                                            </Border>
+                                            <Button Grid.Column="2" VerticalAlignment="Top" Style="{StaticResource ReaderIconButtonStyle}" Width="28" Height="28" Click="CopyOcrBlock_Click" Tag="{x:Bind}" ToolTipService.ToolTip="Copy this text" AutomationProperties.Name="Copy text block">
+                                                <FontIcon Glyph="&#xE8C8;" FontSize="11" />
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="No speech bubbles or captions were found on this page. Try another OCR language in the OCR menu, or zoom in on scans with tiny lettering." Visibility="{x:Bind ViewModel.OcrFoundNothing, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" TextWrapping="Wrap" Margin="2,6" />
+                        </Grid>
+                    </ScrollViewer>
+                    <Grid Grid.Row="3" ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Follows the page you're on." FontSize="11" Foreground="{ThemeResource KomikSubtleTextBrush}" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Style="{StaticResource ComicAccentButtonStyle}" Command="{x:Bind ViewModel.CopyCurrentPageTextCommand}" ToolTipService.ToolTip="Copy all text on this page">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE8C8;" FontSize="12" />
+                                <TextBlock Text="Copy All" FontSize="12" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
 
         <!-- ==================== EMPTY STATE VIEW ==================== -->
         <Grid
@@ -442,7 +480,12 @@
                         HorizontalScrollMode="Auto"
                         VerticalScrollMode="Disabled"
                         Padding="8,6">
-                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <StackPanel x:Name="ToolbarItems" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <StackPanel.ChildrenTransitions>
+                                <TransitionCollection>
+                                    <RepositionThemeTransition IsStaggeringEnabled="False" />
+                                </TransitionCollection>
+                            </StackPanel.ChildrenTransitions>
 
                             <!-- Back to wherever the comic was opened from -->
                             <Button
@@ -470,7 +513,7 @@
                             <DropDownButton Style="{StaticResource ReaderDropDownStyle}" ToolTipService.ToolTip="Open Comic or Folder" AutomationProperties.Name="Open">
                                 <FontIcon Glyph="&#xE8E5;" FontSize="14" />
                                 <DropDownButton.Flyout>
-                                    <MenuFlyout Placement="Bottom">
+                                    <MenuFlyout Placement="Bottom" ShouldConstrainToRootBounds="True" AreOpenCloseAnimationsEnabled="True">
                                         <MenuFlyoutItem Text="Open Comic File... (Ctrl+O)" Command="{x:Bind ViewModel.OpenFileCommand}">
                                             <MenuFlyoutItem.Icon>
                                                 <FontIcon Glyph="&#xE8E5;" />
@@ -501,8 +544,8 @@
                                     ToolTipService.ToolTip="{x:Bind ViewModel.ComicTitle, Mode=OneWay}" />
                             </Border>
 
-                            <!-- VIEW group -->
-                            <Border Style="{StaticResource ReaderGroupStyle}">
+                            <!-- VIEW group (page sizing makes no sense in the webtoon strip) -->
+                            <Border x:Name="FitGroup" Style="{StaticResource ReaderGroupStyle}" Visibility="{x:Bind ViewModel.IsNotWebtoonMode, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
                                 <StackPanel Orientation="Horizontal" Spacing="3">
                                     <ToggleButton x:Name="FitHeightToggle" Style="{StaticResource ReaderIconToggleStyle}" IsChecked="{x:Bind ViewModel.IsFitHeight, Mode=OneWay}" Click="FitHeight_Click" AutomationProperties.Name="Fit to height" ToolTipService.ToolTip="Fit to Height: whole page on screen">
                                         <FontIcon Glyph="&#xE740;" FontSize="13" />
@@ -517,9 +560,15 @@
                             </Border>
 
                             <Border Style="{StaticResource ReaderGroupStyle}">
-                                <StackPanel Orientation="Horizontal" Spacing="3">
+                                <StackPanel x:Name="ModeGroupItems" Orientation="Horizontal" Spacing="3">
+                                    <StackPanel.ChildrenTransitions>
+                                        <TransitionCollection>
+                                            <RepositionThemeTransition IsStaggeringEnabled="False" />
+                                        </TransitionCollection>
+                                    </StackPanel.ChildrenTransitions>
                                     <ToggleButton
                                         x:Name="SpreadToggle"
+                                        Visibility="{x:Bind ViewModel.IsNotWebtoonMode, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
                                         Style="{StaticResource ReaderTextToggleStyle}"
                                         IsChecked="{x:Bind ViewModel.IsDoublePageMode, Mode=OneWay}"
                                         Click="SpreadToggle_Click"
@@ -541,6 +590,8 @@
                                         </StackPanel>
                                     </ToggleButton>
                                     <Button
+                                        x:Name="DirectionButton"
+                                        Visibility="{x:Bind ViewModel.IsNotWebtoonMode, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
                                         Style="{StaticResource ReaderTextButtonStyle}"
                                         Command="{x:Bind ViewModel.ToggleReadingDirectionCommand}"
                                         ToolTipService.ToolTip="Reading Direction: Western left-to-right or manga right-to-left (Ctrl+R)">
@@ -561,7 +612,7 @@
                                             <TextBlock Text="OCR" FontFamily="{StaticResource KomikDisplayFont}" FontSize="15" CharacterSpacing="40" />
                                         </StackPanel>
                                         <DropDownButton.Flyout>
-                                            <Flyout Placement="Bottom">
+                                            <Flyout Placement="Bottom" ShouldConstrainToRootBounds="True" AreOpenCloseAnimationsEnabled="True">
                                                 <StackPanel Width="310" Spacing="10" Padding="4">
                                                     <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                                         <TextBlock Text="COMIC OCR" Style="{StaticResource ComicSectionTitleStyle}" FontSize="20" />
@@ -569,13 +620,22 @@
                                                             <TextBlock Text="OFFLINE" Style="{StaticResource ComicStickerTextStyle}" FontSize="12" />
                                                         </Border>
                                                     </StackPanel>
-                                                    <TextBlock Text="Private, on-device text detection using Windows OCR. Copy dialogue or search every page." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" />
+                                                    <TextBlock Text="Private, on-device text detection using Windows OCR. Reads speech bubbles in order (right-to-left in manga mode), handles long webtoon strips and follows you page by page." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource KomikSubtleTextBrush}" />
+
+                                                    <ComboBox
+                                                        Header="Text language"
+                                                        HorizontalAlignment="Stretch"
+                                                        PlaceholderText="Match my Windows languages"
+                                                        ItemsSource="{x:Bind ViewModel.OcrLanguages}"
+                                                        SelectedItem="{x:Bind ViewModel.SelectedOcrLanguage, Mode=TwoWay}"
+                                                        ToolTipService.ToolTip="Pick the language the comic is written in. Add more OCR languages in Windows Settings, Time and language." />
 
                                                     <Button
                                                         HorizontalAlignment="Stretch"
                                                         Style="{StaticResource ComicAccentButtonStyle}"
                                                         Command="{x:Bind ViewModel.ToggleOcrLayerCommand}"
                                                         IsEnabled="{x:Bind ViewModel.IsOcrLoading, Mode=OneWay, Converter={StaticResource InvertedBoolConverter}}"
+                                                        AutomationProperties.Name="Read page text"
                                                         ToolTipService.ToolTip="Recognize dialogue and text on current page">
                                                         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
                                                             <FontIcon Glyph="&#xE8C1;" FontSize="13" />
@@ -606,9 +666,14 @@
                                                         </Button>
                                                     </Grid>
 
-                                                    <ProgressBar
-                                                        IsIndeterminate="{x:Bind ViewModel.IsSearchingOcr, Mode=OneWay}"
-                                                        Visibility="{x:Bind ViewModel.IsSearchingOcr, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+                                                    <Grid ColumnSpacing="8" Visibility="{x:Bind ViewModel.IsSearchingOcr, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <ProgressBar Value="{x:Bind ViewModel.OcrSearchProgress, Mode=OneWay}" Maximum="100" VerticalAlignment="Center" />
+                                                        <Button Grid.Column="1" Padding="8,3" Command="{x:Bind ViewModel.CancelOcrSearchCommand}" Content="Stop" FontSize="11" />
+                                                    </Grid>
 
                                                     <ListView
                                                         ItemsSource="{x:Bind ViewModel.OcrSearchResults, Mode=OneWay}"
@@ -648,7 +713,7 @@
                                     <DropDownButton Style="{StaticResource ReaderDropDownStyle}" ToolTipService.ToolTip="View Bookmarks" AutomationProperties.Name="Bookmarks">
                                         <FontIcon Glyph="&#xE8F1;" FontSize="14" />
                                         <DropDownButton.Flyout>
-                                            <Flyout Placement="Bottom">
+                                            <Flyout Placement="Bottom" ShouldConstrainToRootBounds="True" AreOpenCloseAnimationsEnabled="True">
                                                 <StackPanel Width="280" Spacing="8">
                                                     <Grid>
                                                         <TextBlock Text="BOOKMARKS" Style="{StaticResource ComicSectionTitleStyle}" FontSize="20" ToolTipService.ToolTip="Save favorite panels and scenes with notes to jump back to them at any time." />
@@ -713,7 +778,7 @@
                                     <DropDownButton Style="{StaticResource ReaderDropDownStyle}" ToolTipService.ToolTip="Color Correction &amp; Night Mode" AutomationProperties.Name="Colors">
                                         <FontIcon Glyph="&#xE790;" FontSize="14" />
                                         <DropDownButton.Flyout>
-                                            <Flyout Placement="Bottom">
+                                            <Flyout Placement="Bottom" ShouldConstrainToRootBounds="True" AreOpenCloseAnimationsEnabled="True">
                                                 <StackPanel Width="270" Spacing="12" Padding="4">
                                                     <Grid>
                                                         <TextBlock Text="DISPLAY &amp; COLORS" Style="{StaticResource ComicSectionTitleStyle}" FontSize="20" ToolTipService.ToolTip="Non-destructive display filters. Your comic files are never changed." />

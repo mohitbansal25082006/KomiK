@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Komik.Models;
@@ -26,6 +27,9 @@ public sealed class LibraryScannerService : ILibraryScannerService
 
     public bool IsScanning { get; private set; }
 
+    // Paths the user removed from the library: automatic scans leave them out.
+    private HashSet<string> _removedPaths = new(StringComparer.OrdinalIgnoreCase);
+
     public LibraryScannerService(
         ILibraryRepository repository,
         IComicLoaderService? loaderService = null,
@@ -47,6 +51,7 @@ public sealed class LibraryScannerService : ILibraryScannerService
         {
             // 1. Add/update watched folder record
             var watched = await _repository.AddWatchedFolderAsync(rootPath);
+            _removedPaths = await _repository.GetRemovedComicPathsAsync();
 
             ReportProgress($"Scanning '{Path.GetFileName(rootPath)}'...", discoveredCount);
 
@@ -77,6 +82,8 @@ public sealed class LibraryScannerService : ILibraryScannerService
                 ReportProgress("No watched folders in library.", 0, isCompleted: true);
                 return;
             }
+
+            _removedPaths = await _repository.GetRemovedComicPathsAsync();
 
             // 1. Check existing comics for missing files
             var existingComics = await _repository.GetComicsAsync();
@@ -187,8 +194,10 @@ public sealed class LibraryScannerService : ILibraryScannerService
         return currentCount;
     }
 
-    private async Task ProcessComicSourceAsync(string path, ComicSourceType format, CancellationToken ct)
+    private async Task ProcessComicSourceAsync(string path, ComicSourceType format, CancellationToken ct, bool includeRemoved = false)
     {
+        if (!includeRemoved && _removedPaths.Contains(path)) return;
+
         // Check if already in repository
         var existing = await _repository.GetComicByPathAsync(path);
         if (existing != null)
@@ -271,8 +280,77 @@ public sealed class LibraryScannerService : ILibraryScannerService
 
         if (!format.HasValue) return null;
 
-        await ProcessComicSourceAsync(path, format.Value, cancellationToken);
+        // Picking a comic by hand always adds it, even one that was removed before.
+        await ProcessComicSourceAsync(path, format.Value, cancellationToken, includeRemoved: true);
         return await _repository.GetComicByPathAsync(path);
+    }
+
+    /// <summary>Every comic file or image folder inside the given folders (nothing is indexed).</summary>
+    public Task<List<(string Path, ComicSourceType Format)>> FindComicSourcesAsync(IEnumerable<string> roots, CancellationToken cancellationToken = default)
+    {
+        var rootList = roots.Where(Directory.Exists).ToList();
+        return Task.Run(() =>
+        {
+            var found = new List<(string, ComicSourceType)>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var root in rootList)
+            {
+                Collect(root, found, seen, cancellationToken);
+            }
+            return found;
+        }, cancellationToken);
+    }
+
+    private void Collect(string directory, List<(string, ComicSourceType)> found, HashSet<string> seen, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (_folderLoader.CanLoad(directory))
+        {
+            if (seen.Add(directory)) found.Add((directory, ComicSourceType.Folder));
+            return;
+        }
+
+        string[] files = Array.Empty<string>();
+        try { files = Directory.GetFiles(directory); } catch { }
+        foreach (var file in files)
+        {
+            ComicSourceType? format =
+                _zipLoader.CanLoad(file) ? ComicSourceType.ZipArchive :
+                _rarLoader.CanLoad(file) ? ComicSourceType.RarArchive :
+                _sevenZipLoader.CanLoad(file) ? ComicSourceType.SevenZipArchive :
+                _pdfLoader.CanLoad(file) ? ComicSourceType.PdfDocument : null;
+            if (format.HasValue && seen.Add(file)) found.Add((file, format.Value));
+        }
+
+        string[] dirs = Array.Empty<string>();
+        try { dirs = Directory.GetDirectories(directory); } catch { }
+        foreach (var dir in dirs)
+        {
+            Collect(dir, found, seen, ct);
+        }
+    }
+
+    /// <summary>Adds the chosen comics (including ones removed earlier) and reports progress.</summary>
+    public async Task<int> IndexComicsAsync(IReadOnlyList<(string Path, ComicSourceType Format)> sources, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
+    {
+        int added = 0;
+        IsScanning = true;
+        try
+        {
+            for (int i = 0; i < sources.Count; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var (path, format) = sources[i];
+                await ProcessComicSourceAsync(path, format, cancellationToken, includeRemoved: true);
+                if (await _repository.GetComicByPathAsync(path) != null) added++;
+                progress?.Report(i + 1);
+            }
+        }
+        finally
+        {
+            IsScanning = false;
+        }
+        return added;
     }
 
     private void ReportProgress(string message, int count, bool isCompleted = false)

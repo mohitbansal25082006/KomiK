@@ -267,10 +267,29 @@ public sealed class LibraryRepository : ILibraryRepository
                     PRIMARY KEY(series_id, comic_id),
                     FOREIGN KEY(series_id) REFERENCES ManualSeries(id) ON DELETE CASCADE
                 );
+
+                CREATE TABLE IF NOT EXISTS RemovedComics (
+                    file_path TEXT PRIMARY KEY COLLATE NOCASE,
+                    title TEXT,
+                    date_removed TEXT NOT NULL
+                );
             ";
 
 
             await cmd.ExecuteNonQueryAsync();
+
+            // v1.1.0: Komik opens in the light theme by default. Libraries still on "follow Windows" switch once;
+            // choosing Dark or System again in Settings sticks.
+            using (var themeMigration = conn.CreateCommand())
+            {
+                themeMigration.CommandText = "INSERT OR IGNORE INTO AppSettings (key, value) VALUES ('migration.light_default', '1');";
+                if (await themeMigration.ExecuteNonQueryAsync() > 0)
+                {
+                    using var setLight = conn.CreateCommand();
+                    setLight.CommandText = "UPDATE AppSettings SET value = 'Light' WHERE key = 'Theme' AND value = 'Default';";
+                    await setLight.ExecuteNonQueryAsync();
+                }
+            }
 
             // v1.1.0: manual series remember their section (story / creator), auto-update and the group they came from.
             var manualColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -597,6 +616,14 @@ public sealed class LibraryRepository : ILibraryRepository
 
         long id = Convert.ToInt64(await cmd.ExecuteScalarAsync());
         comic.Id = id;
+
+        // Adding a comic again brings it back for good: forget that it was removed.
+        using (var forget = conn.CreateCommand())
+        {
+            forget.CommandText = "DELETE FROM RemovedComics WHERE file_path = @file_path;";
+            forget.Parameters.AddWithValue("@file_path", comic.FilePath);
+            await forget.ExecuteNonQueryAsync();
+        }
         return id;
     }
 
@@ -669,9 +696,48 @@ public sealed class LibraryRepository : ILibraryRepository
         using var conn = CreateConnection();
         await conn.OpenAsync();
 
+        await RememberRemovedComicAsync(conn, comicId);
         using var cmd = conn.CreateCommand();
         cmd.CommandText = "DELETE FROM Comics WHERE id = @id;";
         cmd.Parameters.AddWithValue("@id", comicId);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>Rescans skip comics the user removed; Settings lists them so they can be added back.</summary>
+    private static async Task RememberRemovedComicAsync(SqliteConnection conn, long comicId)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            INSERT INTO RemovedComics (file_path, title, date_removed)
+            SELECT file_path, title, @now FROM Comics WHERE id = @id
+            ON CONFLICT(file_path) DO UPDATE SET title = excluded.title, date_removed = excluded.date_removed;
+        ";
+        cmd.Parameters.AddWithValue("@id", comicId);
+        cmd.Parameters.AddWithValue("@now", DateTime.UtcNow.ToString("O"));
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task<HashSet<string>> GetRemovedComicPathsAsync()
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT file_path FROM RemovedComics;";
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync()) set.Add(reader.GetString(0));
+        return set;
+    }
+
+    public async Task ForgetRemovedComicAsync(string filePath)
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "DELETE FROM RemovedComics WHERE file_path = @path;";
+        cmd.Parameters.AddWithValue("@path", filePath);
         await cmd.ExecuteNonQueryAsync();
     }
 
@@ -886,9 +952,80 @@ public sealed class LibraryRepository : ILibraryRepository
         await conn.OpenAsync();
 
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "DELETE FROM Tags WHERE name = @name;";
+        cmd.CommandText = "DELETE FROM ComicTags WHERE tag_id IN (SELECT id FROM Tags WHERE name = @name); DELETE FROM Tags WHERE name = @name;";
         cmd.Parameters.AddWithValue("@name", trimmed);
         await cmd.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>Every tag with how many comics use it (unused tags included), in one query.</summary>
+    public async Task<IReadOnlyDictionary<string, int>> GetTagUsageAsync()
+    {
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT t.name, COUNT(c.id)
+            FROM Tags t
+            LEFT JOIN ComicTags ct ON ct.tag_id = t.id
+            LEFT JOIN Comics c ON c.id = ct.comic_id
+            GROUP BY t.id
+            ORDER BY t.id ASC;
+        ";
+        var result = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync()) result[reader.GetString(0)] = reader.GetInt32(1);
+        return result;
+    }
+
+    /// <summary>Renames a tag; renaming onto an existing tag merges the two.</summary>
+    public async Task RenameTagAsync(string oldName, string newName)
+    {
+        string from = oldName.Trim(), to = newName.Trim();
+        if (from.Length == 0 || to.Length == 0 || from == to) return;
+
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+        using var trans = conn.BeginTransaction();
+
+        long? fromId = null, toId = null;
+        using (var find = conn.CreateCommand())
+        {
+            find.Transaction = trans;
+            find.CommandText = "SELECT id, name FROM Tags WHERE name = @a OR name = @b;";
+            find.Parameters.AddWithValue("@a", from);
+            find.Parameters.AddWithValue("@b", to);
+            using var reader = await find.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                string n = reader.GetString(1);
+                if (string.Equals(n, from, StringComparison.OrdinalIgnoreCase)) fromId = reader.GetInt64(0);
+                if (string.Equals(n, to, StringComparison.OrdinalIgnoreCase)) toId = reader.GetInt64(0);
+            }
+        }
+        if (fromId == null) { await trans.RollbackAsync(); return; }
+
+        using var cmd = conn.CreateCommand();
+        cmd.Transaction = trans;
+        if (toId == null || toId == fromId)
+        {
+            // Plain rename (also fixes capitalisation).
+            cmd.CommandText = "UPDATE Tags SET name = @to WHERE id = @from;";
+        }
+        else
+        {
+            cmd.CommandText = @"
+                INSERT OR IGNORE INTO ComicTags (comic_id, tag_id) SELECT comic_id, @toId FROM ComicTags WHERE tag_id = @from;
+                DELETE FROM ComicTags WHERE tag_id = @from;
+                DELETE FROM Tags WHERE id = @from;
+            ";
+            cmd.Parameters.AddWithValue("@toId", toId.Value);
+        }
+        cmd.Parameters.AddWithValue("@to", to);
+        cmd.Parameters.AddWithValue("@from", fromId.Value);
+        await cmd.ExecuteNonQueryAsync();
+        await trans.CommitAsync();
     }
 
     public async Task<int> GetComicCountForTagAsync(string tagName)
@@ -1765,6 +1902,7 @@ public sealed class LibraryRepository : ILibraryRepository
         if (dict.TryGetValue(nameof(AppSettings.Theme), out var theme)) settings.Theme = theme;
         if (dict.TryGetValue(nameof(AppSettings.DefaultFitMode), out var fit)) settings.DefaultFitMode = fit;
         if (dict.TryGetValue(nameof(AppSettings.DefaultReadingDirection), out var dir)) settings.DefaultReadingDirection = dir;
+        if (dict.TryGetValue(nameof(AppSettings.DefaultReaderViewMode), out var readerView)) settings.DefaultReaderViewMode = readerView;
         if (dict.TryGetValue(nameof(AppSettings.DefaultViewMode), out var view)) settings.DefaultViewMode = view;
         if (dict.TryGetValue(nameof(AppSettings.DefaultSortOption), out var sort) && int.TryParse(sort, out int s)) settings.DefaultSortOption = s;
         if (dict.TryGetValue(nameof(AppSettings.DefaultBrightness), out var bright) && double.TryParse(bright, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double b)) settings.DefaultBrightness = b;
@@ -1787,6 +1925,7 @@ public sealed class LibraryRepository : ILibraryRepository
         await SetSettingAsync(nameof(AppSettings.Theme), settings.Theme);
         await SetSettingAsync(nameof(AppSettings.DefaultFitMode), settings.DefaultFitMode);
         await SetSettingAsync(nameof(AppSettings.DefaultReadingDirection), settings.DefaultReadingDirection);
+        await SetSettingAsync(nameof(AppSettings.DefaultReaderViewMode), settings.DefaultReaderViewMode);
         await SetSettingAsync(nameof(AppSettings.DefaultViewMode), settings.DefaultViewMode);
         await SetSettingAsync(nameof(AppSettings.DefaultSortOption), settings.DefaultSortOption.ToString());
         await SetSettingAsync(nameof(AppSettings.DefaultBrightness), settings.DefaultBrightness.ToString(System.Globalization.CultureInfo.InvariantCulture));
@@ -1879,7 +2018,38 @@ public sealed class LibraryRepository : ILibraryRepository
 
         var comics = await GetComicsAsync();
         var metadata = await GetAllComicMetadataAsync();
-        return ReadingStatsCalculator.Calculate(sessions, comics, metadata, DateTime.UtcNow);
+
+        // Top series follow the Series screen: same grouping, manual series and hidden series included.
+        Dictionary<long, SeriesMembership>? membership = null;
+        try
+        {
+            var manual = await GetManualSeriesAsync();
+            var watched = await GetWatchedFoldersAsync();
+            var ignored = new HashSet<string>(StringComparer.Ordinal);
+            string? ignoredJson = await GetSettingAsync("series.ignored_keys");
+            if (!string.IsNullOrWhiteSpace(ignoredJson))
+            {
+                foreach (var k in System.Text.Json.JsonSerializer.Deserialize<List<string>>(ignoredJson) ?? new List<string>()) ignored.Add(k);
+            }
+            var detection = new SeriesDetectionService().DetectAll(comics, metadata, manual, new SeriesDetectionOptions
+            {
+                IgnoredSeriesKeys = ignored,
+                RootFolders = watched.Select(w => w.Path).ToList()
+            });
+            membership = new Dictionary<long, SeriesMembership>();
+            foreach (var group in detection.Series)
+            {
+                var info = new SeriesMembership(group.SeriesKey, group.SeriesName, group.Issues.Count);
+                foreach (var issue in group.Issues) membership.TryAdd(issue.Id, info);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LibraryRepository] Series grouping for stats failed: {ex.Message}");
+            membership = null;
+        }
+
+        return ReadingStatsCalculator.Calculate(sessions, comics, metadata, DateTime.UtcNow, null, membership);
     }
 
     #endregion
@@ -1956,27 +2126,21 @@ public sealed class LibraryRepository : ILibraryRepository
             filePath = res?.ToString();
         }
 
+        // The file goes first: if Windows can't delete it, the comic stays in the library instead of silently vanishing.
+        if (deleteFileFromDisk && !string.IsNullOrWhiteSpace(filePath) && (File.Exists(filePath) || Directory.Exists(filePath)))
+        {
+            await FileDeletion.DeleteToRecycleBinAsync(filePath);
+        }
+        else if (!deleteFileFromDisk)
+        {
+            await RememberRemovedComicAsync(conn, comicId);
+        }
+
         using (var cmd = conn.CreateCommand())
         {
             cmd.CommandText = "DELETE FROM Comics WHERE id = @id;";
             cmd.Parameters.AddWithValue("@id", comicId);
             await cmd.ExecuteNonQueryAsync();
-        }
-
-        if (deleteFileFromDisk && !string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
-        {
-            try
-            {
-                // Recycle Bin rather than a permanent delete, so a mistaken duplicate cleanup can be undone.
-                Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(
-                    filePath,
-                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[LibraryRepository] Failed to delete file {filePath}: {ex.Message}");
-            }
         }
     }
 
@@ -2321,6 +2485,39 @@ public sealed class LibraryRepository : ILibraryRepository
         cmd.Parameters.AddWithValue("@auto", autoUpdate ? 1 : 0);
         cmd.Parameters.AddWithValue("@kind", section == SeriesSection.Creator ? "creator" : "story");
         await cmd.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>Renames a manual series (names stay unique: a clash becomes "Name (2)") and returns the saved name.</summary>
+    public async Task<string> RenameManualSeriesAsync(long seriesId, string name)
+    {
+        string trimmed = name.Trim();
+        if (string.IsNullOrEmpty(trimmed)) throw new ArgumentException("Series name cannot be empty", nameof(name));
+
+        await InitializeAsync();
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var check = conn.CreateCommand())
+        {
+            check.CommandText = "SELECT name FROM ManualSeries WHERE id <> @sid;";
+            check.Parameters.AddWithValue("@sid", seriesId);
+            using var reader = await check.ExecuteReaderAsync();
+            while (await reader.ReadAsync()) taken.Add(reader.GetString(0));
+        }
+
+        string baseName = trimmed;
+        for (int n = 2; taken.Contains(trimmed); n++)
+        {
+            trimmed = $"{baseName} ({n})";
+        }
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE ManualSeries SET name = @name WHERE id = @sid;";
+        cmd.Parameters.AddWithValue("@name", trimmed);
+        cmd.Parameters.AddWithValue("@sid", seriesId);
+        await cmd.ExecuteNonQueryAsync();
+        return trimmed;
     }
 
     public async Task SetManualSeriesOrderAsync(long seriesId, IReadOnlyList<long> orderedComicIds)

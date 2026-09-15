@@ -38,11 +38,45 @@ public sealed class SeriesReadingStat
     public double Share { get; set; } // 0..1 of the top entry
     public string? CoverThumbnailPath { get; set; }
 
+    /// <summary>How many comics the series has in the library (1 for a standalone book).</summary>
+    public int TotalIssues { get; set; } = 1;
+    public bool IsSeries { get; set; }
+    public DateTime LastReadUtc { get; set; }
+
     public string FormattedPagesRead => $"{PagesRead:N0} pages";
     public string FormattedDuration => ReadingStatsSummary.FormatDuration(DurationSeconds > 0 ? DurationSeconds : DurationMinutes * 60);
     public string FormattedIssues => (IssuesRead == 1 ? "1 issue read" : $"{IssuesRead} issues read") + (IssuesCompleted > 0 ? $" · {IssuesCompleted} finished" : string.Empty);
     public string RankDisplay => $"#{Rank}";
     public double ShareBarWidth => Math.Max(4, Share * 180);
+
+    public string KindLabel => IsSeries ? "SERIES" : "ONE BOOK";
+    public string BooksDisplay => IsSeries
+        ? $"Opened {IssuesRead} of {TotalIssues} · finished {IssuesCompleted}"
+        : IssuesCompleted > 0 ? "Finished" : "Still reading";
+    /// <summary>Pages of the whole series (or book) you have read, from each comic's saved position.</summary>
+    public int SeriesPagesRead { get; set; }
+    public int SeriesTotalPages { get; set; }
+
+    public double SeriesCompletion => SeriesTotalPages > 0
+        ? Math.Clamp((double)SeriesPagesRead / SeriesTotalPages, 0, 1)
+        : TotalIssues <= 0 ? 0 : Math.Clamp((double)IssuesCompleted / TotalIssues, 0, 1);
+
+    public string SeriesCompletionDisplay
+    {
+        get
+        {
+            double percent = SeriesCompletion * 100;
+            // Never round a started series down to 0% or an unfinished one up to 100%.
+            if (percent > 0 && percent < 1) return "<1% read";
+            if (percent > 99 && percent < 100) return "99% read";
+            return $"{Math.Round(percent)}% read";
+        }
+    }
+
+    public string SeriesPagesDisplay => SeriesTotalPages > 0 ? $"{SeriesPagesRead:N0} of {SeriesTotalPages:N0} pages" : string.Empty;
+    public string ShareDisplay => Rank == 1 ? "Most read" : $"{Math.Round(Share * 100)}% of #1";
+    public string LastReadDisplay => LastReadUtc == DateTime.MinValue ? string.Empty : "Last read " + ReadingStatsSummary.FormatRelative(LastReadUtc);
+    public string ToolTipText => $"{SeriesName}: {PagesRead:N0} pages over {FormattedDuration} of reading. {BooksDisplay}.";
 }
 
 public sealed class RecentlyReadComic

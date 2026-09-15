@@ -12,7 +12,7 @@
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid x:Name="WindowRoot">
+    <Grid x:Name="WindowRoot" RequestedTheme="Light">
         <Grid.Resources>
             <Storyboard x:Name="FullscreenHintShow">
                 <DoubleAnimation Storyboard.TargetName="FullscreenHint" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.22" />
