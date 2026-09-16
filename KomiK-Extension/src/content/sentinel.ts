@@ -1,9 +1,8 @@
-// Always-on, lightweight content script. It only counts likely comic pages and comic file links so the
-// toolbar badge and the floating crest button can appear; the full scanner is injected on demand.
+// Always-on, lightweight content script. It only counts likely comic pages so the toolbar badge and the
+// floating crest button can appear; the full scanner is injected on demand.
 import { envelope, isEnvelope } from "@/shared/messages";
 import { normalizeSettings } from "@/shared/settings";
 import type { Settings } from "@/shared/types";
-import { COMIC_FILE_EXTENSIONS, extOf } from "@/shared/util";
 import { CREST_SVG, ensureShadow, showToast } from "./ui";
 
 declare global {
@@ -23,7 +22,7 @@ declare global {
 
   const LAZY = "img[data-src], img[data-lazy-src], img[data-original], img[data-srcset]";
 
-  function measure(): { count: number; files: number } {
+  function measure(): { count: number } {
     let count = 0;
     for (const img of Array.from(document.images)) {
       if (img.closest("header, footer, nav")) continue;
@@ -32,15 +31,11 @@ declare global {
       if (w >= 380 && h >= 380) count++;
     }
     count += document.querySelectorAll(LAZY).length > 3 ? Math.floor(document.querySelectorAll(LAZY).length / 2) : 0;
-    let files = 0;
-    for (const a of Array.from(document.querySelectorAll("a[href]")).slice(0, 4000)) {
-      if (COMIC_FILE_EXTENSIONS.includes(extOf((a as HTMLAnchorElement).href))) files++;
-    }
-    return { count, files };
+    return { count };
   }
 
-  function renderFab(count: number, files: number) {
-    const show = settings.floatingButton && dismissedFor !== location.href && (count >= 4 || files > 0);
+  function renderFab(count: number) {
+    const show = settings.floatingButton && dismissedFor !== location.href && count >= 4;
     if (!show) {
       fab?.remove();
       fab = null;
@@ -56,7 +51,7 @@ declare global {
       fab.addEventListener("click", (e) => {
         if ((e.target as HTMLElement).classList.contains("close")) {
           dismissedFor = location.href;
-          renderFab(0, 0);
+          renderFab(0);
           return;
         }
         chrome.runtime
@@ -69,17 +64,17 @@ declare global {
       root.appendChild(fab);
     }
     const label = fab.querySelector(".count") as HTMLElement;
-    label.textContent = count >= 4 ? String(Math.min(count, 999)) : "FILE";
+    label.textContent = String(Math.min(count, 999));
   }
 
   function update() {
-    const { count, files } = measure();
-    renderFab(count, files);
-    const key = `${location.href}|${count}|${files}`;
+    const { count } = measure();
+    renderFab(count);
+    const key = `${location.href}|${count}`;
     if (key === lastKey) return;
     lastKey = key;
     chrome.runtime
-      .sendMessage(envelope("page-hint", { count, files, url: location.href, title: document.title }, "background"))
+      .sendMessage(envelope("page-hint", { count, url: location.href, title: document.title }, "background"))
       .catch(() => undefined);
   }
 

@@ -3,13 +3,14 @@
 import { scanDocument } from "@/engine/scan";
 import { deleteJob, deletePages, getJob, getJobs, getPage, putHistory, putJob, putPage } from "@/shared/db";
 import { broadcast, listen, send, type JobAction } from "@/shared/messages";
+import { parsePageHtml } from "@/shared/html";
 import { pageFileName, planSave } from "@/shared/naming";
 import type { DetectResult, Job, JobsSnapshot, Settings } from "@/shared/types";
 import { uid } from "@/shared/util";
 import { applyPreviewRule, derivePreviewRule } from "@/engine/detect/quality";
 import { fetchPage, readerPageImage } from "./fetcher";
 import { ConnectionLimiter, SpeedMeter } from "./limiter";
-import { buildPdf, buildZip, comicInfoFor, coverThumbnail, repackArchive, retagPdf, type PackPage } from "./pack";
+import { buildPdf, buildZip, comicInfoFor, coverThumbnail, type PackPage } from "./pack";
 import { saveFile, saveFolder } from "./save";
 
 const ACTIVE = new Set<Job["status"]>(["resolving", "downloading", "packing", "saving"]);
@@ -110,8 +111,7 @@ async function runJob(job: Job, signal: AbortSignal) {
   meters.set(job.id, meter);
   job.error = undefined;
   try {
-    if (job.file) await runFileJob(job, s, meter, signal);
-    else await runPagesJob(job, s, meter, signal);
+    await runPagesJob(job, s, meter, signal);
   } catch (err) {
     if (signal.aborted) return; // paused or cancelled: the action already set the status
     job.status = "error";
@@ -130,14 +130,14 @@ async function resolveChapter(job: Job, s: Settings, signal: AbortSignal) {
     const res = await fetch(job.chapterUrl, { credentials: "include", signal });
     if (res.ok) {
       const html = await res.text();
-      const doc = new DOMParser().parseFromString(html, "text/html");
+      const doc = parsePageHtml(html, res.url || job.chapterUrl);
       result = scanDocument(doc, { url: res.url || job.chapterUrl, live: false, rules: s.siteRules, minPageWidth: 0 });
       // "One page per URL" readers: visit each reader page and take its main image.
       if (result.pages.length <= 2 && result.pagination.length >= 3) {
         const pages = await Promise.all(
           result.pagination.map(async (pageUrl) => {
             const r = await fetch(pageUrl, { credentials: "include", signal });
-            const d = new DOMParser().parseFromString(await r.text(), "text/html");
+            const d = parsePageHtml(await r.text(), pageUrl);
             return scanDocument(d, { url: pageUrl, live: false, rules: s.siteRules, minPageWidth: 0 }).pages[0];
           })
         );
@@ -277,64 +277,6 @@ async function runPagesJob(job: Job, s: Settings, meter: SpeedMeter, signal: Abo
   await complete(job, saved, packPages[coverPosition]?.data, packPages.length);
 }
 
-async function runFileJob(job: Job, s: Settings, meter: SpeedMeter, signal: AbortSignal) {
-  const file = job.file!;
-  job.status = "downloading";
-  touch(job, true);
-
-  const res = await fetch(file.url, { credentials: "include", signal });
-  if (!res.ok) throw new Error(`The site answered HTTP ${res.status} for ${file.name}.`);
-  const total = Number.parseInt(res.headers.get("content-length") ?? "0", 10);
-  job.totalBytes = total;
-  const reader = res.body!.getReader();
-  const chunks: Uint8Array[] = [];
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    job.doneBytes += value.length;
-    meter.add(value.length);
-    globalMeter.add(value.length);
-    touch(job);
-  }
-  const blobIn = new Blob(chunks as BlobPart[]);
-  const head = new Uint8Array(await blobIn.slice(0, 8).arrayBuffer());
-  if (head[0] === 0x3c) throw new Error("The link returned a web page instead of the file. Download it from the page once, then try again.");
-
-  job.status = "packing";
-  touch(job, true);
-  const ext = file.ext.toLowerCase();
-  let blob: Blob = blobIn;
-  let pages = 0;
-  let outExt = ext;
-  const isZip = head[0] === 0x50 && head[1] === 0x4b;
-  if ((ext === "cbz" || ext === "zip") && isZip) {
-    try {
-      const repacked = await repackArchive(await blobIn.arrayBuffer(), job.meta, job.sourceUrl);
-      blob = repacked.blob;
-      pages = repacked.pages;
-      outExt = job.format === "zip" ? "zip" : "cbz";
-    } catch (err) {
-      job.warnings.push(`Saved as-is: the archive could not be opened to add metadata (${err instanceof Error ? err.message : err}).`);
-    }
-  } else if (ext === "pdf") {
-    try {
-      blob = await retagPdf(await blobIn.arrayBuffer(), job.meta);
-    } catch {
-      job.warnings.push("Saved as-is: this PDF's details could not be updated.");
-    }
-  } else {
-    job.warnings.push(`${ext.toUpperCase()} files can't be rewritten in the browser, so the details are only kept in KomiK history.`);
-  }
-
-  job.status = "saving";
-  touch(job, true);
-  const plan = planSave(job.meta, "cbz", s);
-  const fileName = plan.fileName.replace(/\.cbz$/i, `.${outExt}`);
-  const saved = await saveFile(plan.folder, fileName, blob, s);
-  job.totalBytes = blob.size;
-  await complete(job, saved, undefined, pages);
-}
 
 async function complete(job: Job, saved: { path: string; downloadId?: number; warning?: string }, coverData: ArrayBuffer | undefined, pageCount: number) {
   if (saved.warning) job.warnings.push(saved.warning);
@@ -349,7 +291,7 @@ async function complete(job: Job, saved: { path: string; downloadId?: number; wa
     id: uid("hist-"),
     title: job.meta.title,
     series: job.meta.series,
-    format: job.file ? ((job.file.ext as Job["format"]) ?? "cbz") : job.format,
+    format: job.format,
     pages: pageCount,
     bytes: job.totalBytes || job.doneBytes,
     sourceUrl: job.chapterUrl || job.sourceUrl,

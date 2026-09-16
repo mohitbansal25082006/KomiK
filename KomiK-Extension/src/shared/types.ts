@@ -59,15 +59,6 @@ export interface ChapterRef {
   date?: string;
 }
 
-export interface FileLink {
-  url: string;
-  name: string;
-  ext: string;
-  /** Text of the link or button that pointed at it. */
-  label: string;
-  size?: number;
-}
-
 export interface DetectResult {
   url: string;
   pageTitle: string;
@@ -76,7 +67,6 @@ export interface DetectResult {
   confidence: Confidence;
   pages: PageRef[];
   chapters: ChapterRef[];
-  files: FileLink[];
   meta: ComicMeta;
   /** Reader pages that each show one image ("page 1 of 20" readers). */
   pagination: string[];
@@ -109,8 +99,6 @@ export interface Job {
   tabId?: number;
   pages: JobPage[];
   coverIndex: number;
-  /** For direct file downloads (a site's own CBZ/PDF): the file to fetch. */
-  file?: FileLink;
   totalBytes: number;
   doneBytes: number;
   speedBps: number;
@@ -184,9 +172,6 @@ export interface Settings {
   autoScroll: boolean;
   floatingButton: boolean;
   showBadge: boolean;
-  // Site downloads
-  catchComicDownloads: boolean;
-  embedIntoCaughtDownloads: boolean;
   // Appearance
   theme: ThemePreference;
   sounds: boolean;

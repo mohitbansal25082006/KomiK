@@ -25,7 +25,6 @@ export async function queueJobs(requests: JobRequest[]): Promise<string[]> {
       tabId: req.tabId,
       pages: req.pages.map((p, index) => ({ ...p, index, done: false })),
       coverIndex: Math.min(Math.max(0, req.coverIndex ?? 0), Math.max(0, req.pages.length - 1)),
-      file: req.file,
       totalBytes: 0,
       doneBytes: 0,
       speedBps: 0,
@@ -60,17 +59,12 @@ export async function queueChapters(base: DetectResult, editedMeta: ComicMeta, c
 }
 
 /** One-click download with default settings (keyboard shortcut, context menu). */
-export async function quickDownload(result: DetectResult, tabId?: number): Promise<{ ids: string[]; kind: "pages" | "file" | "chapters" | "none" }> {
+export async function quickDownload(result: DetectResult, tabId?: number): Promise<{ ids: string[]; kind: "pages" | "chapters" | "none" }> {
   const settings = await loadSettings();
   const meta = await applySeriesMemory(result.meta);
   if (result.pages.length >= 1) {
     const ids = await queueJobs([{ meta, format: settings.defaultFormat, pages: result.pages, sourceUrl: result.url, tabId }]);
     return { ids, kind: "pages" };
-  }
-  if (result.files.length) {
-    const file = result.files.find((f) => ["cbz", "zip", "pdf"].includes(f.ext)) ?? result.files[0];
-    const ids = await queueJobs([{ meta, format: settings.defaultFormat, pages: [], sourceUrl: result.url, tabId, file }]);
-    return { ids, kind: "file" };
   }
   return { ids: [], kind: "none" };
 }

@@ -1,7 +1,7 @@
 // Reads a comic's details from its web page: schema.org JSON-LD, OpenGraph / meta tags, labelled fields
 // ("Author:", "Genres:", "Released:"), tag and genre links, breadcrumbs and the page title.
 import { cleanTitleNoise, composeTitle, formatNumber, parseIdentity } from "@/shared/identity";
-import { splitPeople } from "@/shared/tags";
+import { splitPeople, stripTrailingCount } from "@/shared/tags";
 import type { ComicMeta } from "@/shared/types";
 import { absoluteUrl, cleanText, emptyMeta, hostOf } from "@/shared/util";
 
@@ -58,7 +58,7 @@ const LABELS: Array<[Field, RegExp]> = [
   ["genres", /^(?:genre|genres|género|géneros|genre\(s\)|categories|category|kategori)$/i],
   ["tags", /^(?:tags?|themes?|keywords?|demographic)$/i],
   ["publisher", /^(?:publisher|publishers|serialization|serialized in|magazine|imprint|studio)$/i],
-  ["released", /^(?:released|release|release date|year|published|publication|date|first published|start date|posted on|updated on)$/i],
+  ["released", /^(?:released|release|release date|year|published|publication|date|first published|start date|posted on|posted|updated on|uploaded|upload date|added on|added)$/i],
   ["status", /^(?:status|publication status|scan status|comic status)$/i],
   ["type", /^(?:type|format|comic type)$/i],
   ["alt", /^(?:alternative|alternative titles?|alt(?:ernate)? names?|other names?|synonyms?|associated names?)$/i],
@@ -130,7 +130,11 @@ function readLabelledFields(root: ParentNode): Map<Field, LabelValue> {
 
 function tagLinks(doc: Document): string[] {
   const out: string[] = [];
-  doc.querySelectorAll('a[rel~="tag"], a[href*="/genre/"], a[href*="/genres/"], a[href*="/genre?"], a[href*="genre="], a[href*="/tag/"], a[href*="/tags/"], a[href*="/category/"], a[href*="/theme/"]').forEach((a) => {
+  // Gallery sites spread their tags over several rows: Tags, Parodies, Characters, Groups, Categories.
+  // All of them describe the comic, so all of them become tags.
+  doc.querySelectorAll(
+    'a[rel~="tag"], a[href*="/genre/"], a[href*="/genres/"], a[href*="/genre?"], a[href*="genre="], a[href*="/tag/"], a[href*="/tags/"], a[href*="/category/"], a[href*="/categories/"], a[href*="/theme/"], a[href*="/parody/"], a[href*="/parodies/"], a[href*="/character/"], a[href*="/characters/"], a[href*="/group/"], a[href*="/groups/"], a[href*="/collection/"], a[href*="/franchise/"]'
+  ).forEach((a) => {
     if (a.closest("header, footer, nav, aside, [class*=menu], [class*=sidebar], [class*=widget], [id*=menu]")) return;
     const text = cleanText(a.textContent);
     if (text && text.length <= 40) out.push(text);
@@ -138,11 +142,38 @@ function tagLinks(doc: Document): string[] {
   return out;
 }
 
+const EMPTY_DATE = { year: "", month: "", day: "" };
+
+/**
+ * Gallery sites usually print an age instead of a date ("5 years 6 months ago", "3 weeks ago"), so the
+ * release date is counted back from today. Returns null when the text isn't an age.
+ */
+function ageToDate(value: string, now = new Date()): { year: string; month: string; day: string } | null {
+  const units = Array.from(value.matchAll(/(\d+)\s*(year|month|week|day|hour|minute|second)s?/gi));
+  if (!units.length || !/\bago\b|^\s*\d/i.test(value)) return null;
+
+  const date = new Date(now.getTime());
+  for (const [, amount, unit] of units) {
+    const n = Number.parseInt(amount, 10);
+    if (!Number.isFinite(n)) continue;
+    switch (unit.toLowerCase()) {
+      case "year": date.setFullYear(date.getFullYear() - n); break;
+      case "month": date.setMonth(date.getMonth() - n); break;
+      case "week": date.setDate(date.getDate() - n * 7); break;
+      case "day": date.setDate(date.getDate() - n); break;
+      default: break; // hours and minutes don't change the date worth recording
+    }
+  }
+  return { year: String(date.getFullYear()), month: String(date.getMonth() + 1), day: String(date.getDate()) };
+}
+
 function dateParts(value: string): { year: string; month: string; day: string } {
   const iso = /((?:19|20)\d{2})-(\d{1,2})(?:-(\d{1,2}))?/.exec(value);
   if (iso) return { year: iso[1], month: String(+iso[2]), day: iso[3] ? String(+iso[3]) : "" };
+  const relative = ageToDate(value);
+  if (relative) return relative;
   const year = /\b((?:19|20)\d{2})\b/.exec(value);
-  if (!year) return { year: "", month: "", day: "" };
+  if (!year) return EMPTY_DATE;
   const parsed = Date.parse(value);
   if (!Number.isNaN(parsed) && /[a-z]{3}/i.test(value)) {
     const d = new Date(parsed);
@@ -232,10 +263,16 @@ export function scrapeMetadata(doc: Document, options: ScrapeOptions): ComicMeta
   // ── Tags & genres ──
   const ldGenres = asArray(work.genre as unknown[]).map(nameOf);
   const ldKeywords = typeof work.keywords === "string" ? (work.keywords as string).split(",") : asArray(work.keywords as unknown[]).map(nameOf);
-  m.genres = [...ldGenres, ...pick("genres")].flatMap((g) => g.split(/\s*,\s*/)).map(cleanText).filter(Boolean);
+  // Thousands separators are removed first so "school life 8,102" isn't split down the middle.
+  m.genres = [...ldGenres, ...pick("genres")]
+    .flatMap((g) => g.replace(/(\d),(?=\d{3}\b)/g, "$1").split(/\s*,\s*/))
+    .map((g) => stripTrailingCount(cleanText(g)))
+    .filter(Boolean);
   const keywordMeta = meta(doc, "keywords");
   const keywordList = keywordMeta && keywordMeta.split(",").length <= 15 ? keywordMeta.split(",") : [];
-  m.tags = [...ldKeywords, ...pick("tags"), ...tagLinks(doc), ...keywordList].map(cleanText).filter(Boolean);
+  m.tags = [...ldKeywords, ...pick("tags"), ...tagLinks(doc), ...keywordList]
+    .map((t) => stripTrailingCount(cleanText(t)))
+    .filter(Boolean);
 
   m.status = labelled.get("status")?.text.slice(0, 40) ?? "";
   m.language = (doc.documentElement.getAttribute("lang") || meta(doc, "og:locale") || String(work.inLanguage ?? "")).split(/[-_]/)[0].toLowerCase().slice(0, 3);

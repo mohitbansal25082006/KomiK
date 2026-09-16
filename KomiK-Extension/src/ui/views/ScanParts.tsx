@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
-import type { ChapterRef, FileLink, PageRef } from "@/shared/types";
-import { formatBytes } from "@/shared/util";
+import type { ChapterRef, PageRef } from "@/shared/types";
 import { Button, Sticker } from "../components/Controls";
 import { Icon } from "../components/Icon";
 import { RemoteImage } from "../components/RemoteImage";
@@ -140,20 +139,3 @@ export function ChapterList({ chapters, selected, onChange }: { chapters: Chapte
   );
 }
 
-export function FileList({ files, onSave }: { files: FileLink[]; onSave: (f: FileLink) => void }) {
-  return (
-    <div className="space-y-2">
-      <p className="text-[12.5px] leading-snug text-muted">This site offers its own comic files. KomiK saves them into your KomiK folder with a proper name, and adds the details to CBZ, ZIP and PDF files.</p>
-      {files.map((f) => (
-        <div key={f.url} className="panel-flat flex items-center gap-2.5 p-2">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[5px] border-2 border-gutter bg-orange font-bangers text-[13px] text-gutter">{f.ext.toUpperCase()}</span>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[13px] font-bold" title={f.name}>{f.name}</div>
-            <div className="truncate text-[11px] text-muted">{[f.label, f.size ? formatBytes(f.size) : ""].filter(Boolean).join(" · ")}</div>
-          </div>
-          <Button size="sm" tone="yellow" icon="download" onClick={() => onSave(f)}>Save</Button>
-        </div>
-      ))}
-    </div>
-  );
-}

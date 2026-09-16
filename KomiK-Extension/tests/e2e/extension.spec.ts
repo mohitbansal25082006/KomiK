@@ -20,6 +20,7 @@ let browser: Browser;
 let context: BrowserContext;
 let extensionId = "";
 let origin = "";
+let debugPort = 0;
 let closeServer: () => void;
 
 function freePort(): Promise<number> {
@@ -70,6 +71,10 @@ async function waitForJobs(ext: Page, ids: string[], timeout = 40_000) {
   }
 }
 
+function emptyMetaForTest() {
+  return { title: "", series: "", number: "", volume: "", chapterTitle: "", summary: "", year: "", month: "", day: "", writers: [], artists: [], publisher: "", genres: [], tags: [], language: "", manga: "", ageRating: "", status: "", web: "", site: "", coverUrl: "", numberKind: "none" };
+}
+
 function readCbz(path: string) {
   const files = unzipSync(new Uint8Array(readFileSync(path)));
   return { names: Object.keys(files), xml: strFromU8(files["ComicInfo.xml"] ?? new Uint8Array()) };
@@ -87,6 +92,7 @@ test.beforeAll(async () => {
   closeServer = () => fixture.server.close();
 
   const port = await freePort();
+  debugPort = port;
   chrome = spawn(chromium.executablePath(), [
     `--user-data-dir=${join(TMP, "profile")}`,
     `--remote-debugging-port=${port}`,
@@ -308,46 +314,87 @@ test("gallery whose full-size pages can't be guessed: the pattern is learned fro
   await ext.close();
 });
 
-test("site CBZ link: saved through KomiK with fresh ComicInfo.xml", async () => {
-  const url = `${origin}/files`;
-  const comic = await context.newPage();
-  await comic.goto(url);
+test("settings change what is saved: folder, file name, page numbering and tag limit", async () => {
   const ext = await extPage();
-  const tabId = await tabIdFor(ext, url);
-  const result = await message<{ files: Array<{ url: string; ext: string; name: string; label: string }>; meta: Record<string, unknown> }>(ext, "scan-tab", { tabId, force: true });
-  expect(result.files).toHaveLength(1);
-  const meta = { ...result.meta, tags: ["Night Life"], title: "Night Market Vol. 1", series: "Night Market", volume: "1" };
-  const { ids } = await message<{ ids: string[] }>(ext, "queue-jobs", { jobs: [{ meta, format: "cbz", pages: [], sourceUrl: url, tabId, file: result.files[0] }] });
-  await waitForJobs(ext, ids);
-  const file = join(DOWNLOADS, "KomiK", "Night Market", "Night Market Vol. 1.cbz");
-  expect(existsSync(file), `found ${walk(DOWNLOADS).join(", ")}`).toBe(true);
-  const { names, xml } = readCbz(file);
-  expect(names).toEqual(["001.png", "002.png", "ComicInfo.xml"]);
-  expect(xml).toContain("<Title>Night Market Vol. 1</Title>");
-  expect(xml).toContain("<Tags>Night Life</Tags>");
-  expect(xml).not.toContain("Old title");
-  await comic.close();
-  await ext.close();
+  const before = await ext.evaluate(async () => (await chrome.storage.local.get("settings")).settings);
+  try {
+    await ext.evaluate(async (current) => {
+      await chrome.storage.local.set({
+        settings: { ...(current as object), folderTemplate: "{site}/{series}", fileTemplate: "{series} - Ch {chapter}", padPages: 4, maxTags: 2, addSiteTag: false }
+      });
+    }, before);
+
+    const comic = await context.newPage();
+    await comic.goto(`${origin}/chapter/lazy`);
+    const tabId = await tabIdFor(ext, `${origin}/chapter/lazy`);
+    const result = await message<{ pages: Array<{ url: string }>; meta: Record<string, unknown> }>(ext, "scan-tab", { tabId, force: true });
+    const { ids } = await message<{ ids: string[] }>(ext, "queue-jobs", { jobs: [{ meta: result.meta, format: "cbz", pages: result.pages, sourceUrl: `${origin}/chapter/lazy`, tabId }] });
+    await waitForJobs(ext, ids);
+
+    const file = join(DOWNLOADS, "KomiK", "Fixture Comics", "Starlight Courier", "Starlight Courier - Ch 15.cbz");
+    expect(existsSync(file), `found ${walk(DOWNLOADS).join(", ")}`).toBe(true);
+    const { names, xml } = readCbz(file);
+    expect(names[0]).toBe("0001.png"); // padPages: 4
+    expect(xml).toContain("<Genre>Action, Sci-Fi</Genre>"); // maxTags: 2, filled by the genres
+    expect(xml).not.toContain("<Tags>");
+    await comic.close();
+  } finally {
+    await ext.evaluate(async (restore) => chrome.storage.local.set({ settings: restore }), before);
+    await ext.close();
+  }
 });
 
-test("clicking the site's own download button routes the file into the KomiK folder", async () => {
-  const comic = await context.newPage();
-  await comic.goto(`${origin}/files`);
-  const before = new Set(walk(DOWNLOADS));
-  await comic.getByText("Download CBZ").click();
-  let created: string[] = [];
-  for (let i = 0; i < 60 && !created.length; i++) {
-    await new Promise((r) => setTimeout(r, 250));
-    created = walk(DOWNLOADS).filter((f) => !before.has(f) && f.endsWith(".cbz"));
-  }
-  expect(created, `found ${walk(DOWNLOADS).join(", ")}`).toHaveLength(1);
-  expect(created[0].replace(/\\/g, "/")).toContain("/KomiK/");
-  await comic.close();
+/** Watches the engine's own console for anything the browser blocked. */
+async function watchEngineLog(): Promise<() => string[]> {
+  const targets = (await (await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json()) as Array<{ url: string; webSocketDebuggerUrl?: string }>;
+  const engine = targets.find((t) => t.url.endsWith("offscreen.html") && t.webSocketDebuggerUrl);
+  expect(engine, "the download engine should be running").toBeTruthy();
+  const socket = new WebSocket(engine!.webSocketDebuggerUrl!);
+  const lines: string[] = [];
+  await new Promise((done) => socket.addEventListener("open", done, { once: true }));
+  socket.addEventListener("message", (event) => {
+    const msg = JSON.parse(String(event.data)) as { method?: string; params?: { entry?: { text?: string }; args?: Array<{ value?: string }> } };
+    if (msg.method === "Log.entryAdded") lines.push(msg.params?.entry?.text ?? "");
+    if (msg.method === "Runtime.consoleAPICalled") lines.push((msg.params?.args ?? []).map((a) => a.value ?? "").join(" "));
+  });
+  socket.send(JSON.stringify({ id: 1, method: "Log.enable" }));
+  socket.send(JSON.stringify({ id: 2, method: "Runtime.enable" }));
+  return () => {
+    socket.close();
+    return lines;
+  };
+}
+
+test("reading a page full of scripts never asks the browser to load them", async () => {
+  const ext = await extPage();
+
+  // One job first, so the engine is running and can be listened to.
+  const warmMeta = { ...emptyMetaForTest(), title: "Warm Up", series: "Warm Up" };
+  const warm = await message<{ ids: string[] }>(ext, "queue-jobs", { jobs: [{ meta: warmMeta, format: "cbz", pages: [], sourceUrl: `${origin}/paper-moon/`, chapterUrl: `${origin}/paper-moon/chapter-1/` }] });
+  await waitForJobs(ext, warm.ids);
+
+  const readLog = await watchEngineLog();
+  const meta = { ...emptyMetaForTest(), title: "Quiet Harbor Ch. 4", series: "Quiet Harbor" };
+  const { ids } = await message<{ ids: string[] }>(ext, "queue-jobs", { jobs: [{ meta, format: "cbz", pages: [], sourceUrl: `${origin}/csp/chapter`, chapterUrl: `${origin}/csp/chapter` }] });
+  await waitForJobs(ext, ids);
+  await new Promise((r) => setTimeout(r, 1500));
+  const lines = readLog();
+
+  // The page's scripts, stylesheets and frames are never fetched…
+  const blocked = lines.filter((l) => /content security policy|refused to load|violates/i.test(l));
+  expect(blocked, `engine log: ${blocked.join(" | ")}`).toHaveLength(0);
+  // …while its pages still download normally.
+  const file = join(DOWNLOADS, "KomiK", "Quiet Harbor", "Quiet Harbor Ch. 4.cbz");
+  expect(existsSync(file), `found ${walk(DOWNLOADS).join(", ")}`).toBe(true);
+  expect(readCbz(file).names.filter((n) => n.endsWith(".png"))).toHaveLength(4);
+  await ext.close();
 });
 
 test("options and history pages render", async () => {
   const options = await extPage("options.html#welcome");
   await options.setViewportSize({ width: 1280, height: 900 });
+  // Paper (light) is the theme a fresh install starts in.
+  expect(await options.evaluate(() => document.documentElement.classList.contains("dark"))).toBe(false);
   await expect(options.getByText("Let's go!")).toBeVisible();
   await options.waitForTimeout(900);
   await options.screenshot({ path: join(SHOTS, "options-welcome.png") });

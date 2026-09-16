@@ -1,5 +1,4 @@
 export const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "avif", "bmp", "jfif", "tif", "tiff", "jxl", "heic"];
-export const COMIC_FILE_EXTENSIONS = ["cbz", "cbr", "cb7", "cbt", "zip", "rar", "7z", "pdf", "epub"];
 /** Formats the Komik reader opens directly (everything else gets converted). */
 export const KOMIK_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "jfif", "tif", "tiff"];
 

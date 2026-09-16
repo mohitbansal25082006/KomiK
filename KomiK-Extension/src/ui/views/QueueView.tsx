@@ -24,7 +24,6 @@ const STATUS: Record<Job["status"], { label: string; color: string }> = {
 
 function progressOf(job: Job): number {
   if (job.status === "done") return 1;
-  if (job.file) return job.totalBytes ? job.doneBytes / job.totalBytes : job.status === "packing" || job.status === "saving" ? 0.95 : 0.05;
   if (!job.pages.length) return 0;
   const pages = job.pages.filter((p) => p.done).length / job.pages.length;
   if (job.status === "packing") return 0.97;
@@ -55,7 +54,7 @@ export function JobCard({ job, compact }: { job: Job; compact?: boolean }) {
       <div className="flex gap-2.5 p-2.5">
         <div className="w-[46px] shrink-0">
           <div className="aspect-[2/3] overflow-hidden rounded-[3px] border-2 border-gutter bg-panel-card">
-            <RemoteImage src={job.meta.coverUrl || job.pages[0]?.url} referer={job.pages[0]?.referer ?? job.sourceUrl} className="h-full w-full object-cover" fallback={<Icon name={job.file ? "file" : "book"} size={18} className="text-muted" />} />
+            <RemoteImage src={job.meta.coverUrl || job.pages[0]?.url} referer={job.pages[0]?.referer ?? job.sourceUrl} className="h-full w-full object-cover" fallback={<Icon name="book" size={18} className="text-muted" />} />
           </div>
         </div>
         <div className="min-w-0 flex-1">
@@ -63,7 +62,7 @@ export function JobCard({ job, compact }: { job: Job; compact?: boolean }) {
             <div className="min-w-0 flex-1">
               <div className="truncate text-[13.5px] font-extrabold leading-tight" title={job.meta.title}>{job.meta.title}</div>
               <div className="truncate text-[11.5px] text-muted">
-                {job.file ? `${job.file.ext.toUpperCase()} file` : `${job.format.toUpperCase()}`}
+                {job.format.toUpperCase()}
                 {job.pages.length ? ` · ${done}/${job.pages.length} pages` : ""}
                 {job.doneBytes ? ` · ${formatBytes(job.doneBytes)}` : ""}
                 {active && job.speedBps ? ` · ${formatSpeed(job.speedBps)}` : ""}

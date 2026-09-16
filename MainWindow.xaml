@@ -41,8 +41,8 @@
                 <ColumnDefinition x:Name="CaptionButtonsColumn" Width="140" />
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8" Margin="0,0,10,0">
-                <Image Source="ms-appx:///Assets/Square44x44Logo.png" Width="18" Height="18" />
-                <TextBlock x:Name="TitleTextBlock" Text="Komik" VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                <Image Source="ms-appx:///Assets/Square44x44Logo.png" Width="30" Height="30" />
+                <TextBlock x:Name="TitleTextBlock" Text="Komik" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
             </StackPanel>
             <ContentPresenter x:Name="TitleBarHost" Grid.Column="1" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" />
         </Grid>

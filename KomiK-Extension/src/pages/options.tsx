@@ -347,7 +347,7 @@ function Options() {
               <Row label="Tag clean-up">
                 <Toggle checked={settings.cleanTags} onChange={(v) => update({ cleanTags: v })} label="Tidy the site's tags" hint={'Drops menu words like "Home" or "Read now", fixes capitals and merges duplicates.'} />
               </Row>
-              <Row label="Maximum tags" hint="Genres and tags together. 0 means no limit."><Range value={settings.maxTags} min={0} max={60} onChange={(v) => update({ maxTags: v })} /></Row>
+              <Row label="Maximum tags" hint="Genres and tags together. 0 means no limit."><Range value={settings.maxTags} min={0} max={100} onChange={(v) => update({ maxTags: v })} /></Row>
               <Row label="Site tag"><Toggle checked={settings.addSiteTag} onChange={(v) => update({ addSiteTag: v })} label="Add the website's name as a tag" /></Row>
               <Row label="Reading direction">
                 <Select value={settings.mangaDirection} onChange={(v) => update({ mangaDirection: v })} options={[{ id: "auto", label: "Detect from the site (manga → right to left)" }, { id: "rtl", label: "Always right to left" }, { id: "ltr", label: "Always left to right" }]} />
@@ -362,12 +362,6 @@ function Options() {
               <Row label="Smallest page width" hint="Images narrower than this are treated as icons or ads."><Range value={settings.minPageWidth} min={0} max={900} onChange={(v) => update({ minPageWidth: v })} suffix="px" /></Row>
               <Row label="Floating button"><Toggle checked={settings.floatingButton} onChange={(v) => update({ floatingButton: v })} label="Show the KomiK crest on pages with a comic" /></Row>
               <Row label="Toolbar badge"><Toggle checked={settings.showBadge} onChange={(v) => update({ showBadge: v })} label="Show how many pages were spotted" /></Row>
-              <Row label="Site download buttons" hint="When a site gives you its own CBZ / CBR / PDF.">
-                <div>
-                  <Toggle checked={settings.catchComicDownloads} onChange={(v) => update({ catchComicDownloads: v })} label="Put comic files into the KomiK folder with a proper name" />
-                  <Toggle checked={settings.embedIntoCaughtDownloads} onChange={(v) => update({ embedIntoCaughtDownloads: v })} label="Also add details to CBZ, ZIP and PDF files by downloading them through KomiK" hint="Leave off for links that only work once." />
-                </div>
-              </Row>
             </Chapter>
 
             <Chapter id="rules" n="06" title="Site rules" color="#FF1F6D" intro="KomiK finds pages on its own. For a site with an unusual layout, point it at the right elements with CSS selectors.">

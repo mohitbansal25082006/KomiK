@@ -1,7 +1,7 @@
-// Finds chapter / episode / issue lists on series pages, and the site's own comic file downloads.
-import type { ChapterRef, FileLink } from "@/shared/types";
+// Finds chapter / episode / issue lists on series pages.
+import type { ChapterRef } from "@/shared/types";
 import { findDate, stripDates } from "@/shared/dates";
-import { absoluteUrl, cleanText, COMIC_FILE_EXTENSIONS, extOf, uniqueBy } from "@/shared/util";
+import { absoluteUrl, cleanText, uniqueBy } from "@/shared/util";
 
 const CHAPTER_TEXT = /(?:\b(?:chapter|chap|ch|episode|ep|issue|part|capitulo|capítulo|chapitre|kapitel|глава|bab)\.?\s*#?\s*(\d+(?:\.\d+)?))|(?:第\s*(\d+)\s*[話话章回])|(?:#\s*(\d+(?:\.\d+)?)\b)/i;
 const CHAPTER_URL = /(?:chapter|chap|ch|episode|ep|issue|capitulo|chapitre)[-_/.]?(\d+(?:[-_.]\d+)?)(?:[/?#.-]|$)/i;
@@ -74,42 +74,6 @@ export function sortChapters(chapters: ChapterRef[]): ChapterRef[] {
   return uniqueBy(chapters, (c) => `${c.volume ?? ""}|${c.number}`).sort((a, b) => (a.volume ?? 0) - (b.volume ?? 0) || (a.number ?? 0) - (b.number ?? 0));
 }
 
-const DOWNLOAD_WORDS = /download|descargar|télécharger|herunterladen|скачать|baixar|unduh|\.cbz|\.cbr|\.pdf|\.zip/i;
-
-/** Links and buttons that download the comic as a file (the site's own CBZ / CBR / PDF / ZIP). */
-export function findFileLinks(doc: Document, base: string): FileLink[] {
-  const out: FileLink[] = [];
-  doc.querySelectorAll("a[href], [data-href], [data-url], [data-download], button[formaction]").forEach((el) => {
-    const raw = el.getAttribute("href") ?? el.getAttribute("data-href") ?? el.getAttribute("data-url") ?? el.getAttribute("data-download") ?? el.getAttribute("formaction");
-    const url = absoluteUrl(raw, base);
-    if (!url || url.startsWith("data:")) return;
-    let ext = extOf(url);
-    const label = cleanText(el.textContent || el.getAttribute("title") || el.getAttribute("aria-label") || "");
-    const downloadAttr = el.getAttribute("download");
-    if (downloadAttr) {
-      const e = /\.([a-z0-9]{2,4})$/i.exec(downloadAttr);
-      if (e) ext = e[1].toLowerCase();
-    }
-    if (!COMIC_FILE_EXTENSIONS.includes(ext)) {
-      // "Download CBZ" buttons pointing at /download?id=… without an extension.
-      const fromLabel = /\b(cbz|cbr|cb7|pdf|zip|epub)\b/i.exec(label);
-      if (!(fromLabel && DOWNLOAD_WORDS.test(label))) return;
-      ext = fromLabel[1].toLowerCase();
-    }
-    let name = downloadAttr || "";
-    if (!name) {
-      try {
-        name = decodeURIComponent(new URL(url).pathname.split("/").pop() ?? "");
-      } catch {
-        name = "";
-      }
-    }
-    const sizeMatch = /(\d+(?:\.\d+)?)\s*(kb|mb|gb)\b/i.exec(el.closest("li, tr, div")?.textContent ?? label);
-    const size = sizeMatch ? Math.round(Number.parseFloat(sizeMatch[1]) * 1024 ** ({ kb: 1, mb: 2, gb: 3 }[sizeMatch[2].toLowerCase() as "kb" | "mb" | "gb"])) : undefined;
-    out.push({ url, ext, name: name || `${label || "comic"}.${ext}`, label: label.slice(0, 80), size });
-  });
-  return uniqueBy(out, (f) => f.url);
-}
 
 /** "Page 1 of 20" readers: a <select> of page URLs or numbered page links around one big image. */
 export function findPagination(doc: Document, base: string, currentUrl: string): string[] {

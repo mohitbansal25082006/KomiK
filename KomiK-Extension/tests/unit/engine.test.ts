@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { scanDocument } from "@/engine/scan";
 import { fillSequenceGaps } from "@/engine/detect/cluster";
-import { findFileLinks, findPagination } from "@/engine/detect/chapters";
+import { findPagination } from "@/engine/detect/chapters";
 import { mainImageOf } from "@/engine/detect/gallery";
 import { applyPreviewRule, derivePreviewRule, fullSizeCandidates, looksLikePreview } from "@/engine/detect/quality";
 import { parseIdentity } from "@/shared/identity";
@@ -146,21 +146,13 @@ describe("metadata scraping", () => {
   });
 });
 
-describe("chapters, files and pagination", () => {
+describe("chapters and pagination", () => {
   it("finds a generic chapter list, sorted, without the current page", () => {
     const list = Array.from({ length: 5 }, (_, i) => `<li><a href="/paper-moon/episode-${5 - i}">Episode ${5 - i}</a><span class="date">Jan ${i + 1}</span></li>`).join("");
     const r = scan(`<h1>Paper Moon</h1><ul class="episode-list">${list}</ul>`, "https://toons.example/paper-moon");
     expect(r.chapters.map((c) => c.number)).toEqual([1, 2, 3, 4, 5]);
     expect(r.chapters[0].url).toBe("https://toons.example/paper-moon/episode-1");
     expect(r.isSeriesPage).toBe(true);
-  });
-
-  it("finds the site's own comic files and download buttons", () => {
-    const d = doc(`<a href="/files/iron-orchard-07.cbz">Iron Orchard 07</a><a href="/get?id=9">Download CBR (12.5 MB)</a><a href="/about.html">About</a><a href="/f/vol1.pdf" download="Iron Orchard Vol 1.pdf">PDF</a>`);
-    const files = findFileLinks(d, "https://files.example/series/io");
-    expect(files.map((f) => f.ext)).toEqual(["cbz", "cbr", "pdf"]);
-    expect(files[1].size).toBe(Math.round(12.5 * 1024 ** 2));
-    expect(files[2].name).toBe("Iron Orchard Vol 1.pdf");
   });
 
   it("finds one-image-per-page reader pagination", () => {
@@ -216,6 +208,42 @@ describe("manga galleries and page quality", () => {
     const r = scan(gallery(5), "https://reader.example/g/9912/");
     expect(r.meta.title).toContain("Night Market Stories");
     expect(r.meta.tags).toEqual(expect.arrayContaining(["Romance", "School life"]));
+  });
+
+  it("reads artists and tags without the counts a gallery prints, and dates it by age", () => {
+    const r = scan(
+      `<h1>[hana hook] Lantern Hours</h1>
+       <div class="info">
+         <p><b>Artists:</b> <a href="/artist/hana-hook">hana hook 48</a></p>
+         <p><b>Tags:</b> <a href="/tag/romance">romance 12.4K</a>, <a href="/tag/school-life">school life 8,102</a></p>
+         <p><b>Uploaded:</b> 5 years 6 months ago</p>
+       </div>
+       <div class="thumbs">${Array.from({ length: 5 }, (_, i) => `<a href="/g/551/${i + 1}/"><img src="https://t.example/galleries/551/${i + 1}t.jpg" width="200" height="290"></a>`).join("")}</div>`,
+      "https://reader.example/g/551/"
+    );
+    expect(r.meta.artists).toEqual(["hana hook"]);
+    expect(r.meta.tags).toEqual(expect.arrayContaining(["romance", "school life"]));
+    expect(r.meta.tags.join(" ")).not.toMatch(/\d/);
+
+    const expected = new Date();
+    expected.setFullYear(expected.getFullYear() - 5);
+    expected.setMonth(expected.getMonth() - 6);
+    expect(r.meta.year).toBe(String(expected.getFullYear()));
+    expect(r.meta.month).toBe(String(expected.getMonth() + 1));
+  });
+
+  it("collects every row of tags a gallery lists, not just the one labelled Tags", () => {
+    const r = scan(
+      `<h1>Lantern Hours</h1>
+       <section class="tag-container"><b>Parodies:</b> <a href="/parody/original">original 1.2K</a></section>
+       <section class="tag-container"><b>Characters:</b> <a href="/character/kira">kira 320</a></section>
+       <section class="tag-container"><b>Tags:</b> <a href="/tag/romance">romance 12K</a>, <a href="/tag/school-life">school life 8,102</a></section>
+       <section class="tag-container"><b>Groups:</b> <a href="/group/lantern-press">lantern press 64</a></section>
+       <section class="tag-container"><b>Categories:</b> <a href="/category/doujinshi">doujinshi 900</a></section>
+       <div class="thumbs">${Array.from({ length: 4 }, (_, i) => `<a href="/g/551/${i + 1}/"><img src="https://t.example/galleries/551/${i + 1}t.jpg" width="200" height="290"></a>`).join("")}</div>`,
+      "https://reader.example/g/551/"
+    );
+    expect(r.meta.tags).toEqual(expect.arrayContaining(["original", "kira", "romance", "school life", "lantern press", "doujinshi"]));
   });
 
   it("guesses full-size URLs from previews, best first", () => {

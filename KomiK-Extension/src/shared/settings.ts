@@ -25,7 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
   cleanTags: true,
   addSiteTag: false,
-  maxTags: 30,
+  maxTags: 60,
   mangaDirection: "auto",
   rememberSeriesEdits: true,
 
@@ -33,10 +33,7 @@ export const DEFAULT_SETTINGS: Settings = {
   floatingButton: true,
   showBadge: true,
 
-  catchComicDownloads: true,
-  embedIntoCaughtDownloads: true,
-
-  theme: "system",
+  theme: "light",
   sounds: true,
   reducedMotion: false,
   notifyOnFinish: true,

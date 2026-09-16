@@ -38,14 +38,31 @@ export interface CleanTagOptions {
   exclude?: string[];
 }
 
+/**
+ * Gallery sites print how many comics a tag or artist has right after the name ("hana hook 48",
+ * "romance 12.4K"). That count is not part of the name, so it is dropped. A number that is clearly part
+ * of the name ("Iron Orchard 2", "Volume 3") is kept: only counts of two digits or more, or ones with a
+ * K/M suffix, are treated as counts.
+ */
+export function stripTrailingCount(value: string): string {
+  const trimmed = (value ?? "").trim();
+  const withSuffix = /^(.*\S)\s+\d[\d,.]*\s*[km]\b\.?$/i.exec(trimmed);
+  if (withSuffix) return withSuffix[1].trim();
+  const plain = /^(.*\S)\s+(\d[\d,]*)$/.exec(trimmed);
+  if (plain && plain[2].replace(/,/g, "").length >= 2) return plain[1].trim();
+  return trimmed;
+}
+
 export function cleanTags(raw: string[], options: CleanTagOptions): string[] {
   const exclude = new Set((options.exclude ?? []).map((e) => e.trim().toLowerCase()).filter(Boolean));
   const out: string[] = [];
   const seen = new Set<string>();
 
   for (const item of raw) {
-    // "Action (1,234)" usage counts go before splitting on commas.
-    for (const part of (item ?? "").replace(/\s*\(\s*\d[\d,.]*\s*\)/g, "").split(/\s*[,;|\n]\s*/)) {
+    // Counts go first: "Action (1,234)" is dropped, and "8,102" loses its comma so the list split below
+    // doesn't tear the number in half.
+    const item2 = (item ?? "").replace(/\s*\(\s*\d[\d,.]*\s*\)/g, "").replace(/(\d),(?=\d{3}\b)/g, "$1");
+    for (const part of item2.split(/\s*[,;|\n]\s*/)) {
       let tag = part.replace(/[​-‍﻿]/g, "").replace(/\s+/g, " ").trim();
       if (!options.clean) {
         if (tag && tag.length <= 64 && !seen.has(tag.toLowerCase())) {
@@ -54,12 +71,14 @@ export function cleanTags(raw: string[], options: CleanTagOptions): string[] {
         }
         continue;
       }
-      tag = tag
-        .replace(/^#+/, "")
-        .replace(/\s*\(\s*\d[\d,.]*\s*\)\s*$/, "") // "Action (1,234)" counts
-        .replace(/\s*[×x]\s*\d+$/, "")
-        .replace(/^[\s\-–•·:]+|[\s\-–•·:,.]+$/g, "")
-        .trim();
+      tag = stripTrailingCount(
+        tag
+          .replace(/^#+/, "")
+          .replace(/\s*\(\s*\d[\d,.]*\s*\)\s*$/, "") // "Action (1,234)" counts
+          .replace(/\s*[×x]\s*\d+$/, "")
+          .replace(/^[\s\-–•·:]+|[\s\-–•·:,.]+$/g, "")
+          .trim()
+      );
       const key = tag.toLowerCase();
       if (tag.length < 2 || tag.length > 40) continue;
       if (JUNK.has(key) || exclude.has(key)) continue;
@@ -84,8 +103,12 @@ export function splitPeople(raw: string | string[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   for (const item of list) {
-    for (const part of (item ?? "").split(/\s*(?:[,;|/\n]|\s&\s|\sand\s)\s*/i)) {
-      const name = part.replace(/\s*\((?:story|art|author|artist|writer|illustrator)\)\s*$/i, "").replace(/\s+/g, " ").trim();
+    // "hana hook 1,204" keeps its count in one piece while the line is split into people.
+    for (const part of (item ?? "").replace(/(\d),(?=\d{3}\b)/g, "$1").split(/\s*(?:[,;|/\n]|\s&\s|\sand\s)\s*/i)) {
+      // Artist links on gallery sites carry a count ("hana hook 48"), which is not part of the name.
+      const name = stripTrailingCount(
+        part.replace(/\s*\((?:story|art|author|artist|writer|illustrator)\)\s*$/i, "").replace(/\s*\(\s*\d[\d,.]*\s*\)\s*$/, "").replace(/\s+/g, " ").trim()
+      );
       if (name.length < 2 || name.length > 60 || /^(?:updating|unknown|n\/a|none|-+)$/i.test(name)) continue;
       const key = name.toLowerCase();
       if (seen.has(key)) continue;

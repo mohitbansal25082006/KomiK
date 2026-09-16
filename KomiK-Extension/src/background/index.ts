@@ -4,8 +4,8 @@ import { getJobs } from "@/shared/db";
 import { listen, sendToTab } from "@/shared/messages";
 import { loadSettings, saveSettings } from "@/shared/settings";
 import type { DetectResult, JobsSnapshot } from "@/shared/types";
-import { arrayBufferToBase64, COMIC_FILE_EXTENSIONS, emptyMeta, extOf, hostOf } from "@/shared/util";
-import { startDownload, startDownloadRouting, waitForDownload } from "./downloads";
+import { arrayBufferToBase64 } from "@/shared/util";
+import { startDownload, waitForDownload } from "./downloads";
 import { queueChapters, queueJobs, quickDownload } from "./jobs";
 import { startNetworkObserver } from "./network";
 import { ensureOffscreen, toEngine } from "./offscreen";
@@ -13,7 +13,6 @@ import { ensureReferer } from "./referer";
 import { injectEngine, rememberPicks, scanTab, scanUrlInBackgroundTab } from "./scan";
 
 startNetworkObserver();
-startDownloadRouting();
 
 const notificationDownloads = new Map<string, number>();
 
@@ -43,7 +42,6 @@ function createMenus() {
     const contexts = ["page", "image", "link", "selection"] as [`${chrome.contextMenus.ContextType}`, ...`${chrome.contextMenus.ContextType}`[]];
     chrome.contextMenus.create({ id: "komik-root", title: "KomiK Downloader", contexts });
     chrome.contextMenus.create({ id: "komik-download-page", parentId: "komik-root", title: "Download the comic on this page", contexts });
-    chrome.contextMenus.create({ id: "komik-download-link", parentId: "komik-root", title: "Download linked comic file", contexts: ["link"] as typeof contexts, targetUrlPatterns: COMIC_FILE_EXTENSIONS.flatMap((e) => [`*://*/*.${e}`, `*://*/*.${e}?*`]) });
     chrome.contextMenus.create({ id: "komik-pick", parentId: "komik-root", title: "Pick pages by clicking them…", contexts });
     chrome.contextMenus.create({ id: "komik-panel", parentId: "komik-root", title: "Open download manager", contexts });
   });
@@ -61,15 +59,6 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     await sendToTab(tabId, "content-picker", {});
     return;
   }
-  if (info.menuItemId === "komik-download-link" && info.linkUrl) {
-    const ext = extOf(info.linkUrl);
-    const settings = await loadSettings();
-    const name = decodeURIComponent(info.linkUrl.split("/").pop()?.split("?")[0] ?? `comic.${ext}`);
-    const meta = { ...emptyMeta(), title: name.replace(/\.[^.]+$/, ""), site: hostOf(tab?.url ?? info.linkUrl) };
-    await queueJobs([{ meta, format: settings.defaultFormat, pages: [], sourceUrl: tab?.url ?? info.linkUrl, tabId, file: { url: info.linkUrl, ext, name, label: "Linked file" } }]);
-    toast(tabId, "QUEUED!", `${name} is downloading with KomiK.`, "cyan");
-    return;
-  }
   if (info.menuItemId === "komik-download-page") await quick(tabId);
 });
 
@@ -85,8 +74,8 @@ async function quick(tabId: number) {
   try {
     const result = await scanTab(tabId);
     const { kind, ids } = await quickDownload(result, tabId);
-    if (kind === "none") toast(tabId, "NOTHING TO GRAB!", "No comic pages or comic files were found here. Try Pick pages from the KomiK menu.", "magenta");
-    else toast(tabId, "QUEUED!", `${result.meta.title || "This comic"} · ${kind === "file" ? "site file" : `${result.pages.length} pages`}${ids.length > 1 ? ` · ${ids.length} jobs` : ""}`, "yellow");
+    if (kind === "none") toast(tabId, "NOTHING TO GRAB!", "No comic pages were found here. Try Pick pages from the KomiK menu.", "magenta");
+    else toast(tabId, "QUEUED!", `${result.meta.title || "This comic"} · ${result.pages.length} pages${ids.length > 1 ? ` · ${ids.length} jobs` : ""}`, "yellow");
   } catch (err) {
     toast(tabId, "OOPS!", err instanceof Error ? err.message : String(err), "magenta");
   }
@@ -100,9 +89,9 @@ function toast(tabId: number, title: string, message: string, tone: "yellow" | "
 chrome.action.setBadgeBackgroundColor({ color: "#FFD700" }).catch(() => undefined);
 chrome.action.setBadgeTextColor?.({ color: "#08080A" })?.catch?.(() => undefined);
 
-async function setBadge(tabId: number, count: number, files: number) {
+async function setBadge(tabId: number, count: number) {
   const settings = await loadSettings();
-  const text = !settings.showBadge ? "" : count >= 4 ? (count > 999 ? "999+" : String(count)) : files > 0 ? "CBZ" : "";
+  const text = !settings.showBadge || count < 4 ? "" : count > 999 ? "999+" : String(count);
   await chrome.action.setBadgeText({ tabId, text }).catch(() => undefined);
 }
 
@@ -175,8 +164,8 @@ listen("background", {
     else chrome.downloads.showDefaultFolder();
     return { ok: true };
   },
-  "page-hint": async ({ count, files }, sender) => {
-    if (sender.tab?.id !== undefined) await setBadge(sender.tab.id, count, files);
+  "page-hint": async ({ count }, sender) => {
+    if (sender.tab?.id !== undefined) await setBadge(sender.tab.id, count);
     return { ok: true };
   },
   "picker-finished": async ({ pages, url }, sender) => {

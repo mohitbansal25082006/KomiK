@@ -1,5 +1,5 @@
 // Typed runtime messages between the UI pages, background worker, offscreen engine and content scripts.
-import type { ChapterRef, ComicMeta, DetectResult, FileLink, JobsSnapshot, OutputFormat, PageRef, Settings } from "./types";
+import type { ChapterRef, ComicMeta, DetectResult, JobsSnapshot, OutputFormat, PageRef, Settings } from "./types";
 
 export interface JobRequest {
   meta: ComicMeta;
@@ -9,7 +9,6 @@ export interface JobRequest {
   sourceUrl: string;
   tabId?: number;
   chapterUrl?: string;
-  file?: FileLink;
   batchId?: string;
   batchLabel?: string;
 }
@@ -33,7 +32,7 @@ export interface MessageMap {
   "folder-status": { req: Record<string, never>; res: { mode: Settings["folderMode"]; name: string; granted: boolean } };
 
   // content → background
-  "page-hint": { req: { count: number; files: number; url: string; title: string }; res: { ok: boolean } };
+  "page-hint": { req: { count: number; url: string; title: string }; res: { ok: boolean } };
   "picker-finished": { req: { pages: PageRef[]; url: string }; res: { ok: boolean } };
   "floating-click": { req: { url: string }; res: { ok: boolean; opened: "panel" | "popup" | "none" } };
   /** Loads a preview the browser refuses to show on an extension page (hotlink or cross-origin rules). */

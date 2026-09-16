@@ -2,6 +2,7 @@
 // for hotlink-protected hosts, type sniffing and conversion of formats Komik can't open.
 import { mainImageOf } from "@/engine/detect/gallery";
 import { fullSizeCandidates, looksLikePreview } from "@/engine/detect/quality";
+import { parsePageHtml } from "@/shared/html";
 import { looksLikeText, sniffImage } from "@/shared/imageinfo";
 import { send } from "@/shared/messages";
 import type { Settings } from "@/shared/types";
@@ -151,7 +152,7 @@ export async function fetchPage(page: PageSource, ctx: FetchContext): Promise<Fe
 export async function readerPageImage(pageUrl: string, ctx: FetchContext): Promise<string | null> {
   const res = await fetch(pageUrl, { credentials: "include", signal: ctx.signal });
   if (!res.ok) throw new HttpError(res.status, 0);
-  const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+  const doc = parsePageHtml(await res.text(), res.url || pageUrl);
   return mainImageOf(doc, res.url || pageUrl);
 }
 

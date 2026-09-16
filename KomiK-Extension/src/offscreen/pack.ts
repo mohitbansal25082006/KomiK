@@ -1,11 +1,10 @@
-// Builds the output file: CBZ/ZIP (pages stored without recompression + ComicInfo.xml), PDF with
-// document info, or repacks a site's own CBZ/PDF with metadata added.
-import { unzip, Zip, ZipPassThrough, strToU8 } from "fflate";
+// Builds the output file: CBZ/ZIP (pages stored without recompression + ComicInfo.xml) or a PDF with
+// its document info filled in.
+import { Zip, ZipPassThrough, strToU8 } from "fflate";
 import { PDFDocument } from "pdf-lib";
 import { buildComicInfoXml, type ComicInfoPage } from "@/shared/comicinfo";
 import { sniffImage } from "@/shared/imageinfo";
 import type { ComicMeta } from "@/shared/types";
-import { IMAGE_EXTENSIONS } from "@/shared/util";
 import { convertImage } from "./fetcher";
 
 export interface PackPage {
@@ -88,34 +87,7 @@ function applyPdfInfo(pdf: PDFDocument, meta: ComicMeta) {
   if (meta.language) pdf.setLanguage(meta.language);
 }
 
-/** Adds ComicInfo.xml to a site's own CBZ/ZIP (replacing an older one) without recompressing pages. */
-export async function repackArchive(data: ArrayBuffer, meta: ComicMeta, source: string): Promise<{ blob: Blob; pages: number }> {
-  const files = await new Promise<Record<string, Uint8Array>>((resolve, reject) =>
-    unzip(new Uint8Array(data), (err, out) => (err ? reject(err) : resolve(out)))
-  );
-  const names = Object.keys(files).filter((n) => !n.endsWith("/") && !/(^|\/)comicinfo\.xml$/i.test(n) && !n.startsWith("__MACOSX"));
-  const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
-  names.sort(collator.compare);
-  const pages: PackPage[] = [];
-  const others: PackPage[] = [];
-  for (const name of names) {
-    const bytes = files[name];
-    const ext = name.split(".").pop()?.toLowerCase() ?? "";
-    const info = IMAGE_EXTENSIONS.includes(ext) ? sniffImage(bytes) : null;
-    const entry = { name, data: bytes.slice().buffer, mime: info?.mime ?? "", width: info?.width, height: info?.height };
-    (info ? pages : others).push(entry);
-  }
-  const xml = comicInfoFor(meta, pages, 0, source);
-  const blob = await buildZip([...pages, ...others], xml);
-  return { blob, pages: pages.length };
-}
 
-export async function retagPdf(data: ArrayBuffer, meta: ComicMeta): Promise<Blob> {
-  const pdf = await PDFDocument.load(data, { ignoreEncryption: true, updateMetadata: false });
-  applyPdfInfo(pdf, meta);
-  const out = await pdf.save({ useObjectStreams: false });
-  return new Blob([out as BlobPart], { type: "application/pdf" });
-}
 
 /** A small JPEG data URL of the cover for the history list. */
 export async function coverThumbnail(data: ArrayBuffer): Promise<string | undefined> {

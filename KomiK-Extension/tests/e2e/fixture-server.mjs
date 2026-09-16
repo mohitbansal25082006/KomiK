@@ -103,6 +103,20 @@ const hiddenGalleryPage = (n) => page(
   `<section id="image-container"><img src="/pages-full/${HIDDEN_ID}/${n}.webp" width="1400" height="2000"></section>`
 );
 
+// A modern reader page: its markup points at scripts, stylesheets and frames. Reading a page like this
+// must never make the browser try to fetch any of them.
+const scriptedChapter = () => page(
+  "Quiet Harbor - Chapter 4",
+  `<h1>Quiet Harbor Chapter 4</h1>
+   <div class="reading-area">${Array.from({ length: 4 }, (_, i) => `<img src="/img/qh4/${i + 1}.png" width="800" height="1200">`).join("")}</div>
+   <iframe src="/csp/frame.html"></iframe>
+   <script>window.pageList = ["/img/qh4/1.png"];</script>`,
+  `<link rel="stylesheet" href="/csp/app.css">
+   <link rel="modulepreload" href="/csp/chunk.js">
+   <script type="module" src="/csp/start.js"></script>
+   <script src="/csp/legacy.js" defer></script>`
+);
+
 const seriesChapter = (n) => page(
   `Paper Moon - Chapter ${n} - Fixture Comics`,
   `<h1 id="chapter-heading">Paper Moon - Chapter ${n}</h1><div class="reading-content">${Array.from({ length: 3 + n }, (_, i) => `<div class="page-break"><img class="wp-manga-chapter-img" src="/img/pm${n}/${i + 1}.png"></div>`).join("")}</div>`
@@ -152,6 +166,7 @@ export function startFixtureServer() {
       }
       if (p === "/alt/9912/five-full.jpg") return send(200, "image/png", makePng(1200, 1700, ODD_PAGE));
       if (p === "/__stats") return send(200, "application/json", JSON.stringify(hits));
+      if (p === "/csp/chapter") return send(200, "text/html", scriptedChapter());
       if (p === `/g/${HIDDEN_ID}/` || p === `/g/${HIDDEN_ID}`) return send(200, "text/html", hiddenGallery());
       const hiddenReader = new RegExp(`^/g/${HIDDEN_ID}/(\\d+)/$`).exec(p);
       if (hiddenReader) {

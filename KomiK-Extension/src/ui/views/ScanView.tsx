@@ -2,16 +2,16 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { applySeriesMemory, finalizeMeta, rememberSeries } from "@/shared/enrich";
 import { send } from "@/shared/messages";
-import type { ComicMeta, DetectResult, FileLink, OutputFormat, Settings } from "@/shared/types";
+import type { ComicMeta, DetectResult, OutputFormat, Settings } from "@/shared/types";
 import { Burst, Stamp } from "../components/Brand";
 import { Button, Segmented, Sticker, Tabs } from "../components/Controls";
 import { Icon } from "../components/Icon";
 import { RemoteImage } from "../components/RemoteImage";
 import { sfx } from "../sound";
 import { MetadataEditor } from "./MetadataEditor";
-import { ChapterList, FileList, PagesGrid } from "./ScanParts";
+import { ChapterList, PagesGrid } from "./ScanParts";
 
-type Tab = "pages" | "chapters" | "details" | "files";
+type Tab = "pages" | "chapters" | "details";
 
 const SCAN_LINES = ["Reading the panels…", "Hunting lazy-loaded pages…", "Checking chapter lists…", "Lifting titles and tags…", "Sniffing out download links…"];
 
@@ -67,9 +67,9 @@ export function ScanView({ tab, settings, compact = false, onOpenQueue }: { tab:
       setCoverIndex(0);
       setReversed(false);
       setChapters(new Set());
-      setView(res.pages.length ? "pages" : res.chapters.length ? "chapters" : res.files.length ? "files" : "pages");
+      setView(res.pages.length || !res.chapters.length ? "pages" : "chapters");
       setStatus("ready");
-      if (res.pages.length || res.chapters.length || res.files.length) sfx.pop();
+      if (res.pages.length || res.chapters.length) sfx.pop();
     },
     [tab?.id, tab?.url]
   );
@@ -121,12 +121,6 @@ export function ScanView({ tab, settings, compact = false, onOpenQueue }: { tab:
     }
   };
 
-  const saveFile = async (file: FileLink) => {
-    if (!result || !meta) return;
-    await send("queue-jobs", { jobs: [{ meta, format: file.ext === "pdf" ? "pdf" : "cbz", pages: [], sourceUrl: result.url, tabId: tab?.id, file }] });
-    queued("SAVING!");
-  };
-
   const pick = async () => {
     if (!tab?.id) return;
     await send("start-picker", { tabId: tab.id });
@@ -142,8 +136,6 @@ export function ScanView({ tab, settings, compact = false, onOpenQueue }: { tab:
       primary = { label: `GET ${selectedPages.length} PAGE${selectedPages.length === 1 ? "" : "S"}`, action: downloadPages };
     } else if (result.chapters.length) {
       primary = { label: "CHOOSE CHAPTERS", action: () => setView("chapters") };
-    } else if (result.files.length) {
-      primary = { label: "SAVE SITE FILE", action: () => saveFile(result.files[0]) };
     }
   }
 
@@ -180,7 +172,7 @@ export function ScanView({ tab, settings, compact = false, onOpenQueue }: { tab:
     );
   }
 
-  const nothing = !result.pages.length && !result.chapters.length && !result.files.length;
+  const nothing = !result.pages.length && !result.chapters.length;
   const conf = CONFIDENCE[result.confidence];
 
   return (
@@ -217,8 +209,7 @@ export function ScanView({ tab, settings, compact = false, onOpenQueue }: { tab:
           <div className="relative flex border-t-[2.5px] border-gutter bg-panel-card text-center">
             {[
               { n: result.pages.length, l: "pages", c: "#00C2FF" },
-              { n: result.chapters.length, l: "chapters", c: "#FF7A00" },
-              { n: result.files.length, l: "files", c: "#A78BFA" }
+              { n: result.chapters.length, l: "chapters", c: "#FF7A00" }
             ].map((s, i) => (
               <div key={s.l} className={`flex-1 py-1 ${i ? "border-l-[2.5px] border-gutter" : ""}`}>
                 <span className="letter text-[19px] leading-none" style={{ color: s.n ? s.c : undefined }}>{s.n}</span>
@@ -250,8 +241,7 @@ export function ScanView({ tab, settings, compact = false, onOpenQueue }: { tab:
               tabs={[
                 { id: "pages", label: "Pages", count: result.pages.length, disabled: !result.pages.length },
                 { id: "chapters", label: "Chapters", count: result.chapters.length, disabled: !result.chapters.length },
-                { id: "details", label: "Details" },
-                { id: "files", label: "Files", count: result.files.length, disabled: !result.files.length }
+                { id: "details", label: "Details" }
               ]}
             />
             <div className="panel !rounded-tl-none !shadow-comic-sm p-3">
@@ -272,7 +262,6 @@ export function ScanView({ tab, settings, compact = false, onOpenQueue }: { tab:
                   )}
                   {view === "chapters" && <ChapterList chapters={result.chapters} selected={chapters} onChange={setChapters} />}
                   {view === "details" && <MetadataEditor meta={meta} onChange={setMeta} settings={settings} format={format} pages={selectedPages.length} compact={compact} />}
-                  {view === "files" && <FileList files={result.files} onSave={saveFile} />}
                 </motion.div>
               </AnimatePresence>
             </div>

@@ -6,7 +6,8 @@ import { cleanTitleNoise, composeTitle, parseIdentity } from "@/shared/identity"
 import { sniffImage, looksLikeText } from "@/shared/imageinfo";
 import { pageFileName, planSave, renderTemplate, sanitizeSegment, templateTokens } from "@/shared/naming";
 import { DEFAULT_SETTINGS, normalizeSettings } from "@/shared/settings";
-import { cleanTags, splitPeople, titleCaseTag } from "@/shared/tags";
+import { parsePageHtml, stripExternalResources } from "@/shared/html";
+import { cleanTags, splitPeople, stripTrailingCount, titleCaseTag } from "@/shared/tags";
 import { emptyMeta, extOf, formatBytes } from "@/shared/util";
 import { buildZip } from "@/offscreen/pack";
 
@@ -156,6 +157,40 @@ describe("enrichment", () => {
     expect(m.chapterTitle).toBe("Lanterns");
     expect(m.web).toBe("https://x/ep-3");
     expect(m.genres).toEqual(["Drama"]);
+  });
+});
+
+describe("counts printed next to names", () => {
+  it("drops the gallery count a site prints after a tag or artist", () => {
+    expect(stripTrailingCount("hana hook 48")).toBe("hana hook");
+    expect(stripTrailingCount("romance 12.4K")).toBe("romance");
+    expect(stripTrailingCount("big city 1,204")).toBe("big city");
+    // A number that belongs to the name is kept.
+    expect(stripTrailingCount("Iron Orchard 2")).toBe("Iron Orchard 2");
+    expect(stripTrailingCount("2000 AD")).toBe("2000 AD");
+    expect(stripTrailingCount("Ada Ink")).toBe("Ada Ink");
+  });
+
+  it("keeps counts out of credits and tags", () => {
+    expect(splitPeople("hana hook 48, rio pen 1.2K")).toEqual(["hana hook", "rio pen"]);
+    expect(cleanTags(["school life 8,102", "romance 12K", "drama (245)"], { clean: true, max: 30 })).toEqual(["School Life", "Romance", "Drama"]);
+  });
+});
+
+describe("parsing a page fetched from a site", () => {
+  it("removes anything that would make the browser load another file", () => {
+    const html = `<html><head><link rel="stylesheet" href="/app.css"><script src="/app/start.js"></script></head>
+      <body><img src="/p/1.jpg"><iframe src="/ads"></iframe><script>window.pages=["/p/1.jpg","/p/2.jpg"];</script></body></html>`;
+    const doc = parsePageHtml(html, "https://reader.example/g/1/");
+    // Scripts and stylesheets the browser would fetch are gone…
+    expect(doc.querySelectorAll("script[src]")).toHaveLength(0);
+    expect(doc.querySelectorAll("link")).toHaveLength(0);
+    expect(doc.querySelectorAll("iframe")).toHaveLength(0);
+    // …while the page list inside an inline script, and the images, still parse.
+    expect(doc.querySelectorAll("script")).toHaveLength(1);
+    expect(doc.querySelector("script")?.textContent).toContain("/p/2.jpg");
+    expect(doc.querySelectorAll("img")).toHaveLength(1);
+    expect(stripExternalResources('<script src="/a.js"></script>ok')).toBe("ok");
   });
 });
 

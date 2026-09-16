@@ -3,7 +3,7 @@ import { composeTitle } from "@/shared/identity";
 import type { Confidence, DetectResult, PageRef, SiteRule } from "@/shared/types";
 import { cleanText, hostOf, uniqueBy } from "@/shared/util";
 import { runAdapters } from "./adapters";
-import { findChapters, findFileLinks, findPagination } from "./detect/chapters";
+import { findChapters, findPagination } from "./detect/chapters";
 import { clusterPages, fillSequenceGaps } from "./detect/cluster";
 import { findGallery } from "./detect/gallery";
 import { harvest } from "./detect/harvest";
@@ -74,7 +74,6 @@ export function scanDocument(doc: Document, options: ScanOptions): DetectResult 
   pages = uniqueBy(pages, (p) => p.url || p.pageUrl || "");
 
   const chapters = adapter?.chapters.length ? adapter.chapters : findChapters(doc, url, url);
-  const files = findFileLinks(doc, url);
   const pagination = pages.length <= 2 ? findPagination(doc, url, url) : [];
   const isSeriesPage = adapter?.isSeriesPage ?? (chapters.length >= 3 && pages.length < 3);
 
@@ -93,7 +92,7 @@ export function scanDocument(doc: Document, options: ScanOptions): DetectResult 
   if (!meta.coverUrl && pages[0]) meta.coverUrl = pages[0].url;
 
   const lazyPending = cluster ? cluster.candidates.filter((c) => c.lazy).length : 0;
-  if (!pages.length && (files.length || chapters.length)) confidence = "medium";
+  if (!pages.length && chapters.length) confidence = "medium";
 
   return {
     url,
@@ -103,7 +102,6 @@ export function scanDocument(doc: Document, options: ScanOptions): DetectResult 
     confidence,
     pages,
     chapters,
-    files,
     meta,
     pagination,
     lazyPending,
