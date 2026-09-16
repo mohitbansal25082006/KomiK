@@ -142,6 +142,12 @@ public static class LibraryIntelligenceTests
                 new() { Id = 8, Title = "Nocturnes", FilePath = @"C:\Comics\Sandman\Nocturnes.cbz", PageCount = 44, FileSize = 2 },
                 new() { Id = 9, Title = "X-Men 1 (1991)", FilePath = @"C:\Comics\X-Men 1 (1991).cbz", PageCount = 40, FileSize = 3 },
                 new() { Id = 10, Title = "X-Men 1 (2019)", FilePath = @"C:\Comics\X-Men 1 (2019).cbz", PageCount = 40, FileSize = 4 },
+                // A category label in front of the credit ("original - [Circle (Artist)] Title") is not part of the title.
+                new() { Id = 11, Title = "[Nasi-pasuya (Nasipasuta)] Shiramine Gakuen no Mesubuta Rijichou Kouhen [English] [CulturedCommissions] [Digital]", FilePath = @"C:\Downloads\KomiK\Kouhen.cbz", PageCount = 64, FileSize = 32958194 },
+                new() { Id = 12, Title = "original - [Nasi-pasuya (Nasipasuta)] Shiramine Gakuen no Mesubuta Rijichou Kouhen [English] [CulturedCommissions] [Digital]", FilePath = @"D:\Library\589806 - Kouhen.cbz", PageCount = 64, FileSize = 14884004 },
+                // Same circle and series, but a different part and a different book: never duplicates of the above.
+                new() { Id = 13, Title = "original - [Nasi-pasuya (Nasipasuta)] Shiramine Gakuen no Mesubuta Rijichou Zenpen | The sow principal of Shiramine Academy PROLOGUE [English] [Digital] [Fallen Games]", FilePath = @"D:\Library\Zenpen.cbz", PageCount = 39, FileSize = 9543492 },
+                new() { Id = 14, Title = "[Nasi-pasuya (Nasipasuta)] Shiramine Gakuen no Mesubuta Kaichou | Sow President of the Shiramine Academy [English] [Project Valvrein]", FilePath = @"D:\Library\Kaichou.cbz", PageCount = 49, FileSize = 25343014 },
             };
 
             var groups = new DuplicateDetectionService().FindDuplicates(comics, new HashSet<(long, long)>());
@@ -150,6 +156,17 @@ public static class LibraryIntelligenceTests
             if (Grouped(1, 2)) throw new Exception("Issue #101 and #102 must never be duplicates");
             if (Grouped(7, 8)) throw new Exception("Different un-numbered books in the same folder must not be duplicates");
             if (Grouped(9, 10)) throw new Exception("Same issue number from different years (volumes) must not be duplicates");
+            if (!Grouped(11, 12)) throw new Exception("A copy whose title only adds a leading category label must be a duplicate");
+            if (Grouped(11, 13) || Grouped(12, 13) || Grouped(11, 14) || Grouped(13, 14)) throw new Exception("Different parts of the same series must not be duplicates");
+
+            // The label is only dropped when it really is one.
+            if (ComicIdentityParser.StripLabelPrefix("original - [Circle (Artist)] Title") != "[Circle (Artist)] Title") throw new Exception("Category label not removed");
+            if (ComicIdentityParser.StripLabelPrefix("Batman - [2019] Annual") != "Batman - [2019] Annual") throw new Exception("A year after the dash is not a credit");
+            if (ComicIdentityParser.StripLabelPrefix("Saga - [Digital] Book One") != "Saga - [Digital] Book One") throw new Exception("A release tag after the dash is not a credit");
+            if (ComicIdentityParser.StripLabelPrefix("The Long Winding Road Home - [Circle] Title") != "The Long Winding Road Home - [Circle] Title") throw new Exception("A long title is not a label");
+            if (ComicIdentityParser.StripLabelPrefix("Series - [Circle]") != "Series - [Circle]") throw new Exception("Nothing after the credit means the label is the title");
+            if (ComicIdentityParser.Parse("original - [Nasi-pasuya (Nasipasuta)] Shiramine Gakuen no Mesubuta Rijichou Kouhen [English]").Creators.Count == 0)
+                throw new Exception("Creators should be read once the label is gone");
 
             var identical = groups.FirstOrDefault(g => g.Copies.Any(c => c.Id == 3)) ?? throw new Exception("Identical files not detected");
             if (identical.Confidence != DuplicateConfidence.Identical) throw new Exception($"Identical files scored {identical.Confidence}");

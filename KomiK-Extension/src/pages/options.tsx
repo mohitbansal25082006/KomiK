@@ -347,7 +347,7 @@ function Options() {
               <Row label="Tag clean-up">
                 <Toggle checked={settings.cleanTags} onChange={(v) => update({ cleanTags: v })} label="Tidy the site's tags" hint={'Drops menu words like "Home" or "Read now", fixes capitals and merges duplicates.'} />
               </Row>
-              <Row label="Maximum tags" hint="Genres and tags together. 0 means no limit."><Range value={settings.maxTags} min={0} max={100} onChange={(v) => update({ maxTags: v })} /></Row>
+              <Row label="Maximum tags" hint="Genres and tags together. 0 keeps every tag the site lists, which is what most gallery pages need."><Range value={settings.maxTags} min={0} max={300} onChange={(v) => update({ maxTags: v })} /></Row>
               <Row label="Site tag"><Toggle checked={settings.addSiteTag} onChange={(v) => update({ addSiteTag: v })} label="Add the website's name as a tag" /></Row>
               <Row label="Reading direction">
                 <Select value={settings.mangaDirection} onChange={(v) => update({ mangaDirection: v })} options={[{ id: "auto", label: "Detect from the site (manga → right to left)" }, { id: "rtl", label: "Always right to left" }, { id: "ltr", label: "Always left to right" }]} />

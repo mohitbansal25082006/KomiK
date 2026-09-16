@@ -128,8 +128,9 @@ public static class WatchedFolderMonitor
         {
             if (scanner != null && ready.Count > 0)
             {
-                int added = await scanner.IndexNewSourcesAsync(ready);
-                if (added > 0) ComicsAdded?.Invoke(added);
+                // A comic downloaded again under the same name is re-read, so tags it gained show up too.
+                var (added, refreshed) = await scanner.IndexOrRefreshSourcesAsync(ready);
+                if (added + refreshed > 0) ComicsAdded?.Invoke(added + refreshed);
             }
         }
         catch

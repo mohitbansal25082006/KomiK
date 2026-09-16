@@ -3,6 +3,7 @@
 import { envelope, isEnvelope } from "@/shared/messages";
 import { normalizeSettings } from "@/shared/settings";
 import type { Settings } from "@/shared/types";
+import { extensionAlive, sendSafely } from "./alive";
 import { CREST_SVG, ensureShadow, showToast } from "./ui";
 
 declare global {
@@ -19,6 +20,7 @@ declare global {
   let lastKey = "";
   let fab: HTMLButtonElement | null = null;
   let dismissedFor = "";
+  let stopped = false;
 
   const LAZY = "img[data-src], img[data-lazy-src], img[data-original], img[data-srcset]";
 
@@ -54,12 +56,15 @@ declare global {
           renderFab(0);
           return;
         }
-        chrome.runtime
-          .sendMessage(envelope("floating-click", { url: location.href }, "background"))
-          .then((res: { opened?: string } | undefined) => {
-            if (!res || res.opened === "none") showToast("Open KomiK", "Click the KomiK icon in your toolbar (or press Alt+K) to download this comic.", "cyan");
-          })
-          .catch(() => undefined);
+        if (!extensionAlive()) {
+          // KomiK was updated while this tab stayed open: this old copy can't reach it any more.
+          showToast("KomiK was updated", "Reload this page to use KomiK here again.", "cyan");
+          stop();
+          return;
+        }
+        void sendSafely<{ opened?: string }>(envelope("floating-click", { url: location.href }, "background")).then((res) => {
+          if (!res || res.opened === "none") showToast("Open KomiK", "Click the KomiK icon in your toolbar (or press Alt+K) to download this comic.", "cyan");
+        });
       });
       root.appendChild(fab);
     }
@@ -68,37 +73,67 @@ declare global {
   }
 
   function update() {
+    if (stopped) return;
+    if (!extensionAlive()) return stop();
     const { count } = measure();
     renderFab(count);
     const key = `${location.href}|${count}`;
     if (key === lastKey) return;
     lastKey = key;
-    chrome.runtime
-      .sendMessage(envelope("page-hint", { count, url: location.href, title: document.title }, "background"))
-      .catch(() => undefined);
+    void sendSafely(envelope("page-hint", { count, url: location.href, title: document.title }, "background"));
   }
 
   let timer: ReturnType<typeof setTimeout> | null = null;
   const schedule = () => {
-    if (timer) return;
+    if (timer || stopped) return;
     timer = setTimeout(() => {
       timer = null;
       update();
     }, 1200);
   };
 
-  chrome.storage.local.get("settings").then((data) => {
-    settings = normalizeSettings(data.settings as Partial<Settings>);
-    update();
-  });
-  chrome.storage.onChanged.addListener((changes, area) => {
+  const onSettingsChanged = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
     if (area === "local" && changes.settings) {
       settings = normalizeSettings(changes.settings.newValue as Partial<Settings>);
       update();
     }
-  });
+  };
 
-  new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true });
+  const observer = new MutationObserver(schedule);
+
+  /** Stops watching the page for good once the extension that started this script is gone. */
+  function stop() {
+    if (stopped) return;
+    stopped = true;
+    observer.disconnect();
+    if (timer) clearTimeout(timer);
+    timer = null;
+    removeEventListener("load", schedule);
+    removeEventListener("scroll", schedule);
+    removeEventListener("popstate", schedule);
+    fab?.remove();
+    fab = null;
+    try {
+      chrome.storage.onChanged.removeListener(onSettingsChanged);
+    } catch {
+      /* already disconnected */
+    }
+  }
+
+  try {
+    chrome.storage.local
+      .get("settings")
+      .then((data) => {
+        settings = normalizeSettings(data.settings as Partial<Settings>);
+        update();
+      })
+      .catch(() => undefined);
+    chrome.storage.onChanged.addListener(onSettingsChanged);
+  } catch {
+    return;
+  }
+
+  observer.observe(document.documentElement, { childList: true, subtree: true });
   addEventListener("load", schedule, { passive: true });
   addEventListener("scroll", schedule, { passive: true });
   addEventListener("popstate", schedule);

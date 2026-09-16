@@ -37,6 +37,9 @@ public interface ILibraryScannerService
     /// <summary>Quietly indexes new comics (e.g. finished downloads in a watched folder), skipping known and removed ones.</summary>
     Task<int> IndexNewSourcesAsync(System.Collections.Generic.IEnumerable<string> paths, CancellationToken cancellationToken = default);
 
+    /// <summary>Indexes new comics and re-reads the details of known ones whose file was saved again under the same name.</summary>
+    Task<(int Added, int Refreshed)> IndexOrRefreshSourcesAsync(System.Collections.Generic.IEnumerable<string> paths, CancellationToken cancellationToken = default);
+
     /// <summary>Indexes comics added to watched folders while Komik was closed and imports embedded ComicInfo.xml metadata once.</summary>
     Task<int> SyncWatchedFoldersQuietlyAsync(CancellationToken cancellationToken = default);
 

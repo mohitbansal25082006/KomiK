@@ -6,6 +6,7 @@ import { envelope, isEnvelope, type MessageMap } from "@/shared/messages";
 import type { DetectResult, PageRef } from "@/shared/types";
 import { absoluteUrl, arrayBufferToBase64, sleep } from "@/shared/util";
 import { ensureShadow, showToast } from "./ui";
+import { sendSafely } from "./alive";
 
 declare global {
   interface Window {
@@ -161,7 +162,7 @@ declare global {
       // Keep reading order: sort by position in the document.
       const ordered = Array.from(selected.entries()).sort(([a], [b]) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
       pickedPages = ordered.map(([el, url]) => ({ url, referer: location.href, source: "picker", width: (el as HTMLImageElement).naturalWidth || undefined, height: (el as HTMLImageElement).naturalHeight || undefined }));
-      chrome.runtime.sendMessage(envelope("picker-finished", { pages: pickedPages, url: location.href }, "background")).catch(() => undefined);
+      void sendSafely(envelope("picker-finished", { pages: pickedPages, url: location.href }, "background"));
       showToast(`${pickedPages.length} PAGES PICKED!`, "Open KomiK again to download them.", "yellow");
     };
     const onKey = (e: KeyboardEvent) => {

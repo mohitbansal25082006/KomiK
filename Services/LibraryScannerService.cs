@@ -207,7 +207,9 @@ public sealed class LibraryScannerService : ILibraryScannerService
             if (existing.IsMissing)
             {
                 await _repository.SetMissingStatusAsync(existing.Id, false);
+                existing.IsMissing = false;
             }
+            await RefreshChangedComicAsync(existing, ct);
             return;
         }
 
@@ -292,6 +294,59 @@ public sealed class LibraryScannerService : ILibraryScannerService
         {
             await _repository.AddTagToComicAsync(comicId, tag);
         }
+    }
+
+    /// <summary>
+    /// A comic file replaced on disk under the same name (downloaded again, re-tagged by another tool)
+    /// keeps its library entry, so its ComicInfo.xml is read again: tags it gained are added and details
+    /// fill in where the library has none. Reading progress, favourites and the user's own edits are
+    /// untouched. Returns true when the file had changed.
+    /// </summary>
+    private async Task<bool> RefreshChangedComicAsync(ComicEntity comic, CancellationToken ct)
+    {
+        if (comic.Format == ComicSourceType.Folder) return false;
+        var file = new FileInfo(comic.FilePath);
+        if (!file.Exists) return false;
+
+        bool sizeChanged = file.Length != comic.FileSize;
+        bool timeChanged = Math.Abs((file.LastWriteTimeUtc - comic.LastModified.ToUniversalTime()).TotalSeconds) > 2;
+        if (!sizeChanged && !timeChanged) return false;
+
+        if (comic.Format != ComicSourceType.PdfDocument)
+        {
+            ct.ThrowIfCancellationRequested();
+            var info = await Task.Run(() => ComicInfoReader.TryRead(comic.FilePath), ct);
+            if (info != null) await ApplyEmbeddedInfoAsync(comic.Id, comic.Title, info);
+        }
+
+        comic.FileSize = file.Length;
+        comic.LastModified = file.LastWriteTimeUtc;
+        await _repository.UpdateComicAsync(comic);
+        return true;
+    }
+
+    /// <summary>Re-reads every library comic whose file changed while Komik was closed.</summary>
+    private async Task<int> RefreshChangedComicsAsync(CancellationToken ct)
+    {
+        int refreshed = 0;
+        foreach (var comic in await _repository.GetComicsAsync())
+        {
+            ct.ThrowIfCancellationRequested();
+            if (comic.IsMissing) continue;
+            try
+            {
+                if (await RefreshChangedComicAsync(comic, ct)) refreshed++;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch
+            {
+                // A locked or half-written file is picked up on the next pass.
+            }
+        }
+        return refreshed;
     }
 
     /// <summary>
@@ -419,21 +474,32 @@ public sealed class LibraryScannerService : ILibraryScannerService
     /// Quietly indexes new comic files or folders (for example a download that just finished in a watched
     /// folder). Comics already in the library or removed by the user are skipped. No progress is reported.
     /// </summary>
-    public async Task<int> IndexNewSourcesAsync(IEnumerable<string> paths, CancellationToken cancellationToken = default)
+    public async Task<int> IndexNewSourcesAsync(IEnumerable<string> paths, CancellationToken cancellationToken = default) =>
+        (await IndexOrRefreshSourcesAsync(paths, cancellationToken)).Added;
+
+    /// <summary>
+    /// Like <see cref="IndexNewSourcesAsync"/>, and a comic already in the library whose file was saved
+    /// again under the same name has its new details and tags read. Returns both counts.
+    /// </summary>
+    public async Task<(int Added, int Refreshed)> IndexOrRefreshSourcesAsync(IEnumerable<string> paths, CancellationToken cancellationToken = default)
     {
         var removed = await _repository.GetRemovedComicPathsAsync();
-        int added = 0;
+        int added = 0, refreshed = 0;
         foreach (var path in paths.Distinct(StringComparer.OrdinalIgnoreCase))
         {
             cancellationToken.ThrowIfCancellationRequested();
             ComicSourceType? format = DetectFormat(path);
             if (!format.HasValue || removed.Contains(path)) continue;
-            if (await _repository.GetComicByPathAsync(path) is { IsMissing: false }) continue;
+            if (await _repository.GetComicByPathAsync(path) is { IsMissing: false } known)
+            {
+                if (await RefreshChangedComicAsync(known, cancellationToken)) refreshed++;
+                continue;
+            }
 
             await ProcessComicSourceAsync(path, format.Value, cancellationToken, includeRemoved: true);
             if (await _repository.GetComicByPathAsync(path) != null) added++;
         }
-        return added;
+        return (added, refreshed);
     }
 
     /// <summary>
@@ -452,7 +518,8 @@ public sealed class LibraryScannerService : ILibraryScannerService
         }
 
         int imported = await ImportEmbeddedMetadataAsync(cancellationToken: cancellationToken);
-        return added + imported;
+        int refreshed = await RefreshChangedComicsAsync(cancellationToken);
+        return added + imported + refreshed;
     }
 
     private ComicSourceType? DetectFormat(string path)

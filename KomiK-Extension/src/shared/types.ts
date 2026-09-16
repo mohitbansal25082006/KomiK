@@ -180,6 +180,8 @@ export interface Settings {
   // Site rules
   siteRules: SiteRule[];
   onboarded: boolean;
+  /** Bumped when a default changes so saved settings from an older version can be brought forward. */
+  settingsVersion?: number;
 }
 
 export interface JobsSnapshot {

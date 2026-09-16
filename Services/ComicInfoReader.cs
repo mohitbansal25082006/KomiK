@@ -102,8 +102,9 @@ public static class ComicInfoReader
     public const string FileName = "ComicInfo.xml";
 
     private const long MaxXmlBytes = 2 * 1024 * 1024;
-    private const int MaxTags = 60;
-    private const int MaxTagLength = 64;
+    // Every tag in the file is kept: gallery comics often carry 40-80 of them. Only a value too long to be
+    // a real tag (a pasted sentence) is skipped.
+    private const int MaxTagLength = 128;
 
     private static readonly Regex ListSeparators = new(@"\s*[,;|]\s*", RegexOptions.Compiled);
 
@@ -178,7 +179,6 @@ public static class ComicInfoReader
 
             var tags = SplitTags(Text("Genre")).Concat(SplitTags(Text("Tags")))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Take(MaxTags)
                 .ToList();
 
             int? year = Int("Year", 1800, 3000);

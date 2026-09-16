@@ -126,6 +126,12 @@ public static class ComicIdentityParser
         @"^\s*(?:[A-Za-z][A-Za-z0-9]{1,24}[\s_-]*)?\d{4,}\s*[-–_]\s+",
         RegexOptions.Compiled);
 
+    // "original - [Circle (Artist)] Title": a short category label some downloaders write in front of the
+    // bracketed credit. The label is not part of the title, so two copies differing only by it still match.
+    private static readonly Regex LabelPrefix = new(
+        @"^\s*(?<label>\p{L}[\p{L}' ]{0,28}?)\s+[-–]\s+(?=\[(?<credit>[^\[\]]+)\])",
+        RegexOptions.Compiled);
+
     // Innermost bracket group; applied repeatedly so "[Circle (Artist)]" is removed completely.
     private static readonly Regex BracketGroup = new(@"\(([^()\[\]{}]*)\)|\[([^()\[\]{}]*)\]|\{([^()\[\]{}]*)\}", RegexOptions.Compiled);
     private static readonly Regex EqualsTag = new(@"=[^=\s][^=]{0,30}=", RegexOptions.Compiled);
@@ -200,7 +206,7 @@ public static class ComicIdentityParser
         }
 
         raw = raw.Replace('_', ' ');
-        raw = SourcePrefix.Replace(raw, string.Empty);
+        raw = StripLabelPrefix(SourcePrefix.Replace(raw, string.Empty));
         var creators = ExtractCreators(raw);
         var titleCreators = creators.ToList();
 
@@ -367,7 +373,26 @@ public static class ComicIdentityParser
     }
 
     /// <summary>The cleaned title (release tags removed) reduced to a comparison key.</summary>
-    public static string MakeTitleKey(string? title) => MakeKey(CleanName(SourcePrefix.Replace(StripKnownExtension(title ?? string.Empty).Replace('_', ' '), string.Empty)).Cleaned);
+    public static string MakeTitleKey(string? title) => MakeKey(CleanName(StripLabelPrefix(SourcePrefix.Replace(StripKnownExtension(title ?? string.Empty).Replace('_', ' '), string.Empty))).Cleaned);
+
+    /// <summary>
+    /// Drops a leading category label ("original - [Circle] Title"). Kept when it could be the title itself:
+    /// more than three words, or the bracket after the dash is a year or release tag ("Batman - [2019]").
+    /// </summary>
+    public static string StripLabelPrefix(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return name ?? string.Empty;
+        var m = LabelPrefix.Match(name);
+        if (!m.Success) return name;
+        string label = m.Groups["label"].Value.Trim();
+        string credit = m.Groups["credit"].Value.Trim();
+        if (label.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length > 3) return name;
+        if (YearOnly.IsMatch(credit) || TagLike.IsMatch(credit)) return name;
+        string rest = name[m.Length..];
+        // Something must follow the credit, otherwise the label is the only title there is.
+        string afterCredit = Regex.Replace(rest, @"^\s*\[[^\[\]]*\]", string.Empty).Trim();
+        return afterCredit.Length >= 2 ? rest : name;
+    }
 
     /// <summary>Numbers that appear in a cleaned title, used to stop "#1" matching "#2" in fuzzy comparisons.</summary>
     public static string NumberSignature(string cleanTitle)

@@ -411,3 +411,52 @@ test("options and history pages render", async () => {
   await panel.waitForTimeout(500);
   await panel.screenshot({ path: join(SHOTS, "sidepanel-history.png") });
 });
+
+// Runs last: it reloads the extension, which ends every page and worker the other tests use.
+test("pages left open while KomiK updates never throw 'Extension context invalidated'", async () => {
+  const comic = await context.newPage();
+  await comic.goto(`${origin}/chapter/lazy`);
+  // Let the page script count the pages and show its button.
+  await comic.waitForTimeout(2500);
+
+  // Listen to every script context in the tab, including the one KomiK's page script runs in.
+  const targets = (await (await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json()) as Array<{ type: string; url: string; webSocketDebuggerUrl?: string }>;
+  const tab = targets.find((t) => t.type === "page" && t.url === `${origin}/chapter/lazy` && t.webSocketDebuggerUrl);
+  expect(tab, "the comic tab should be listed").toBeTruthy();
+  const socket = new WebSocket(tab!.webSocketDebuggerUrl!);
+  const errors: string[] = [];
+  await new Promise((done) => socket.addEventListener("open", done, { once: true }));
+  socket.addEventListener("message", (event) => {
+    const msg = JSON.parse(String(event.data)) as { method?: string; params?: { exceptionDetails?: { text?: string; exception?: { description?: string } } } };
+    if (msg.method === "Runtime.exceptionThrown") {
+      const d = msg.params?.exceptionDetails;
+      errors.push(`${d?.text ?? ""} ${d?.exception?.description ?? ""}`);
+    }
+  });
+  socket.send(JSON.stringify({ id: 1, method: "Runtime.enable" }));
+  await new Promise((r) => setTimeout(r, 500));
+
+  // The browser updates the extension while the tab stays open.
+  const ext = await extPage();
+  await ext.evaluate(() => setTimeout(() => chrome.runtime.reload(), 50)).catch(() => undefined);
+  await new Promise((r) => setTimeout(r, 3000));
+
+  // The page keeps changing, which is what used to make the old script call into the dead extension.
+  for (let i = 0; i < 4; i++) {
+    await comic.evaluate((n) => {
+      const img = document.createElement("img");
+      img.width = 800;
+      img.height = 1200;
+      img.src = `/img/extra/${String(n + 40).padStart(3, "0")}.png`;
+      document.body.appendChild(img);
+      window.scrollBy(0, 400);
+    }, i);
+    await comic.waitForTimeout(1600);
+  }
+  await comic.waitForTimeout(500);
+  socket.close();
+
+  const invalidated = errors.filter((e) => /context invalidated/i.test(e));
+  expect(invalidated, `page errors: ${errors.join(" | ")}`).toHaveLength(0);
+  await comic.close().catch(() => undefined);
+});

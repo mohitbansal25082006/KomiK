@@ -160,6 +160,40 @@ describe("enrichment", () => {
   });
 });
 
+describe("how many tags are kept", () => {
+  it("keeps every tag a gallery lists by default", () => {
+    // Distinct names, since a trailing count ("Theme 12") is stripped off as a gallery count on purpose.
+    const many = Array.from({ length: 80 }, (_, i) => `Theme ${String.fromCharCode(97 + (i % 26))}${Math.floor(i / 26)}x`);
+    const out = finalizeMeta(meta({ series: "Paper Moon", site: "x.example", tags: many }), DEFAULT_SETTINGS);
+    expect(out.tags).toHaveLength(80);
+  });
+
+  it("brings an old saved tag limit forward instead of cutting long tag lists short", () => {
+    // Settings saved before the limit was lifted held 30, which showed as 29 tags next to one genre.
+    expect(normalizeSettings({ maxTags: 30 }).maxTags).toBe(0);
+    expect(normalizeSettings({ maxTags: 60 }).maxTags).toBe(0);
+    // A limit the user chose themselves is left alone, and so is one saved by this version.
+    expect(normalizeSettings({ maxTags: 25 }).maxTags).toBe(25);
+    expect(normalizeSettings({ maxTags: 30, settingsVersion: 2 }).maxTags).toBe(30);
+  });
+
+  it("forgets settings from features that no longer exist", () => {
+    const saved = { maxTags: 12, settingsVersion: 2, catchComicDownloads: true, embedIntoCaughtDownloads: true } as Record<string, unknown>;
+    const s = normalizeSettings(saved as never) as unknown as Record<string, unknown>;
+    expect(s.maxTags).toBe(12);
+    expect("catchComicDownloads" in s).toBe(false);
+    expect("embedIntoCaughtDownloads" in s).toBe(false);
+  });
+
+  it("still honours a limit the user sets, genres included", () => {
+    const out = finalizeMeta(
+      meta({ series: "Paper Moon", site: "x.example", genres: ["Drama", "Romance"], tags: ["Alpha", "Beta", "Gamma", "Delta"] }),
+      { ...DEFAULT_SETTINGS, maxTags: 4 }
+    );
+    expect([...out.genres, ...out.tags]).toHaveLength(4);
+  });
+});
+
 describe("counts printed next to names", () => {
   it("drops the gallery count a site prints after a tag or artist", () => {
     expect(stripTrailingCount("hana hook 48")).toBe("hana hook");

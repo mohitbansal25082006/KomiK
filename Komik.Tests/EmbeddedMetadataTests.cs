@@ -210,6 +210,42 @@ public static class EmbeddedMetadataTests
             if (await repo.GetComicByPathAsync(first) != null) throw new Exception("Startup sync must not bring back a removed comic");
         });
 
+        await runTest("A Comic Downloaded Again Under the Same Name Gets All Its New Tags", async () =>
+        {
+            string root = Path.Combine(tempDir, "Redownload");
+            Directory.CreateDirectory(root);
+            using var repo = new LibraryRepository(Path.Combine(tempDir, "embedded_redownload.db"));
+            var scanner = new LibraryScannerService(repo, thumbnailService: new ThumbnailService(Path.Combine(tempDir, "embedded_redownload_thumbs")));
+            await repo.AddWatchedFolderAsync(root);
+
+            // First download: an older downloader kept only 29 tags and a genre.
+            string file = Path.Combine(root, "Long Tag List.cbz");
+            var firstTags = Enumerable.Range(1, 29).Select(i => $"First Tag {(char)('a' + i % 26)}{i}").ToList();
+            WriteCbz(file, $"<ComicInfo><Title>Long Tag List</Title><Genre>Doujinshi</Genre><Tags>{string.Join(", ", firstTags)}</Tags></ComicInfo>", null);
+            if (await scanner.IndexNewSourcesAsync(new[] { file }) != 1) throw new Exception("First download not indexed");
+            var comic = await repo.GetComicByPathAsync(file) ?? throw new Exception("Comic missing");
+            if ((await repo.GetTagsForComicAsync(comic.Id)).Count != 30) throw new Exception("First download should carry 30 tags");
+
+            // Downloaded again under the same name, now with 80 tags: every one must reach the library.
+            var allTags = firstTags.Concat(Enumerable.Range(1, 51).Select(i => $"Later Tag {(char)('a' + i % 26)}{i}")).ToList();
+            WriteCbz(file, $"<ComicInfo><Title>Long Tag List</Title><Genre>Doujinshi</Genre><Tags>{string.Join(", ", allTags)}</Tags></ComicInfo>", null);
+            File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddMinutes(5));
+
+            var (added, refreshed) = await scanner.IndexOrRefreshSourcesAsync(new[] { file });
+            if (added != 0 || refreshed != 1) throw new Exception($"Expected the known comic to be refreshed, got added={added} refreshed={refreshed}");
+            int stored = (await repo.GetTagsForComicAsync(comic.Id)).Count;
+            if (stored != 81) throw new Exception($"Expected all 81 tags (80 + genre) after the new download, got {stored}");
+
+            // Nothing changed since: a second pass leaves it alone.
+            if ((await scanner.IndexOrRefreshSourcesAsync(new[] { file })).Refreshed != 0) throw new Exception("An unchanged file must not be re-read");
+
+            // A file replaced while Komik was closed is caught by the startup sync as well.
+            WriteCbz(file, $"<ComicInfo><Title>Long Tag List</Title><Genre>Doujinshi</Genre><Tags>{string.Join(", ", allTags)}, Closed App Tag</Tags></ComicInfo>", null);
+            File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddMinutes(10));
+            await scanner.SyncWatchedFoldersQuietlyAsync();
+            if (!(await repo.GetTagsForComicAsync(comic.Id)).Contains("Closed App Tag")) throw new Exception("Startup sync should read a file replaced while Komik was closed");
+        });
+
         await runTest("CBZ Conversion Keeps the Embedded ComicInfo.xml", async () =>
         {
             string source = Path.Combine(tempDir, "Convert Me 5.cb7");
