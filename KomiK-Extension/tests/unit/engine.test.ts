@@ -101,6 +101,21 @@ describe("adapters", () => {
 });
 
 describe("metadata scraping", () => {
+  it("reads each value of a label/value grid on its own, never the whole box", () => {
+    const r = scan(`<h1>Starlight Courier Chapter 15</h1><div class="info">
+      <span>Author</span><span><a href="/author/ada-ink">Ada Ink</a></span>
+      <span>Artist</span><span><a href="/artist/rio-pen">Rio Pen</a></span>
+      <span>Publisher</span><span>Orbit Ink</span>
+      <span>Tags</span><span class="tags"><a href="/tag/action">Action</a><a href="/tag/space-opera">Space Opera</a></span>
+    </div>`);
+    expect(r.meta.writers).toEqual(["Ada Ink"]);
+    expect(r.meta.artists).toEqual(["Rio Pen"]);
+    expect(r.meta.publisher).toBe("Orbit Ink");
+    expect(r.meta.tags).not.toContain("Ada Ink");
+    expect(r.meta.tags).not.toContain("Rio Pen");
+    expect(r.meta.tags).toEqual(expect.arrayContaining(["Action", "Space Opera"]));
+  });
+
   it("reads JSON-LD, labelled fields and tag links", () => {
     const r = scan(
       `<html lang="en"><head>

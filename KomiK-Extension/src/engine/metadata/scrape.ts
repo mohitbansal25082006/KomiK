@@ -91,6 +91,34 @@ function readLabelledFields(root: ParentNode): Map<Field, LabelValue> {
     if (labelText && text.toLowerCase().startsWith(labelText.toLowerCase())) text = text.slice(labelText.length);
     return { text: text.replace(/^[\s:：\-–]+/, "").trim(), links };
   };
+  const isLabel = (el: Element) =>
+    el.children.length <= 1 && /^(B|STRONG|SPAN|LABEL|EM|I|DT|TH|H4|H5|H6)$/.test(el.tagName) && labelField(el.textContent ?? "") !== null;
+  /**
+   * What follows an inline label on its own line: everything after it up to the next label. An info grid
+   * ("<span>Author</span><span>Ada</span><span>Artist</span><span>Rio</span>") holds many labels in one
+   * parent, and each label owns only its own value, never the whole box.
+   */
+  const valueAfter = (label: Element): LabelValue => {
+    const parts: string[] = [];
+    const links: string[] = [];
+    for (let node = label.nextSibling; node; node = node.nextSibling) {
+      if (node.nodeType === 3) {
+        parts.push(node.textContent ?? "");
+        continue;
+      }
+      if (node.nodeType !== 1) continue;
+      const el = node as Element;
+      if (isLabel(el)) break;
+      if (el.tagName === "BR") {
+        if (cleanText(parts.join(" "))) break;
+        continue;
+      }
+      parts.push(el.textContent ?? "");
+      const anchors = el.tagName === "A" ? [el] : Array.from(el.querySelectorAll("a"));
+      links.push(...anchors.map((a) => cleanText(a.textContent)).filter(Boolean));
+    }
+    return { text: cleanText(parts.join(" ")).replace(/^[\s:：\-–]+/, "").trim(), links };
+  };
 
   root.querySelectorAll("dt, th").forEach((label) => {
     const field = labelField(label.textContent ?? "");
@@ -121,7 +149,9 @@ function readLabelledFields(root: ParentNode): Map<Field, LabelValue> {
     const parent = el.parentElement;
     const inlineLabel = /^(B|STRONG|SPAN|LABEL|EM|I)$/.test(el.tagName) && parent && cleanText(parent.textContent).length > whole.length;
     const sibling = el.nextElementSibling;
-    if (inlineLabel) set(field, valueOf(parent, whole));
+    const after = inlineLabel ? valueAfter(el) : null;
+    if (after && (after.text || after.links.length)) set(field, after);
+    else if (inlineLabel) set(field, valueOf(parent, whole));
     else if (sibling && cleanText(sibling.textContent)) set(field, valueOf(sibling));
     else if (parent) set(field, valueOf(parent, whole));
   });

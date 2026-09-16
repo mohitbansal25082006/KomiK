@@ -47,16 +47,13 @@ export function rememberPicks(tabId: number, url: string, pages: PageRef[]): voi
   cache.delete(tabId);
 }
 
-export function cachedScanForUrl(url: string): DetectResult | undefined {
-  const clean = url.replace(/#.*$/, "");
-  for (const r of cache.values()) if (r.url.replace(/#.*$/, "") === clean) return r;
-  return undefined;
-}
-
 export function forgetTab(tabId: number): void {
   cache.delete(tabId);
   picks.delete(tabId);
 }
+
+// A closed tab's scan and picks are never needed again.
+chrome.tabs.onRemoved.addListener((tabId) => forgetTab(tabId));
 
 /** Opens a chapter in a hidden background tab, lets its reader script run, scans it and closes it. */
 export async function scanUrlInBackgroundTab(url: string): Promise<DetectResult> {

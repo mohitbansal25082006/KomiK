@@ -26,6 +26,9 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
+LicenseFile=..\LICENSE
+; Closes a running Komik before files are replaced, so updating over an older version never fails.
+CloseApplications=force
 OutputDir=..\shipping
 OutputBaseFilename=Komik-Setup
 SetupIconFile=..\Assets\AppIcon.ico
