@@ -1,6 +1,6 @@
-# Komik — Development Process & File Manifest (Versions 1.0 and 1.1.0)
+# Komik — Development Process & File Manifest (Versions 1.0, 1.1.0 and 1.2.0)
 
-This document records the complete manifest of files created for **Komik** Version 1.0 and Version 1.1.0, along with a summary of the features delivered in each release.
+This document records the complete manifest of files created for **Komik** Version 1.0, Version 1.1.0 and Version 1.2.0, along with a summary of the features delivered in each release. Version 1.2.0 also introduces the third part of the project: **KomiK Downloader 1.0.0**, a browser extension that lives in `KomiK-Extension/` in the same repository.
 
 ---
 
@@ -527,3 +527,222 @@ The desktop app was brought into the same comic-book visual language as the webs
 - UI checks on an isolated demo library (`KOMIK_DATA_DIR`), never the real library: series detail at 1440×900 and 960×680, edit series section lock, empty tag / filter / search screens, active filter sticker, How Comics Open tiles, webtoon opening at the saved page, Top Series percentages.
 - Release build: self-contained win-x64 publish, then `ISCC installer\Komik.iss` → `shipping\Komik-Setup.exe`, installed and launched successfully.
 - README screenshots re-captured from this build with the original mock comics (see `komik-website/public/readme/app-*.jpg`).
+
+---
+
+## 6. Version 1.2.0: Embedded Metadata, Every Tag & Reader Polish
+
+Komik 1.2.0 teams the desktop app up with the new KomiK Downloader extension (section 7). The library now reads the details file that comics carry inside them, keeps every tag, refreshes comics that are saved again, and fills itself from watched folders as downloads finish. Existing libraries upgrade in place; a one-time pass imports embedded details for comics that were indexed before.
+
+---
+
+### 1. File Manifest (Version 1.2.0)
+
+#### New: Services
+- `Services\ComicInfoReader.cs`: finds and parses `ComicInfo.xml` (the ComicRack / Anansi schema) inside CBZ/ZIP, CBR/RAR, CB7/7Z archives and image folders. Only that one entry is read, never the pages, with DTD processing prohibited and a 2 MB size cap. Returns `EmbeddedComicInfo`: title, series, number, volume, summary, year/month/day, writers, artists (penciller, artist, inker, colorist, cover artist), publisher, web, language, manga direction and tags (genres and tags together, de-duplicated, **no count limit**). `ResolveLibraryTitle` keeps the file name when an embedded title is only a chapter name that doesn't mention its series.
+- `Services\WatchedFolderMonitor.cs`: a debounced `FileSystemWatcher` over every watched folder. Created, renamed and changed files are queued, waited on until their size is stable and the file can be opened (so partial `.crdownload` files are never indexed), then indexed or refreshed. Raises `ComicsAdded` so the library reloads.
+
+#### Updated: Services & Helpers
+- `Services\LibraryScannerService.cs`:
+  - `ApplyEmbeddedInfoAsync`: saves embedded metadata only when the comic has none yet, and only ever **adds** tags.
+  - `ImportEmbeddedMetadataAsync(force)`: one-time back-fill for libraries indexed before 1.2.0, guarded by the `EmbeddedComicInfoImported` setting.
+  - `IndexNewSourcesAsync` / `IndexOrRefreshSourcesAsync`: quietly index finished downloads, skip removed comics, and **re-read a known comic whose file changed** (size or modified time) so tags it gained are added. Reading progress, favourites and user edits are untouched.
+  - `RefreshChangedComicsAsync`: the same refresh across the whole library at start-up, for files replaced while Komik was closed.
+  - `SyncWatchedFoldersQuietlyAsync`: indexes comics added while Komik was closed, runs the one-time import, then refreshes changed files.
+- `Services\ILibraryScannerService.cs`: adds `IndexOrRefreshSourcesAsync` returning both added and refreshed counts.
+- `Helpers\ComicIdentityParser.cs`: new `StripLabelPrefix` drops a leading category label (`original - [Circle (Artist)] Title`) before titles are compared or creators read. The label is kept when it could be the title itself (more than three words, a year or release tag after the dash, or nothing after the credit).
+- `Helpers\MotionHelper.cs`: `SwapContentAsync(element, change)` fades, scales and slides content out (150 ms), applies the change, waits for layout, then rises the new layout in (320 ms), honouring the Windows *Animation effects* setting.
+
+#### Updated: Views
+- `MainPage.xaml.cs`: `SwitchReadingModeAsync` runs spread and webtoon switches (toolbar buttons and the `D` / `V` keys) through `SwapContentAsync`, guarded so rapid presses can't overlap.
+- `SettingsPage.xaml.cs`: *Cache All Covers*, *Clear Cache* and *Remove Watched Folder* dialogs rebuilt with `ComicDialogXaml` as comic panels, with path and "your files stay safe" notes.
+- `MainWindow.xaml`: title-bar crest enlarged from 18 px to 30 px, title text 13 px semibold.
+
+#### Updated: Assets, Manifest & Installer
+- `Assets\AppIcon.ico`: rebuilt as a multi-size PNG icon (16, 24, 32, 48, 64, 128, 256 px) with the crest filling 96% of each size, so the taskbar icon is no longer tiny. `Square44x44Logo*.png`, `StoreLogo.png` and `Square150x150Logo.scale-200.png` regenerated to match.
+- `Komik.csproj`, `Package.appxmanifest`, `Models\LibraryBackupData.cs` and the in-app version badges report **1.2.0**. `Package.appxmanifest` publisher display name set to *Mohit Bansal* (was the template's *AppPublisher*).
+- `installer\Komik.iss`: version 1.2.0, shows the MIT `LICENSE` page, and `CloseApplications=force` closes a running Komik before files are replaced.
+
+#### Removed
+- `Models\TagAndCollection.cs`: `TagItem` and `CollectionItem` were never referenced anywhere.
+
+#### Updated: Tests
+- `Komik.Tests\EmbeddedMetadataTests.cs` (new in this release) and `Komik.Tests\LibraryIntelligenceTests.cs`.
+
+---
+
+### 2. Features & Fixes
+
+1. **Reads what's inside:** ComicInfo.xml details and tags are imported when a comic is added, and back-filled once for older libraries. The embedded title becomes the library title. Metadata typed in Comic Details or restored from a backup is never replaced.
+2. **Every tag, no limit:** the reader used to keep at most 60 tags, and a comic saved by an early extension build carried 30. All tags in the file are now imported (only values longer than 128 characters are skipped as not being real tags).
+3. **Watched folders fill the shelf:** finished downloads are indexed within seconds, and comics added while Komik was closed are picked up on the next start, with details and tags.
+4. **Downloaded again? Refreshed.** Diagnosed from a real library: a comic first saved with 30 tags and later re-downloaded with 34 kept its 30 tags, because a known path was never read again. Komik now compares the stored size and modified time with the file on disk and re-reads changed comics, both when a watched-folder event arrives and at start-up.
+5. **Sharper duplicate finder:** `original - [Circle (Artist)] Title [English] [Digital]` and the same name without the label are now grouped as duplicates, while different parts of a series by the same circle (for example *Zenpen* and *Kouhen*) stay separate.
+6. **Silky mode switch:** switching between two-page spreads and webtoon mode animates instead of jumping.
+7. **Comic-style Settings dialogs** and a **larger, sharper app icon** in the taskbar and title bar.
+
+---
+
+### 3. Verification
+
+- Automated tests: **48 passed, 0 failed** (`dotnet run --project Komik.Tests/Komik.Tests.csproj`), including:
+  - `ComicInfoReader` parses metadata, credits, dates and tags
+  - ComicInfo title resolution keeps the series in the library title
+  - scanner indexes embedded metadata and tags from CBZ, CB7 and folders
+  - embedded metadata import never overwrites edits and runs once
+  - new downloads in watched folders are indexed, removed comics stay out
+  - a comic downloaded again under the same name gets all its new tags (29 + genre → 80 + genre, unchanged files are not re-read, and the start-up sync catches files replaced while closed)
+  - CBZ conversion keeps the embedded ComicInfo.xml
+  - duplicate detection groups label-prefixed copies and keeps different parts apart; `StripLabelPrefix` guards (year, release tag, long title, nothing after the credit)
+- Tag-limit diagnosis against real files: the downloaded CBZ held 34 tags and Komik's own `ComicInfoReader` (run in a scratch console against that file) returned all 34, while the library database held the 30 from the earlier download, which pinned the cause on the missing refresh.
+- Release build: self-contained win-x64 publish, then `ISCC installer\Komik.iss` → `shipping\Komik-Setup.exe` (72.7 MB, version 1.2.0).
+- Clean-up for release: removed build output and test leftovers (`bin`, `obj`, `publish_selfcontained`, `Samples`, `Komik.Tests\bin`, `Komik.Tests\obj`, `KomiK-Extension\test-results`, `KomiK-Extension\tests\.tmp`), all of which are regenerated by building or testing.
+
+---
+
+## 7. KomiK Downloader 1.0.0: The Browser Extension
+
+KomiK Downloader is a Manifest V3 extension for Chrome, Edge and Brave. It finds the comic, manga or webtoon on the current page, downloads every page, and saves a CBZ, ZIP, PDF or folder with a `ComicInfo.xml` that Komik 1.2.0 reads, into `Downloads/KomiK/<Series>/` by default. It lives in `KomiK-Extension/` in this repository and is versioned **1.0.0**, paired with Komik **1.2.0**.
+
+---
+
+### 1. File Manifest (`KomiK-Extension/`)
+
+#### Build, Configuration & Tooling
+- `.gitignore`: ignores `node_modules`, `dist`, `release`, zip/crx files, signing keys and test output.
+- `package.json` / `package-lock.json`: scripts `build`, `watch`, `typecheck`, `test`, `test:e2e`, `package`, `store`, `icons`.
+- `tsconfig.json`, `vitest.config.ts`, `playwright.config.ts`, `tailwind.config.cjs`, `postcss.config.cjs`.
+- `scripts\build.mjs`: Vite (Rolldown) multi-build: the extension pages as ES modules, the service worker and content scripts as self-contained IIFE bundles, then writes `manifest.json` from `src\manifest.mjs`.
+- `scripts\package.mjs`: zips `dist\` into `release\komik-downloader-<version>.zip` (no source maps) and adds `THIRD-PARTY-NOTICES.txt`, generated by walking the runtime dependency tree and collecting each package's license (fonts OFL-1.1; React, Framer Motion, fflate, pdf-lib and their dependencies MIT / 0BSD / Zlib).
+- `scripts\store-assets.mjs`: builds the Chrome Web Store images into `release\store\` from the real extension: `icon-128.png` (96 px artwork in 16 px padding), five 1280×800 screenshots, `promo-small-440x280.png` and `promo-marquee-1400x560.png`. It serves a made-up showcase comic with generated art, drives the popup, side panel and options page in Chromium, and composes the frames.
+- `scripts\icons.mjs`: renders the toolbar icons from the app crest (`Assets\app-icon.png`), trimmed so the crest fills 96% of each icon.
+- `src\manifest.mjs` / `src\manifest.d.mts`: the manifest (name, 132-character description, `minimum_chrome_version` 116, action, side panel, options page, service worker, the always-on sentinel content script, commands and web-accessible fonts). Permissions: `downloads`, `downloads.open`, `storage`, `unlimitedStorage`, `scripting`, `tabs`, `contextMenus`, `notifications`, `offscreen`, `sidePanel`, `declarativeNetRequestWithHostAccess`, `webRequest`, `alarms`, plus `<all_urls>` host access. Every permission was verified to be used.
+- `public\icons\icon-16/32/48/128.png`, `public\fonts\Bangers-Regular.woff2`, `public\fonts\Bangers-OFL.txt`.
+
+#### Background (service worker)
+- `src\background\index.ts`: message routing, install/start-up (settings migration, context menus, auto-resume), context menu and keyboard commands (`Alt+K`, `Alt+Shift+K`), toolbar badge, notifications with Open / Show in folder, heartbeat alarm.
+- `src\background\scan.ts`: injects the on-demand engine, scans tabs with a one-minute cache per tab, remembers picked pages, clears a tab's cache when it closes, and scans chapter pages in hidden background tabs.
+- `src\background\jobs.ts`: turns requests into persisted jobs (`queueJobs`, `queueChapters`, `quickDownload`).
+- `src\background\downloads.ts`: `chrome.downloads` save and completion wait.
+- `src\background\offscreen.ts`: creates and talks to the offscreen engine.
+- `src\background\network.ts`: `webRequest` observer that remembers images a tab loaded, for script-driven readers.
+- `src\background\referer.ts`: `declarativeNetRequest` session rules that send the page as Referer for hotlink-protected images.
+
+#### Content scripts
+- `src\content\sentinel.ts`: always-on and lightweight: counts likely comic images for the badge and floating crest button, shows toasts. Stands down cleanly when the extension is reloaded or updated.
+- `src\content\alive.ts`: `extensionAlive()` and `sendSafely()`, so scripts left in open tabs after an update never throw *Extension context invalidated*.
+- `src\content\engine.ts`: injected on demand: runs the scanner (with auto-scroll for lazy readers), fetches images from inside the page when needed, and the click-to-pick page picker.
+- `src\content\ui.ts`: closed Shadow-DOM UI for the floating button, toasts and picker bar.
+
+#### Detection & Metadata Engine (`src\engine\`)
+- `scan.ts`: runs every detector and merges one `DetectResult` (pages, chapters, metadata, pagination, confidence).
+- `adapters\index.ts`: reader-theme adapters (WP Manga, TS reader, app-data readers) and user **site rules** with CSS selectors.
+- `detect\harvest.ts`: collects candidate images from `img`/`srcset`/lazy attributes, backgrounds, links and inline scripts.
+- `detect\cluster.ts`: picks the reader column by container and size, fills numbered sequence gaps.
+- `detect\gallery.ts`: gallery grids (numbered page links with previews), keeping each preview and its reader page.
+- `detect\quality.ts`: full-size candidates for preview images and the learn-once preview → full-size rule.
+- `detect\chapters.ts`: chapter/episode/issue lists with numbers, volumes and dates, and one-page-per-URL pagination.
+- `metadata\scrape.ts`: JSON-LD, Open Graph, labelled fields (definition lists, tables, inline labels and label/value grids), tag links across Tags, Genres, Categories, Parodies, Characters and Groups rows, and ages such as "5 years 6 months ago" turned into a date.
+
+#### Offscreen Engine (`src\offscreen\`)
+- `engine.ts`: the job pipeline: resolves chapters (fetched HTML, then a hidden tab for script-rendered readers), learns full-size URLs from one reader page, downloads pages in parallel, packs and saves, writes history, and pauses, resumes, retries and cancels. Jobs and pages persist in IndexedDB so work resumes after a restart.
+- `fetcher.ts`: page fetching with per-host/global connection limits, retries, timeouts, quick candidate probes, reader-page fallback, in-page fetch fallback and image conversion (AVIF/JXL/HEIC → JPEG).
+- `limiter.ts`: connection limiter and speed meter.
+- `pack.ts`: CBZ/ZIP with pages stored and `ComicInfo.xml`, PDF with document info, cover thumbnails.
+- `save.ts`: saves through the downloads API or a chosen folder.
+
+#### Shared (`src\shared\`)
+- `types.ts`, `messages.ts` (typed messaging), `settings.ts` (defaults, clamping, versioned migration), `db.ts` (IndexedDB), `comicinfo.ts` (ComicInfo.xml writer), `identity.ts` (port of Komik's `ComicIdentityParser` rules), `naming.ts` (folder/file templates and Windows-safe paths), `tags.ts` (tag and credit cleaning), `dates.ts`, `enrich.ts` (final metadata and series memory), `html.ts` (parses fetched pages without loading their scripts), `imageinfo.ts`, `util.ts`.
+
+#### Pages & UI (`src\pages\`, `src\ui\`)
+- `pages\popup.html/.tsx`, `pages\sidepanel.html/.tsx`, `pages\options.html/.tsx`, `pages\offscreen.html/.ts`.
+- `ui\views\ScanView.tsx` (Pages, Chapters and Details tabs, format picker, download button), `ScanParts.tsx` (page grid and chapter list), `MetadataEditor.tsx`, `QueueView.tsx`, `HistoryView.tsx`.
+- `ui\components\Brand.tsx`, `Controls.tsx`, `Icon.tsx`, `RemoteImage.tsx` (loads previews through the background when a site refuses them); `ui\hooks\index.ts`; `ui\sound.ts`; `ui\styles.css`.
+
+#### Tests
+- `tests\unit\engine.test.ts`, `tests\unit\shared.test.ts` (Vitest, happy-dom).
+- `tests\e2e\extension.spec.ts`: launches real Chromium with the built extension over the DevTools protocol and drives it end to end.
+- `tests\e2e\fixture-server.mjs`: a local comic site with lazy readers, a series page, hotlink protection, galleries whose full-size pages can or can't be guessed, and a script-heavy chapter. All comics and names are made up and pages are generated images.
+
+---
+
+### 2. Features
+
+1. **Finds the comic on any site:** universal scanner, lazy-load auto-scroll with scroll restore, webtoon strips, one-page-per-URL readers, script-rendered readers (hidden tab), network-observed images, reader-theme adapters, user site rules and a click-to-pick fallback.
+2. **Gallery sites at full size:** each page's preview is shown in the grid, but the saved file gets the full-size image. The naming rule is learned from a single reader page and applied to all pages, with guesses and each page's reader page as fallbacks.
+3. **Whole series:** chapter lists with numbers, volumes and dates, select all / range / search, each chapter queued as its own comic in one batch.
+4. **Details Komik reads:** ComicInfo.xml with title, series, number, volume, chapter title, writers, artists, publisher, year/month/day, summary, language, manga direction, age rating, web link, tags and per-page info. Tags are cleaned (menu words dropped, counts such as `1,234` / `12.4K` stripped without breaking names such as *Iron Orchard 2*, capitals fixed, duplicates merged) and **no tag limit** by default. Credits drop counts (`rio pen 48` → `Rio Pen`). Series memory re-applies a user's corrections to later chapters.
+5. **Downloads:** parallel per host and globally, retries, timeouts, hotlink Referer, page conversion for formats Komik can't open, resume after restart, pause / resume / retry / cancel, notifications.
+6. **Output:** CBZ (stored pages), ZIP, PDF or folder; folder and file templates with `{series}`, `{title}`, `{volume}`, `{chapter}`, `{number}`, `{issue}`, `{chaptertitle}`, `{year}`, `{site}`, `{publisher}`, `{author}`, `{writer}`, `{artist}`, `{language}`, `{pages}`; page-number padding; optional Save As dialog.
+7. **Interface:** comic-style popup, side panel (queue, this page, history) and options page (Folder & names, Formats & pages, Speed, Details & tags, Page scanning, Site rules, Look & feel, Data, Komik app); light paper theme by default, dark theme, sounds, reduced motion; floating crest, badge, right-click menu and shortcuts.
+8. **Privacy:** no accounts, analytics, remote code or servers. Settings, queue and history stay in the browser.
+
+---
+
+### 3. Hardening During Development
+
+- **Content Security Policy violations:** parsing fetched chapter HTML with `DOMParser` let Chrome's preload scanner request the page's scripts and stylesheets from the offscreen document. `src\shared\html.ts` strips external scripts, stylesheets and frames before parsing; an end-to-end test watches the engine's console over DevTools and asserts zero violations.
+- **Gallery previews and blank pages:** previews now come from the site's own thumbnails, full-size URLs are learned once, and `RemoteImage` falls back to fetching through the background when a site refuses an image on an extension page.
+- **Tag cap:** settings saved by early builds (a limit of 30, shown as 29 tags plus one genre) are migrated to "no limit" by a versioned settings migration, and settings keys from removed features are dropped.
+- **Label/value grids:** a page laying out `<span>Author</span><span>…</span>` pairs in one box made every field swallow the whole box (credits appeared as tags). An inline label now owns only what follows it, up to the next label.
+- **Extension context invalidated:** the sentinel called into the extension from tabs left open across an update. `alive.ts` guards every call and the sentinel shuts itself down; a test reloads the extension under an open page and reproduced the original error before the fix.
+- **Site file downloads:** a *Files* tab that saved and re-tagged a site's own CBZ/PDF downloads was built, then removed at the user's request along with its settings, leaving Pages, Chapters and Details untouched.
+
+---
+
+### 4. Verification
+
+- `npm run typecheck`: no errors.
+- `npm test`: **58 passed** (universal detection, adapters, metadata scraping incl. grids and ages, chapters and pagination, galleries and quality rules, identity, naming, tags and counts, tag limits and settings migration, ComicInfo.xml, HTML parsing, images and utilities).
+- `npm run test:e2e`: **9 passed** in real Chromium: lazy reader to tagged CBZ, background batch chapters, hotlink Referer, full-size galleries (guessable and learned), settings changing the saved file, zero CSP violations, options and history pages, and no errors in tabs left open while the extension reloads.
+- `npm run package`: `release\komik-downloader-1.0.0.zip` (41 files, ~700 KB) with `THIRD-PARTY-NOTICES.txt`.
+- `npm run store`: store icon, five 1280×800 screenshots and two promo tiles, all 24-bit without alpha where the store requires it.
+
+---
+
+## 8. Version 1.2.0: Website, Privacy Policy & README
+
+The website was updated for Komik 1.2.0 and now showcases KomiK Downloader as its headline feature. A privacy policy page was added (the URL given to the Chrome Web Store), and the README gained a full chapter for the extension.
+
+---
+
+### 1. File Manifest (Website 1.2.0)
+
+#### New
+- `components\extension\ExtensionSection.tsx`: the *Special feature · KomiK Downloader 1.0.0* chapter: cyan marquee tape, SplitText heading, starburst sticker, the live demo, feature panels, and the install block (Chrome Web Store *coming soon* until `chromeStoreUrl` is set, zip download, formats, pressable `Alt+K` keycaps that also light up on the real key press, the Save → Watch → Read strip, install-in-three-panels steps and a *Collects nothing* stamp linking to the privacy policy).
+- `components\extension\BrowserDemo.tsx`: a working miniature of the extension on the site's own demo comic. A browser tab with a mock comic site, a toolbar crest with badge and a floating crest; clicking (or scrolling into view) runs **scan** (popup with a spinning SCAN! burst, lazy placeholders loading as a scan beam sweeps, pages numbered), **found** (PERFECT MATCH hero, tags lighting up on the page while junk words are struck through, Pages / Details tabs), **download** (progress, per-page ticks, speed), **pack** (thumbnails collapse into a PACKED! burst) and **saved** (a CBZ flies along an arc onto a Komik library shelf, lands with a NEW! sticker, and `ComicInfo.xml` types itself out). Steps indicator, replay, reduced-motion support and a resize-safe flight path.
+- `components\extension\ExtensionPanels.tsx`: six live panels: **Every tag, cleaned** (raw chips explode into clean tags, credit counts stripped, age → date), **Lazy pages? Handled.**, **Full-size galleries** (previews sharpen once the rule is learned), **Whole series in one go** (checkbox chapters, range, two-at-a-time progress), **Survives a restart** (close the browser mid-download and resume at the same page) and **Pick pages yourself** (click pages, numbered in reading order).
+- `components\NewInV12.tsx`: *Special edition · Issue 1.2.0* paper bento: **Reads what's inside** (XML fields fill the Comic Details card), **Every tag. No cap.** (34 tags rain in, old limit 30 struck out), **Folders fill the shelf**, **Saved it again? Refreshed.** (file size changes, new tags pop in, reading progress kept), **Sharper duplicate finder** (the `original -` label peels off and the copies stack) and **Silky mode switch** (spread ↔ webtoon with the app's timing), plus a ribbon of smaller changes.
+- `app\privacy\page.tsx`: `/privacy`, a static comic-styled privacy policy covering the app and the extension: four zero promises, on-page navigation, what the extension reads and when, network requests, what stays in the browser, a table of every permission and why, Chrome Web Store Limited Use statement, what the app keeps on the PC (`%USERPROFILE%\.komik`, crash log in `%LOCALAPPDATA%\Komik`), sharing, children, your choices, changes and contact.
+
+#### Updated
+- `lib\config.ts`: version 1.2.0, `siteUrl`, `privacyUrl`, `issuesUrl`, and a new `EXTENSION_CONFIG` (name, version, browsers, zip name/URL/size, `chromeStoreUrl`, shortcuts).
+- `app\page.tsx`: order is Hero → Stats → **Extension** → Formats → Engine → **New in 1.2** → New in 1.1 (back issue) → Manifesto → Keyboard → Download.
+- `app\layout.tsx`: `metadataBase` set to the live site, extension keywords and descriptions for search and social cards.
+- `components\Hero.tsx`: a *NEW · KomiK Downloader* announcement link, a *NEW! Browser extension* sticker and extension words in the marquee tapes (the announcement's entrance animation runs on a wrapper so it never fights its hover transform).
+- `components\Navbar.tsx`: Demo · Extension · Formats · Engine · New in 1.2 · Shortcuts.
+- `components\StatsStrip.tsx`: 115 automated tests (app + extension).
+- `components\DownloadSection.tsx`: a *Plus: KomiK Downloader* card with the zip download.
+- `components\Footer.tsx`: *KOMIK 1.2.0 + Downloader 1.0.0*, Extension and Privacy links.
+- `components\NewInV11.tsx`: now the *Back issue · 1.1.0* section (`#issue-1-1`).
+- `components\ReadingEngine.tsx`, `components\ManifestoSection.tsx`: 1.2 wording.
+- `package.json`: version 1.2.0.
+
+#### README Artwork (`komik-website\public\readme\`)
+- New animated headers: `section-extension.svg`, `section-new-1-2.svg`; `stats.svg` updated to 115 automated tests.
+- Extension screenshots from the store image generator: `ext-banner.jpg`, `ext-pages.jpg`, `ext-details.jpg`, `ext-chapters.jpg`, `ext-history.jpg`, `ext-settings.jpg`.
+- Website screenshots from the production build: `screenshot-hero.jpg` (re-captured), `screenshot-extension-demo.jpg`, `screenshot-extension-panels.jpg`, `screenshot-extension-install.jpg`, `screenshot-new-1-2.jpg`, `screenshot-privacy.jpg`.
+
+#### README (`README.md`)
+- Version 1.2.0 and extension 1.0.0 badges, an extension download button, and privacy policy links.
+- A new **KomiK Downloader** chapter: banner, five screenshots, four feature panels, a *from a website to your shelf* flow diagram, the watched-folder tip, install steps and privacy note.
+- **New in 1.2.0** table, with the 1.1.0 table kept in a collapsible block.
+- Library, shortcuts (`Alt+K`, `Alt+Shift+K`), privacy, architecture (`ComicInfoReader`, `WatchedFolderMonitor`, extension architecture diagram), tech stack, the 48 app test inventory, extension build and test commands with their coverage, website pages and configuration, known limitations, license and acknowledgements.
+
+---
+
+### 2. Verification
+
+- `npx tsc --noEmit`: no type errors.
+- `npm run build` (Next.js 15.5): compiled successfully; `/` and `/privacy` generated as static pages.
+- Production server checked with Playwright at 1440×900 and 390×844 (mobile): the demo runs scan → download → saved with the CBZ landing and ComicInfo.xml typed out, all six panels animate and respond, New in 1.2 panels animate, the privacy page renders, and there were no page or console errors. Layout issues found this way were fixed: an over-tall library shelf, an empty popup after packing, a file animation overlapping text, and a hero sticker and announcement overlapping.

@@ -527,17 +527,17 @@ function ToolbarPanel() {
 
 export default function NewInV11() {
   return (
-    <section id="whats-new" className="relative scroll-mt-16 overflow-hidden border-b-[3px] border-black bg-paper-grain py-20 text-black sm:py-28">
+    <section id="issue-1-1" className="relative scroll-mt-16 overflow-hidden border-b-[3px] border-black bg-paper-grain py-20 text-black sm:py-28">
       <div className="bg-halftone-magenta pointer-events-none absolute -right-20 top-0 h-[520px] w-[520px] rotate-12 opacity-60" />
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <SectionHeading
             onPaper
-            caption="Special edition · Issue 1.1.0"
-            title="Brand-new"
-            accent="this issue!"
+            caption="Back issue · 1.1.0"
+            title="Still hot"
+            accent="from issue 1.1!"
             tone="magenta"
-            sub="Version 1.1.0 is the biggest update yet: a comic-style app, smarter series and tags, a faster reader that opens the way you like, and local analytics."
+            sub="Everything 1.1.0 brought is still here: a comic-style app, smarter series and tags, a faster reader that opens the way you like, and local analytics."
           />
           <motion.div
             initial={{ scale: 0, rotate: -30 }}

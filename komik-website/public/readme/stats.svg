@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 230" width="1280" height="230" role="img" aria-label="8 formats, 6 parallel decoders, 6 LUT presets, 0 network calls, 0 accounts, 41 automated test suites">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 230" width="1280" height="230" role="img" aria-label="8 formats, 6 parallel decoders, 6 LUT presets, 0 network calls, 0 accounts, 115 automated tests">
   <defs>
     <pattern id="dotsW" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="1.6" fill="#fff" opacity="0.12"/></pattern>
     <pattern id="dotsK" width="12" height="12" patternUnits="userSpaceOnUse"><circle cx="6" cy="6" r="2" fill="#000" opacity="0.16"/></pattern>
@@ -51,8 +51,8 @@
       <rect x="-88.0" y="-78" width="190" height="170" fill="#000"/>
       <rect x="-95.0" y="-85" width="190" height="170" fill="#00C2FF" stroke="#000" stroke-width="4"/>
       <rect x="-95.0" y="-85" width="190" height="170" fill="url(#dotsK)"/>
-      <text x="-79.0" y="10" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="92" fill="#000">41</text>
+      <text x="-79.0" y="10" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="80" fill="#000">115</text>
       <text x="-79.0" y="46" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="22" letter-spacing="1" fill="#000">AUTOMATED</text>
-      <text x="-79.0" y="70" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="22" letter-spacing="1" fill="#000">TEST SUITES</text>
+      <text x="-79.0" y="70" font-family="Impact, 'Anton', 'Bebas Neue', 'Arial Black', 'Arial Narrow Bold', sans-serif" font-size="22" letter-spacing="1" fill="#000">TESTS</text>
     </g></g></g>
 </svg>

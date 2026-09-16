@@ -9,7 +9,7 @@ const STATS = [
   { value: 6, suffix: "", label: "Hardware LUT color presets", tone: "bg-magenta text-white", rot: -1 },
   { value: 0, suffix: "", label: "Network calls. Ever.", tone: "bg-paper", rot: 2 },
   { value: 0, suffix: "", label: "Accounts to create", tone: "bg-amber", rot: -1.5 },
-  { value: 41, suffix: "", label: "Automated test suites", tone: "bg-cyan", rot: 1 },
+  { value: 115, suffix: "", label: "Automated tests, app + extension", tone: "bg-cyan", rot: 1 },
 ];
 
 function Counter({ to }: { to: number }) {
@@ -36,7 +36,7 @@ export default function StatsStrip() {
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
           <h2 className="text-comic-outline font-bangers text-5xl leading-none text-amber sm:text-6xl">By the numbers!</h2>
-          <p className="max-w-sm font-mono text-xs font-bold text-newsprint/70">Every figure here comes straight from the Komik 1.1.0 codebase and its test suite.</p>
+          <p className="max-w-sm font-mono text-xs font-bold text-newsprint/70">Every figure here comes straight from the Komik 1.2.0 and KomiK Downloader codebases and their test suites.</p>
         </div>
         <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-6">
           {STATS.map((s, i) => (

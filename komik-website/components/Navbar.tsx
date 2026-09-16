@@ -4,15 +4,14 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useScroll, useSpring } from "framer-motion";
 import { Download, Github, Menu, X } from "lucide-react";
 import { APP_CONFIG } from "@/lib/config";
-import ThemeToggle from "@/components/ThemeToggle";
 import KomikLogo from "@/components/KomikLogo";
 
 const LINKS = [
   { href: "#reader", label: "Demo", id: "reader" },
+  { href: "#extension", label: "Extension", id: "extension" },
   { href: "#formats", label: "Formats", id: "formats" },
   { href: "#reading-engine", label: "Engine", id: "reading-engine" },
-  { href: "#whats-new", label: "New in 1.1", id: "whats-new" },
-  { href: "#why-offline", label: "Manifesto", id: "why-offline" },
+  { href: "#whats-new", label: "New in 1.2", id: "whats-new" },
   { href: "#shortcuts", label: "Shortcuts", id: "shortcuts" },
 ];
 
@@ -90,7 +89,6 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <ThemeToggle />
           <a
             href={APP_CONFIG.repoUrl}
             target="_blank"
@@ -121,7 +119,7 @@ export default function Navbar() {
       <motion.div
         aria-hidden
         style={{ scaleX: progress, transformOrigin: "0% 50%" }}
-        className="absolute inset-x-0 -bottom-[3px] h-[3px] bg-[linear-gradient(90deg,#FFD700_0_33%,#00C2FF_33%_66%,#FF1F6D_66%)]"
+        className="absolute inset-x-0 -bottom-[3px] h-[3px] bg-[linear-gradient(90deg,#FFD700_0_33%,#00C2FF_33%_66%,#FF1F6D_66%)] will-change-transform"
       />
 
       <AnimatePresence>

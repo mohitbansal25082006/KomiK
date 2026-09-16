@@ -50,6 +50,38 @@ export default function SmoothScroll() {
       gsap.ticker.lagSmoothing(0);
     }
 
+    /* ---- flag the page while it scrolls ---- */
+    // CSS uses html.is-scrolling to hold the giant rotating backgrounds still while content moves over
+    // them (see globals.css). Window scroll events fire for Lenis and native touch scrolling alike.
+    const root = document.documentElement;
+    let scrollIdle = 0;
+    const onScrollActivity = () => {
+      if (!root.classList.contains("is-scrolling")) root.classList.add("is-scrolling");
+      window.clearTimeout(scrollIdle);
+      scrollIdle = window.setTimeout(() => root.classList.remove("is-scrolling"), 160);
+    };
+    window.addEventListener("scroll", onScrollActivity, { passive: true });
+
+    /* ---- keep pinned sections in step with the page ---- */
+    // Content above a pinned section can change height after load (the reader measuring itself, demos
+    // opening and closing). ScrollTrigger's start and end points would then be stale, so a pinned strip
+    // starts or lets go too early. Re-measure whenever the page height really changes.
+    let lastHeight = document.documentElement.scrollHeight;
+    let refreshTimer = 0;
+    const onHeightChange = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        const height = document.documentElement.scrollHeight;
+        if (Math.abs(height - lastHeight) < 2) return;
+        ScrollTrigger.refresh();
+        // A refresh can resize pin spacers itself; remember the settled height so it never loops.
+        lastHeight = document.documentElement.scrollHeight;
+      }, 250);
+    };
+    const heightObserver = new ResizeObserver(onHeightChange);
+    heightObserver.observe(document.body);
+    document.fonts?.ready.then(() => ScrollTrigger.refresh());
+
     const onLock = (e: Event) => {
       if (!lenis) return;
       if ((e as CustomEvent<boolean>).detail) lenis.stop();
@@ -128,6 +160,11 @@ export default function SmoothScroll() {
 
     return () => {
       io.disconnect();
+      heightObserver.disconnect();
+      window.clearTimeout(refreshTimer);
+      window.removeEventListener("scroll", onScrollActivity);
+      window.clearTimeout(scrollIdle);
+      root.classList.remove("is-scrolling");
       cancelTween();
       document.removeEventListener("click", onClick);
       document.removeEventListener("komik:scroll-lock", onLock);

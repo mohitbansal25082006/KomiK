@@ -34,10 +34,10 @@ const comicNeue = Comic_Neue({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://github.com/mohitbansal25082006/KomiK"),
+  metadataBase: new URL(APP_CONFIG.siteUrl),
   title: "Komik — Your Comics. Your PC. Zero Cloud. | Windows Comic & Manga Reader",
   description:
-    "A lightning-fast, local-first Windows 11 comic reader built with WinUI 3 and .NET 8. Supports CBZ, CBR, CB7, PDF, and image folders. 100% offline, zero accounts, zero telemetry.",
+    "A lightning-fast, local-first Windows 11 comic reader built with WinUI 3 and .NET 8, plus KomiK Downloader, a free browser extension that saves comics from any website as CBZ with every tag inside. CBZ, CBR, CB7, PDF and image folders. Zero accounts, zero telemetry.",
   keywords: [
     "Comic reader",
     "Manga reader Windows",
@@ -49,6 +49,10 @@ export const metadata: Metadata = {
     "Open source comic reader",
     "Webtoon reader Windows",
     "Offline manga reader",
+    "Comic downloader extension",
+    "Manga downloader Chrome",
+    "Save webtoon as CBZ",
+    "ComicInfo.xml tags",
   ],
   authors: [{ name: APP_CONFIG.author, url: APP_CONFIG.repoUrl }],
   creator: APP_CONFIG.author,
@@ -57,10 +61,10 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: APP_CONFIG.repoUrl,
+    url: APP_CONFIG.siteUrl,
     title: "Komik — Modern Fluent Comic & Manga Reader for Windows",
     description:
-      "A lightning-fast, local-first Windows 11 comic reader built with WinUI 3 and .NET 8. 100% offline, zero accounts, zero telemetry.",
+      "A lightning-fast, local-first Windows 11 comic reader, plus a free browser extension that saves comics from any website as CBZ with every tag inside. Zero accounts, zero telemetry.",
     siteName: "Komik",
     images: [
       {
@@ -75,7 +79,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Komik — Modern Fluent Comic & Manga Reader for Windows",
     description:
-      "Fast, local-first Windows 11 desktop comic reader. CBZ, CBR, CB7, PDF. Free & 100% offline.",
+      "Fast, local-first Windows 11 comic reader + a free browser extension that saves comics from any site as tagged CBZ.",
     images: ["/og-image.png"],
   },
   icons: {

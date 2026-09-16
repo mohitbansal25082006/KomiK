@@ -19,6 +19,9 @@ const FORMATS = [
 function FormatCard({ f, i }: { f: (typeof FORMATS)[number]; i: number }) {
   const ref = useRef<HTMLButtonElement>(null);
   const [flipped, setFlipped] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [turning, setTurning] = useState(false);
+  const in3d = hovered || flipped || turning;
   const rx = useMotionValue(0);
   const ry = useMotionValue(0);
   const mx = useMotionValue(50);
@@ -40,6 +43,7 @@ function FormatCard({ f, i }: { f: (typeof FORMATS)[number]; i: number }) {
   const onLeave = () => {
     rx.set(0);
     ry.set(0);
+    setHovered(false);
   };
 
   return (
@@ -48,22 +52,30 @@ function FormatCard({ f, i }: { f: (typeof FORMATS)[number]; i: number }) {
       whileInView={{ opacity: 1, y: 0, rotate: 0 }}
       viewport={{ once: true, margin: "-8% 0px" }}
       transition={{ type: "spring", stiffness: 220, damping: 20, delay: (i % 4) * 0.07 }}
-      style={{ perspective: 1000 }}
+      className="will-change-transform"
+      // 3D only while a card is being tilted or flipped: idle cards stay flat, so scrolling past eight of
+      // them doesn't keep eight 3D rendering contexts alive.
+      style={in3d ? { perspective: 1000 } : undefined}
     >
       <motion.button
         ref={ref}
         type="button"
         onPointerMove={onMove}
+        onPointerEnter={(e) => e.pointerType === "mouse" && setHovered(true)}
         onPointerLeave={onLeave}
-        onClick={() => setFlipped((v) => !v)}
+        onClick={() => {
+          setTurning(true);
+          setFlipped((v) => !v);
+        }}
         aria-label={`${f.ext} ${f.name}. ${flipped ? "Showing details, click to flip back" : "Click to flip for engine details"}`}
-        style={{ rotateX: srx, rotateY: sry, transformStyle: "preserve-3d" }}
+        style={{ rotateX: srx, rotateY: sry, transformStyle: in3d ? "preserve-3d" : "flat" }}
         className="relative block aspect-[3/4] w-full text-left lg:aspect-[4/5]"
       >
         <motion.div
           animate={{ rotateY: flipped ? 180 : 0 }}
           transition={{ type: "spring", stiffness: 260, damping: 24 }}
-          style={{ transformStyle: "preserve-3d" }}
+          onAnimationComplete={() => setTurning(false)}
+          style={{ transformStyle: in3d ? "preserve-3d" : "flat" }}
           className="absolute inset-0"
         >
           {/* front */}
@@ -75,7 +87,7 @@ function FormatCard({ f, i }: { f: (typeof FORMATS)[number]; i: number }) {
             <div className="relative flex flex-1 items-center justify-center overflow-hidden">
               <div className="bg-halftone-paper absolute inset-0 opacity-60" />
               <div className="bg-speedlines absolute inset-[-50%] opacity-60 [background:repeating-conic-gradient(from_0deg,rgba(0,0,0,0.08)_0deg_4deg,transparent_4deg_12deg)]" />
-              <span className="relative font-bangers text-[3.4rem] leading-none tracking-wide drop-shadow-[4px_4px_0_rgba(0,0,0,0.9)] sm:text-6xl lg:text-7xl" style={{ WebkitTextStroke: "2px #000", color: "#fff" }}>
+              <span className="relative font-bangers text-[3.4rem] leading-none tracking-wide sm:text-6xl lg:text-7xl" style={{ WebkitTextStroke: "2px #000", color: "#fff", textShadow: "4px 4px 0 rgba(0,0,0,0.9)" }}>
                 {f.ext}
               </span>
             </div>
@@ -85,7 +97,7 @@ function FormatCard({ f, i }: { f: (typeof FORMATS)[number]; i: number }) {
                 <RotateCcw className="h-3 w-3" /> Tap to flip
               </div>
             </div>
-            <motion.div className="pointer-events-none absolute inset-0 mix-blend-soft-light" style={{ background: sheen }} />
+            {hovered && <motion.div className="pointer-events-none absolute inset-0 mix-blend-soft-light" style={{ background: sheen }} />}
           </div>
           {/* back */}
           <div className="absolute inset-0 flex flex-col justify-between border-[3px] border-black bg-ink p-3.5 text-newsprint shadow-[6px_6px_0_#000] [backface-visibility:hidden] [transform:rotateY(180deg)]">
@@ -153,7 +165,7 @@ function ConverterMachine() {
                   key={inp.label}
                   animate={active ? { x: [0, 0, 18, 0], scale: [1, 1.08, 0.9, 1] } : undefined}
                   transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.6, times: [0, 0.35, 0.6, 1] }}
-                  className={`${inp.color} flex items-center justify-center gap-1 border-[3px] border-black px-2 py-2 font-bangers text-lg shadow-[3px_3px_0_#000]`}
+                  className={`${inp.color} flex items-center justify-center gap-1 border-[3px] border-black px-2 py-2 font-bangers text-lg shadow-[3px_3px_0_#000] will-change-transform`}
                 >
                   <inp.icon className="h-4 w-4" />
                   {inp.label}
@@ -178,8 +190,9 @@ function ConverterMachine() {
                 </div>
                 <div className="mt-1.5 h-3 overflow-hidden border-2 border-amber/40 bg-[#222]">
                   <motion.div
-                    className="h-full bg-[repeating-linear-gradient(45deg,#FFD700_0_8px,#FF1F6D_8px_16px)]"
-                    animate={active ? { width: ["0%", "100%"] } : undefined}
+                    className="h-full bg-[repeating-linear-gradient(45deg,#FFD700_0_8px,#FF1F6D_8px_16px)] will-change-transform"
+                    initial={{ x: "-100%" }}
+                    animate={active ? { x: ["-100%", "0%"] } : undefined}
                     transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
                   />
                 </div>
@@ -195,7 +208,7 @@ function ConverterMachine() {
               {[2, 1, 0].map((k) => (
                 <motion.div
                   key={k}
-                  className="absolute flex h-36 w-28 flex-col items-center justify-center border-[3px] border-black bg-cyan font-bangers text-3xl text-black shadow-[4px_4px_0_#000]"
+                  className="absolute flex h-36 w-28 flex-col items-center justify-center border-[3px] border-black bg-cyan font-bangers text-3xl text-black shadow-[4px_4px_0_#000] will-change-transform"
                   style={{ rotate: (k - 1) * 7, x: (k - 1) * 8 }}
                   animate={k === 0 && active ? { y: [20, -6, 0], scale: [0.6, 1.1, 1], opacity: [0, 1, 1] } : undefined}
                   transition={k === 0 ? { duration: 2.4, repeat: Infinity, times: [0, 0.3, 0.45] } : undefined}

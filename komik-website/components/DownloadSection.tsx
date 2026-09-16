@@ -1,9 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowUp, Cpu, Download, ExternalLink, HardDrive, Scale, ShieldAlert } from "lucide-react";
-import { APP_CONFIG } from "@/lib/config";
+import { ArrowRight, ArrowUp, Cpu, Download, ExternalLink, HardDrive, Puzzle, Scale, ShieldAlert } from "lucide-react";
+import { APP_CONFIG, EXTENSION_CONFIG } from "@/lib/config";
 import ComicBurst from "@/components/fx/ComicBurst";
+import KomikLogo from "@/components/KomikLogo";
 
 const SPECS = [
   { icon: HardDrive, k: "Installer", v: `${APP_CONFIG.installerSize}, self-contained`, c: "bg-amber" },
@@ -84,6 +85,37 @@ export default function DownloadSection() {
             </motion.div>
           ))}
         </div>
+
+        {/* companion extension */}
+        <motion.div
+          initial={{ opacity: 0, y: 40, rotate: -2 }}
+          whileInView={{ opacity: 1, y: 0, rotate: 0.5 }}
+          viewport={{ once: true }}
+          transition={{ type: "spring", stiffness: 220, damping: 18 }}
+          className="relative mt-10 flex flex-col items-center gap-4 border-[3px] border-black bg-ink p-5 text-left text-newsprint shadow-[8px_8px_0_#000] sm:flex-row"
+        >
+          <div className="bg-halftone-cyan pointer-events-none absolute inset-0 opacity-30" />
+          <div className="relative flex h-16 w-16 shrink-0 items-center justify-center border-[3px] border-black bg-cyan shadow-[4px_4px_0_#FFD700]">
+            <KomikLogo size={42} />
+          </div>
+          <div className="relative flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-bangers text-3xl leading-none tracking-wide text-cyan">Plus: {EXTENSION_CONFIG.name}</span>
+              <span className="border-2 border-black bg-magenta px-1.5 py-0.5 font-bangers text-sm leading-none text-white">NEW · FREE</span>
+            </div>
+            <p className="mt-1 text-sm font-medium text-newsprint/80">
+              Save comics from any website as CBZ with every tag inside, for {EXTENSION_CONFIG.browsers.join(", ")}. Komik adds them to your library the moment they land.
+            </p>
+          </div>
+          <div className="relative flex shrink-0 flex-col gap-2">
+            <a href={EXTENSION_CONFIG.zipUrl} className="btn-comic-cyan inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm uppercase">
+              <Download className="h-4 w-4" /> Extension .zip
+            </a>
+            <a href="#extension" className="inline-flex items-center justify-center gap-1 font-mono text-[11px] font-black uppercase text-white underline-offset-4 hover:underline">
+              <Puzzle className="h-3.5 w-3.5" /> See it in action <ArrowRight className="h-3.5 w-3.5" />
+            </a>
+          </div>
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, rotate: 3, y: 30 }}

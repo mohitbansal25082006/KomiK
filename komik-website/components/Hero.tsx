@@ -2,13 +2,13 @@
 
 import { useRef } from "react";
 import { motion } from "framer-motion";
-import { ArrowDown, Download, Github, Hand, Keyboard, Maximize2, Monitor } from "lucide-react";
+import { ArrowDown, ArrowRight, Download, Github, Hand, Keyboard, Maximize2, Monitor, Puzzle } from "lucide-react";
 import { APP_CONFIG } from "@/lib/config";
 import { gsap, SplitText, useGSAP, prefersReducedMotion } from "@/lib/gsap";
 import ReaderMockup from "@/components/reader/ReaderMockup";
 import ComicBurst from "@/components/fx/ComicBurst";
 
-const TAPE = ["CBZ", "CBR", "CB7", "PDF", "ZIP", "RAR", "7Z", "IMAGE FOLDERS", "WEBTOON MODE", "MANGA RTL", "NIGHT MODE", "OFFLINE OCR", "SERIES & VOLUMES", "READING STATS"];
+const TAPE = ["CBZ", "CBR", "CB7", "PDF", "ZIP", "RAR", "7Z", "IMAGE FOLDERS", "BROWSER EXTENSION", "EVERY TAG", "WEBTOON MODE", "MANGA RTL", "NIGHT MODE", "OFFLINE OCR", "SERIES & VOLUMES", "READING STATS"];
 
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -58,6 +58,19 @@ export default function Hero() {
       <div className="relative mx-auto max-w-7xl px-4 pb-10 pt-10 sm:px-6 sm:pt-14 lg:px-8">
         {/* ---------- headline block ---------- */}
         <div className="relative mx-auto max-w-5xl text-center">
+          {/* GSAP moves the wrapper; the link keeps its own hover transform */}
+          <div data-hero-rise className="mb-4 flex justify-center">
+            <a
+              href="#extension"
+              className="group flex w-fit items-center gap-2 border-[3px] border-black bg-cyan py-1 pl-1 pr-3 font-bold text-black shadow-[4px_4px_0_#000] transition-transform hover:-translate-y-0.5 hover:rotate-[-1deg]"
+            >
+              <span className="flex items-center gap-1 border-2 border-black bg-magenta px-1.5 py-0.5 font-bangers text-sm leading-none tracking-wide text-white">
+                <Puzzle className="h-3.5 w-3.5" /> NEW
+              </span>
+              <span className="text-xs sm:text-sm">KomiK Downloader: save comics from any site, tags and all</span>
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </a>
+          </div>
           <div data-hero-rise className="caption-box mx-auto inline-flex -rotate-1 items-center gap-2 px-3 py-1 text-[11px] sm:text-xs">
             <span className="h-2 w-2 animate-pulse rounded-full bg-magenta" />
             Issue {APP_CONFIG.version} · Windows 10 &amp; 11 · Free forever
@@ -98,9 +111,9 @@ export default function Hero() {
             </div>
           </motion.div>
           </div>
-          <div data-hero-pop className="absolute right-16 top-0 hidden xl:block">
+          <div data-hero-pop className="absolute -right-10 top-14 hidden xl:block">
           <motion.div drag dragSnapToOrigin whileDrag={{ scale: 1.1 }} className="cursor-grab active:cursor-grabbing" title="Drag me!">
-            <div className="-rotate-6 border-[3px] border-black bg-cyan px-3 py-1.5 font-bangers text-xl text-black shadow-[4px_4px_0_#000]">NEW! Webtoon engine</div>
+            <div className="-rotate-6 border-[3px] border-black bg-cyan px-3 py-1.5 font-bangers text-xl text-black shadow-[4px_4px_0_#000]">NEW! Browser extension</div>
           </motion.div>
           </div>
 

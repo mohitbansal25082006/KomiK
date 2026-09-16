@@ -14,11 +14,14 @@
 
 <a href="https://github.com/mohitbansal25082006/KomiK/releases/latest/download/Komik-Setup.exe"><img src="https://img.shields.io/badge/⬇_DOWNLOAD_FOR_WINDOWS-~75_MB-FFD700?style=for-the-badge&labelColor=0A0A0F" alt="Download for Windows" height="42" /></a>
 &nbsp;
+<a href="https://github.com/mohitbansal25082006/KomiK/releases/latest/download/komik-downloader-1.0.0.zip"><img src="https://img.shields.io/badge/🧩_BROWSER_EXTENSION-CHROME_·_EDGE_·_BRAVE-FF1F6D?style=for-the-badge&labelColor=0A0A0F" alt="Get the KomiK Downloader browser extension" height="42" /></a>
+&nbsp;
 <a href="https://komik-website-taupe.vercel.app/"><img src="https://img.shields.io/badge/🌐_LIVE_WEBSITE-TRY_THE_READER-00C2FF?style=for-the-badge&labelColor=0A0A0F" alt="Visit the live website" height="42" /></a>
 
 <br /><br />
 
-<img src="https://img.shields.io/badge/version-1.1.0-FF1F6D?style=flat-square&labelColor=0A0A0F" alt="Version 1.1.0" />
+<img src="https://img.shields.io/badge/version-1.2.0-FF1F6D?style=flat-square&labelColor=0A0A0F" alt="Version 1.2.0" />
+<img src="https://img.shields.io/badge/extension-1.0.0-FFD700?style=flat-square&labelColor=0A0A0F" alt="KomiK Downloader 1.0.0" />
 <img src="https://img.shields.io/badge/Windows-10_%7C_11-00C2FF?style=flat-square&logo=windows11&logoColor=white&labelColor=0A0A0F" alt="Windows 10 and 11" />
 <img src="https://img.shields.io/badge/.NET-8-FFD700?style=flat-square&logo=dotnet&logoColor=white&labelColor=0A0A0F" alt=".NET 8" />
 <img src="https://img.shields.io/badge/UI-WinUI_3-FF1F6D?style=flat-square&labelColor=0A0A0F" alt="WinUI 3" />
@@ -28,15 +31,16 @@
 <br /><br />
 
 **Komik** is a lightweight, high-performance, **local-only** Windows desktop reader for comics, manga and webtoons,<br />
-built with **WinUI 3 (Windows App SDK)** and **C# / .NET 8** and designed around Windows 11 Fluent Design.
+built with **WinUI 3 (Windows App SDK)** and **C# / .NET 8** and designed around Windows 11 Fluent Design.<br />
+Its companion extension, **KomiK Downloader**, saves comics from any website as CBZ files with every tag inside, straight onto your Komik shelf.
 
 <sub>
 
-**[Screenshots](#-see-it-in-action)** · **[Features](#-the-reading-engine)** · **[What's new](#-brand-new-in-110)** · **[Formats](#-every-format-zero-codecs)** · **[Install](#-download--install)** · **[Shortcuts](#-keyboard-first-reading)** · **[Privacy](#-your-comics-belong-on-your-pc)** · **[Architecture](#-under-the-hood)** · **[Build](#-build-it-yourself)** · **[Website](#-the-komik-website)**
+**[Screenshots](#-see-it-in-action)** · **[Extension](#-komik-downloader)** · **[Features](#-the-reading-engine)** · **[What's new](#-new-in-120)** · **[Formats](#-every-format-zero-codecs)** · **[Install](#-download--install)** · **[Shortcuts](#-keyboard-first-reading)** · **[Privacy](#-your-comics-belong-on-your-pc)** · **[Architecture](#-under-the-hood)** · **[Build](#-build-it-yourself)** · **[Website](#-the-komik-website)**
 
 </sub>
 
-<img src="komik-website/public/readme/stats.svg" alt="8 formats · 6 parallel decoders · 6 LUT presets · 0 network calls · 0 accounts · 41 automated tests" width="100%" />
+<img src="komik-website/public/readme/stats.svg" alt="8 formats · 6 parallel decoders · 6 LUT presets · 0 network calls · 0 accounts · 115 automated tests" width="100%" />
 
 <br />
 
@@ -52,7 +56,7 @@ built with **WinUI 3 (Windows App SDK)** and **C# / .NET 8** and designed around
 </div>
 
 > [!NOTE]
-> **Privacy & offline architecture.** Komik is strictly offline and local-first. There is **no cloud sync, no account system, no telemetry or tracking, and zero external network calls anywhere in the application**. All comic metadata, reading progress, cover thumbnails, bookmarks and preferences stay on your own machine.
+> **Privacy & offline architecture.** Komik is strictly offline and local-first. There is **no cloud sync, no account system, no telemetry or tracking, and zero external network calls anywhere in the application**. All comic metadata, reading progress, cover thumbnails, bookmarks and preferences stay on your own machine. The KomiK Downloader extension collects nothing either: it only talks to the site you download from. Read the full **[privacy policy](https://komik-website-taupe.vercel.app/privacy)**.
 
 <img src="komik-website/public/readme/divider.svg" alt="" width="100%" />
 
@@ -124,7 +128,7 @@ built with **WinUI 3 (Windows App SDK)** and **C# / .NET 8** and designed around
 
 </div>
 
-The website holds a fully working replica of the reader, so visitors can read the whole demo comic in the browser before installing anything.
+The website holds a fully working replica of the reader, so visitors can read the whole demo comic in the browser before installing anything. Version 1.2.0 adds a live **KomiK Downloader** demo that scans the site's own comic, packs it into a CBZ and drops it on a Komik shelf, plus a **New in 1.2** special edition and a **[privacy policy](https://komik-website-taupe.vercel.app/privacy)** page.
 
 <div align="center">
 <img src="komik-website/public/readme/screenshot-hero.jpg" alt="Komik website hero" width="100%" />
@@ -135,13 +139,150 @@ The website holds a fully working replica of the reader, so visitors can read th
   </tr>
   <tr>
     <td width="50%"><img src="komik-website/public/readme/screenshot-engine.jpg" alt="Pinned reading engine comic strip" width="100%" /></td>
-    <td width="50%"><img src="komik-website/public/readme/screenshot-new.jpg" alt="New in 1.1.0 special edition" width="100%" /></td>
+    <td width="50%"><img src="komik-website/public/readme/screenshot-new-1-2.jpg" alt="New in 1.2.0 special edition" width="100%" /></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="komik-website/public/readme/screenshot-extension-demo.jpg" alt="Live KomiK Downloader demo: a comic scanned, packed and landed on the Komik shelf with its ComicInfo.xml" width="100%" /></td>
+    <td width="50%"><img src="komik-website/public/readme/screenshot-extension-panels.jpg" alt="Interactive extension feature panels: tag cleaner, lazy pages, full-size galleries, whole series" width="100%" /></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="komik-website/public/readme/screenshot-extension-install.jpg" alt="Extension install panel with formats, shortcuts and privacy stamp" width="100%" /></td>
+    <td width="50%"><img src="komik-website/public/readme/screenshot-privacy.jpg" alt="Komik privacy policy page" width="100%" /></td>
   </tr>
 </table>
 <img src="komik-website/public/readme/mobile-screen-hero-section.PNG" alt="Website on mobile" width="32%" />
 &nbsp;
 <img src="komik-website/public/readme/screenshot-mobile-reader.jpg" alt="Website reader on mobile" width="32%" />
 </div>
+
+<img src="komik-website/public/readme/divider.svg" alt="" width="100%" />
+
+<a id="-komik-downloader"></a>
+<img src="komik-website/public/readme/section-extension.svg" alt="KomiK Downloader: the browser extension" width="100%" />
+
+<div align="center">
+
+<img src="komik-website/public/readme/ext-banner.jpg" alt="KomiK Downloader: comics to CBZ, tags included" width="100%" />
+
+**KomiK Downloader 1.0.0** is a free browser extension for **Chrome, Edge and Brave**.<br />
+Open a comic, manga or webtoon on any website, click the crest, and it saves every page as a **CBZ with the title, credits and every tag written inside**.<br />
+Komik 1.2.0 files it into your library on its own.
+
+<a href="https://github.com/mohitbansal25082006/KomiK/releases/latest/download/komik-downloader-1.0.0.zip"><img src="https://img.shields.io/badge/⬇_DOWNLOAD-komik--downloader--1.0.0.zip-FFD700?style=for-the-badge&labelColor=0A0A0F" alt="Download komik-downloader-1.0.0.zip" height="36" /></a>
+&nbsp;
+<img src="https://img.shields.io/badge/CHROME_WEB_STORE-COMING_SOON-FF1F6D?style=for-the-badge&labelColor=0A0A0F" alt="Chrome Web Store: coming soon" height="36" />
+
+<br /><br />
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="komik-website/public/readme/ext-pages.jpg" alt="KomiK Downloader popup finding every page of a chapter" width="100%" /><br />
+      <sub><b>One click.</b> Every page of the chapter you're reading, lazy-loaded ones included, full size and in order.</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="komik-website/public/readme/ext-details.jpg" alt="KomiK Downloader details tab with title, credits and tags" width="100%" /><br />
+      <sub><b>Every detail.</b> Title, series, number, credits, date and all of the site's tags, cleaned and ready for ComicInfo.xml.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="komik-website/public/readme/ext-chapters.jpg" alt="KomiK Downloader chapter list for batch downloads" width="100%" /><br />
+      <sub><b>Whole series.</b> Pick chapters or a range on a series page and each one is saved as its own numbered comic.</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="komik-website/public/readme/ext-history.jpg" alt="KomiK Downloader side panel with download history" width="100%" /><br />
+      <sub><b>Download manager.</b> A side panel with the live queue and a searchable history with covers and tags.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="komik-website/public/readme/ext-settings.jpg" alt="KomiK Downloader settings page" width="100%" /><br />
+      <sub><b>Settings.</b> Folder and file-name templates, formats, speed, tag clean-up, page scanning, site rules and themes. Everything saves instantly.</sub>
+    </td>
+  </tr>
+</table>
+
+<sub>The comic in these screenshots is a made-up showcase with generated art.</sub>
+
+</div>
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+#### 🔎 Finds the comic on any site
+- **Universal scanner**: finds the reader column, ignores logos, ads and avatars
+- **Lazy-loading readers** are scrolled for you, then your place is restored
+- Webtoon strips, one-page-per-URL readers and script-built readers
+- **Gallery sites**: learns full-size image names from one page, with each page's reader page as a fallback
+- **Series pages**: detects chapter lists with numbers, volumes and dates
+- **Pick pages** by clicking them, for the odd site nothing else can read
+- **Site rules**: your own CSS selectors for pages, chapters, title and tags
+
+</td>
+<td width="50%" valign="top">
+
+#### 🏷️ Details Komik reads perfectly
+- Writes **ComicInfo.xml**: title, series, number, volume, writers, artists, publisher, date, summary, language, manga direction, tags and page info
+- **Every tag, no limit**: junk words dropped, counts stripped (`action 1,234` → `Action`), capitals fixed, duplicates merged
+- Credits cleaned (`rio pen 48` → `Rio Pen`)
+- Ages turned into dates (`uploaded 5 years 6 months ago` → March 2021)
+- **Series memory**: fix a series' details once and the next chapters match
+- Numbering follows Komik's own parser, so chapters group into one series
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+#### ⚡ Fast & reliable downloads
+- Parallel page downloads per site and overall, with retries and timeouts
+- **Resumes after a restart**: pages are kept until the comic is saved
+- Hotlink-protected images are fetched with the page as Referer
+- AVIF / JPEG XL / HEIC pages converted to JPEG so Komik opens them
+- **CBZ** (pages stored, no recompression) · **ZIP** · **PDF** · **Folder**
+- Saves to `Downloads/KomiK/{series}/{title}.cbz` by default. Templates also take `{volume}` `{chapter}` `{year}` `{site}` `{author}` `{language}` and more
+
+</td>
+<td width="50%" valign="top">
+
+#### 🎨 Comic-style and hands-free
+- Popup, **side panel** (queue · this page · history) and a full options page
+- Floating crest button and toolbar badge on pages with a comic
+- Right-click menu: *Download the comic on this page*
+- <kbd>Alt</kbd>+<kbd>K</kbd> opens KomiK · <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> downloads right away
+- Light (paper) theme by default, plus dark theme, sounds, reduced motion and notifications
+- Safe across updates: tabs left open while the extension updates stand down quietly
+
+</td>
+</tr>
+</table>
+
+### 🔗 From a website to your shelf
+
+```mermaid
+flowchart LR
+    SITE["🌐 Comic page"] -->|click the crest| SCAN["🔎 Scan<br/>pages · chapters · details"]
+    SCAN --> JOB["⬇️ Download queue<br/>parallel · resumable"]
+    JOB --> PACK["🗜️ Pack CBZ<br/>+ ComicInfo.xml"]
+    PACK --> DL[("📁 Downloads/KomiK")]
+    DL -->|watched folder| KOMIK["📚 Komik 1.2.0<br/>details & every tag"]
+```
+
+> [!TIP]
+> In Komik, add **`Downloads\KomiK`** as a watched folder once. Every comic the extension saves then appears in your library with its details and tags, including ones downloaded while Komik was closed. Save a comic again under the same name and Komik picks up its new tags too.
+
+### 🧩 Install the extension
+
+1. **Download** [`komik-downloader-1.0.0.zip`](https://github.com/mohitbansal25082006/KomiK/releases/latest/download/komik-downloader-1.0.0.zip) from the latest release and extract it.
+2. Open **`chrome://extensions`** (or `edge://extensions` / `brave://extensions`) and turn on **Developer mode**.
+3. Click **Load unpacked**, choose the extracted folder, and pin the KomiK crest to your toolbar.
+
+<sub>A Chrome Web Store listing is on its way. Once it's live, installing takes a single click.</sub>
+
+> [!NOTE]
+> **Collects nothing.** No accounts, analytics, ads or servers. The extension only requests the comic's own pages and images from the site you're on, and keeps its settings, queue and history in your browser. Every permission is explained in the **[privacy policy](https://komik-website-taupe.vercel.app/privacy#extension)**.
 
 <img src="komik-website/public/readme/divider.svg" alt="" width="100%" />
 
@@ -203,7 +344,8 @@ Plus **Brightness** (-100…+100), **Contrast** (0.5…2.0) and **Warmth** (-100
 <td width="50%" valign="top">
 
 #### 🗂️ A library that files itself
-- **Watched folders** with recursive indexing into local SQLite
+- **Watched folders** with recursive indexing into local SQLite. New downloads are added on their own once they finish, and files saved again under the same name are re-read
+- **Reads ComicInfo.xml** from CBZ, ZIP, CBR, CB7 and image folders: title, series, number, credits, date, summary and **every tag**
 - **Cover grid** and **detailed list** views
 - Instant search, plus filter chips: All · Continue Reading · Favorites · Completed · Unread · Tags
 - **Tag manager** with search, sort, usage counts, rename, merge and "delete unused"
@@ -219,7 +361,7 @@ Plus **Brightness** (-100…+100), **Contrast** (0.5…2.0) and **Warmth** (-100
 - Comic-style theme in **Light** (default) or **Dark**, or follow Windows
 - **How Comics Open:** page by page, two-page spread or webtoon, left to right or manga right to left
 - Reading & library defaults, page colors, monitored folders, thumbnail cache tools (all saved instantly)
-- **Comic Details** editor: title, series, issue #, writers, artists, publisher, release date, summary
+- **Comic Details** editor: title, series, issue #, writers, artists, publisher, release date, summary. Filled in from embedded ComicInfo.xml, and your edits always win
 - **File associations**, so double-clicking a comic in Explorer opens it in Komik
 - Command-line launch: `Komik.exe "<path-to-comic>"`
 
@@ -229,8 +371,25 @@ Plus **Brightness** (-100…+100), **Contrast** (0.5…2.0) and **Warmth** (-100
 
 <img src="komik-website/public/readme/divider.svg" alt="" width="100%" />
 
-<a id="-brand-new-in-110"></a>
-<img src="komik-website/public/readme/section-new.svg" alt="Brand-new in 1.1.0" width="100%" />
+<a id="-new-in-120"></a>
+<img src="komik-website/public/readme/section-new-1-2.svg" alt="Hot off the press: new in 1.2.0" width="100%" />
+
+| # | Feature | What it does |
+| :-: | :-- | :-- |
+| 1 | 🧩 **KomiK Downloader 1.0.0** | A new companion browser extension for Chrome, Edge and Brave that saves comics from any website as CBZ with their details and every tag inside. [See the extension →](#-komik-downloader) |
+| 2 | 📄 **Reads ComicInfo.xml** | Komik reads the details file inside CBZ, ZIP, CBR, CB7 and image folders: title, series, number, volume, writers, artists, publisher, date, summary, language and tags. The embedded title becomes the library title, and metadata you typed or restored is never overwritten. |
+| 3 | 🏷️ **Every tag, no limit** | Genres and tags are imported together, trimmed and de-duplicated, with no cap on how many. A comic with 34 tags shows all 34. |
+| 4 | 📥 **Folders that fill themselves** | Watched folders pick up finished downloads as they land (after the file stops growing), and anything added while Komik was closed is indexed on the next start, details and tags included. |
+| 5 | 🔄 **Re-downloads refresh** | Save a comic again under the same name (say, now with more tags) and Komik notices the file changed and adds what's new. Reading progress, favourites and your own edits stay put. |
+| 6 | 👥 **Sharper duplicate finder** | Copies whose names only differ by a leading label such as `original - [Circle (Artist)] Title` are now found, while different parts of a series stay apart. The label no longer hides the creators either. |
+| 7 | ✨ **Silky mode switch** | Switching between spreads and webtoon scrolling settles the page back, lays out the new mode off-screen and rises it in, following Windows' animation setting. |
+| 8 | 🎨 **Comic-style dialogs** | Cache all covers, Clear cache and Remove watched folder now open as comic panels that match the rest of the app. |
+| 9 | 🖼️ **Bigger, sharper icons** | A rebuilt multi-size app icon fills the taskbar properly, and the title-bar crest is larger. |
+| 10 | 📦 **Installer polish** | The setup shows the MIT license, and updating closes a running Komik first so files are never locked. |
+
+<details>
+<summary><b>📚 Still here from 1.1.0 (click to expand)</b></summary>
+<br />
 
 | # | Feature | What it does |
 | :-: | :-- | :-- |
@@ -249,6 +408,8 @@ Plus **Brightness** (-100…+100), **Contrast** (0.5…2.0) and **Warmth** (-100
 | 13 | 🧭 **Responsive top bar** | A single accent **ADD** dropdown (Add Folder / Add Comic), horizontal mouse-wheel scrolling and a layout that adapts to any window width. |
 | 14 | 🪟 **Window memory** | Restores size, position and maximized state on every launch. |
 | 15 | 💾 **Portable backups** | A `.komikbackup` JSON file with history, bookmarks, notes, favorites, tags and settings, imported without conflicts. |
+
+</details>
 
 <img src="komik-website/public/readme/divider.svg" alt="" width="100%" />
 
@@ -300,6 +461,9 @@ Plus **Brightness** (-100…+100), **Contrast** (0.5…2.0) and **Warmth** (-100
 </tr>
 </table>
 
+> [!TIP]
+> **Add the browser extension too.** [KomiK Downloader](#-install-the-extension) saves comics from websites straight into a folder Komik watches, with every tag inside.
+
 > [!IMPORTANT]
 > **"Windows protected your PC"?** Komik is free, open-source software distributed without a costly EV code-signing certificate, so SmartScreen may warn you the first time you run `Komik-Setup.exe`. Click **More info**, then **Run anyway**. Every line of code is public in this repository: zero telemetry, zero network activity.
 
@@ -325,8 +489,10 @@ Plus **Brightness** (-100…+100), **Contrast** (0.5…2.0) and **Warmth** (-100
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd> | Open an image folder | 🌐 |
 | <kbd>F11</kbd> | Toggle full screen | 🌐 |
 | <kbd>Esc</kbd> | Exit full screen / dismiss overlays | 🌐 |
+| <kbd>Alt</kbd>+<kbd>K</kbd> | Open KomiK Downloader on the current page | 🧩 |
+| <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> | Download the comic on this page right away | 🧩 |
 
-<sub>📖 Reader · 🌐 Global</sub>
+<sub>📖 Reader · 🌐 Global · 🧩 Browser extension (change them at <code>chrome://extensions/shortcuts</code>)</sub>
 
 <img src="komik-website/public/readme/divider.svg" alt="" width="100%" />
 
@@ -343,6 +509,8 @@ Plus **Brightness** (-100…+100), **Contrast** (0.5…2.0) and **Warmth** (-100
 
 > Most modern comic apps want an account, your archive on their servers, behavioral telemetry, or a monthly subscription just to turn a digital page.<br />
 > **Komik is deliberately built as the opposite of that model.**
+
+The **KomiK Downloader** extension follows the same rules: no accounts, no analytics, no servers of ours, and nothing sold or shared. It only requests the comic's pages and images from the site you're downloading from. The full, plain-language **[privacy policy](https://komik-website-taupe.vercel.app/privacy)** covers both the app and the extension, including every extension permission and why it's needed.
 
 <img src="komik-website/public/readme/divider.svg" alt="" width="100%" />
 
@@ -372,6 +540,8 @@ flowchart LR
         CLS --> PDF["PdfComicLoader"]
         CLS --> DIR["FolderComicLoader"]
         SCAN["LibraryScannerService"]
+        CIR["ComicInfoReader"]
+        WFM["WatchedFolderMonitor"]
         THUMB["ThumbnailService"]
         CONV["FormatConversionService"]
         DUP["DuplicateDetectionService"]
@@ -393,9 +563,36 @@ flowchart LR
     LVM --> SER
     LVM --> STATS
     SCAN --> THUMB
+    SCAN --> CIR
+    WFM --> SCAN
     LVM --> DB
     MVM --> DB
     SVM --> DB
+```
+
+### 🧩 Extension architecture
+
+```mermaid
+flowchart LR
+    subgraph PAGE["🌐 Web page"]
+        SEN["sentinel.js<br/>page count · floating crest"]
+        ENG["engine.js (on demand)<br/>scanner · picker"]
+    end
+
+    subgraph EXT["🧠 Extension"]
+        BG["Service worker<br/>scans · queue · menus · shortcuts"]
+        UI["Popup · side panel · options<br/>React 19"]
+        OFF["Offscreen engine<br/>fetch · pack CBZ/PDF · save"]
+        IDB[("IndexedDB<br/>jobs · pages · history")]
+    end
+
+    SEN --> BG
+    UI <--> BG
+    BG --> ENG
+    BG <--> OFF
+    OFF --> IDB
+    OFF -->|chrome.downloads| DL[("📁 Downloads/KomiK")]
+    DL -->|WatchedFolderMonitor| APP["📚 Komik"]
 ```
 
 ### 🛠️ Tech stack
@@ -411,6 +608,9 @@ flowchart LR
 | Storage | Microsoft.Data.Sqlite (WAL) |
 | OCR | `Windows.Media.Ocr` (built into Windows) |
 | Installer | Inno Setup 6 (LZMA2 / ultra64) |
+| **Extension** | Manifest V3 · TypeScript · React 19 · Tailwind CSS · Framer Motion · Vite |
+| Extension packing | fflate (CBZ/ZIP) · pdf-lib (PDF) · IndexedDB · offscreen document |
+| Extension tests | Vitest (unit) · Playwright driving real Chromium (end to end) |
 
 <details>
 <summary><b>🗄️ Local database schema (click to expand)</b></summary>
@@ -585,7 +785,7 @@ dotnet run --project Komik.Tests/Komik.Tests.csproj -c Release
 ```
 
 <details>
-<summary><b>What the 41 automated tests cover (click to expand)</b></summary>
+<summary><b>What the 48 automated tests cover (click to expand)</b></summary>
 <br />
 
 | # | Suite |
@@ -631,6 +831,13 @@ dotnet run --project Komik.Tests/Komik.Tests.csproj -c Release
 | 39 | Manual series rename keeps names unique |
 | 40 | OCR layout groups speech bubbles in reading order and tiles tall pages |
 | 41 | Top Series follow series grouping with exact page-based progress |
+| 42 | `ComicInfoReader` parses metadata, credits, dates and tags |
+| 43 | ComicInfo title resolution keeps the series in the library title |
+| 44 | Scanner indexes embedded metadata and tags from CBZ, CB7 and folders |
+| 45 | Embedded metadata import never overwrites edits and runs once |
+| 46 | New downloads in watched folders are indexed, removed comics stay out |
+| 47 | A comic downloaded again under the same name gets all its new tags |
+| 48 | CBZ conversion keeps the embedded ComicInfo.xml |
 
 </details>
 
@@ -650,6 +857,41 @@ dotnet publish Komik.csproj -c Release -r win-x64 --self-contained true `
 
 The finished installer lands in **`shipping\Komik-Setup.exe`**.
 
+### 🧩 Build the extension
+
+Requires [Node.js](https://nodejs.org/) 20 or later.
+
+```powershell
+cd KomiK-Extension
+npm install
+npm run build       # dist\  → load it unpacked in chrome://extensions
+npm run watch       # rebuild on every change while developing
+npm run typecheck   # TypeScript, no emit
+npm test            # 58 unit tests (Vitest)
+npm run test:e2e    # 9 end-to-end tests in real Chromium (Playwright)
+npm run package     # release\komik-downloader-1.0.0.zip, ready for the Chrome Web Store
+npm run store       # release\store\  → store icon, screenshots and promo tiles
+```
+
+<details>
+<summary><b>What the extension tests cover (click to expand)</b></summary>
+<br />
+
+**Unit (58):** universal page detection, reader-theme adapters, metadata scraping (JSON-LD, labelled fields, label/value grids, ages to dates), chapter lists and pagination, gallery previews and full-size rules, identity parsing that mirrors Komik, naming templates and Windows-safe paths, tag cleaning and counts, tag limits and settings migration, ComicInfo.xml output, page HTML parsing without loading scripts, and image sniffing.
+
+**End to end (9)** against a local fixture site in real Chromium:
+1. Lazy reader: scans with auto-scroll and saves a tagged CBZ named by its title
+2. Series page: batch-downloads chapters resolved in the background
+3. Hotlink-protected images download with the reader page as Referer
+4. Gallery of previews: every page saved at full size, with the reader page as fallback
+5. Gallery whose full-size pages can't be guessed: the pattern is learned from one page
+6. Settings change what is saved: folder, file name, page numbering and tag limit
+7. Reading a page full of scripts never asks the browser to load them
+8. Options and history pages render
+9. Pages left open while the extension updates never throw "Extension context invalidated"
+
+</details>
+
 <img src="komik-website/public/readme/divider.svg" alt="" width="100%" />
 
 <a id="-the-komik-website"></a>
@@ -665,6 +907,8 @@ The marketing and download site lives in [`komik-website/`](komik-website/) and 
 | **Look** | Bangers & Comic Neue lettering · halftone screens · CMYK ink palette · speed lines |
 | **Demo comic** | *Cyberpunk Chronicles #01, "The Last Local Archive"*: 12 vector SVG pages |
 | **Reader replica** | Spreads · manga RTL · webtoon · fit & zoom · 6 color presets · bookmarks · dialogue search · animated full screen · swipe & pinch on mobile |
+| **Extension showcase** | A working browser mock that scans the demo comic, cleans its tags, packs a CBZ and lands it on a Komik shelf with its ComicInfo.xml, plus six hands-on feature panels |
+| **Pages** | `/` (the comic book) · [`/privacy`](https://komik-website-taupe.vercel.app/privacy) (privacy policy for the app and extension) |
 | **Design doc** | [`komik-website/DESIGN.md`](komik-website/DESIGN.md) |
 
 ```powershell
@@ -682,6 +926,9 @@ npm run build    # production build
 - **Download links** are centralized in `komik-website/lib/config.ts`:
   - Installer: `https://github.com/mohitbansal25082006/KomiK/releases/latest/download/Komik-Setup.exe`
   - Releases: `https://github.com/mohitbansal25082006/KomiK/releases`
+  - Extension: `https://github.com/mohitbansal25082006/KomiK/releases/latest/download/komik-downloader-1.0.0.zip`
+  - Chrome Web Store: set `EXTENSION_CONFIG.chromeStoreUrl` once the listing is live, and the site switches to an **Add to Chrome** button
+- **Privacy policy:** `https://komik-website-taupe.vercel.app/privacy`, the URL to give the Chrome Web Store
 - **Social preview:** replace `komik-website/public/og-image.png` with any 1200×630 PNG.
 - **Vercel:** import the repository, set **Root Directory** to `komik-website`, keep the Next.js preset, and deploy.
 - **README artwork:** the animated banners and screenshots used on this page live in `komik-website/public/readme/`.
@@ -694,9 +941,12 @@ npm run build    # production build
 
 - **Explorer in-folder thumbnails.** Cover previews inside File Explorer need an in-process, 64-bit native COM `IThumbnailProvider` DLL. WinUI 3 apps run as standalone executables, so that handler can't be written in managed WinUI C# without a separate C++/WinRT companion. Komik generates fast cover thumbnails inside its own UI, and file associations plus direct launching are handled through normal Windows shell integration.
 
+- **Protected readers.** KomiK Downloader saves the images a page actually shows. Readers that draw scrambled pages onto a canvas, or stream them under DRM, can't be saved as comics.
+- **Chrome Web Store.** Until the listing is approved, the extension installs from the release zip with Developer mode.
+
 ## 📜 License
 
-Komik is released under the **MIT License**. See [`LICENSE`](LICENSE).
+Komik and KomiK Downloader are released under the **MIT License**. See [`LICENSE`](LICENSE). The extension's packaged zip includes `THIRD-PARTY-NOTICES.txt` for the fonts and libraries it bundles.
 
 ## 🙏 Acknowledgements
 
@@ -705,6 +955,7 @@ Komik is released under the **MIT License**. See [`LICENSE`](LICENSE).
 - [Docnet.Core](https://github.com/GowenGit/docnet) (PDFium) for PDF rendering
 - [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) and [Win2D](https://github.com/microsoft/Win2D)
 - [Bangers](https://github.com/googlefonts/bangers) by The Bangers Project Authors (SIL Open Font License 1.1) for the comic lettering
+- For the extension: [React](https://react.dev/), [Framer Motion](https://motion.dev/), [fflate](https://github.com/101arrowz/fflate), [pdf-lib](https://pdf-lib.js.org/), [Vite](https://vite.dev/), [Tailwind CSS](https://tailwindcss.com/), and the Comic Neue, Plus Jakarta Sans and JetBrains Mono fonts via [Fontsource](https://fontsource.org/)
 - The [Windows 11 Fluent Design System](https://learn.microsoft.com/windows/apps/design/)
 
 <div align="center">
@@ -713,7 +964,9 @@ Komik is released under the **MIT License**. See [`LICENSE`](LICENSE).
 
 **Created & maintained by [Mohit Bansal](https://github.com/mohitbansal25082006)** · Built natively for Windows with WinUI 3 & .NET 8
 
-<a href="https://github.com/mohitbansal25082006/KomiK/releases/latest/download/Komik-Setup.exe"><img src="https://img.shields.io/badge/⬇_DOWNLOAD-KOMIK_1.1.0-FFD700?style=for-the-badge&labelColor=0A0A0F" alt="Download Komik 1.1.0" /></a>
+<a href="https://github.com/mohitbansal25082006/KomiK/releases/latest/download/Komik-Setup.exe"><img src="https://img.shields.io/badge/⬇_DOWNLOAD-KOMIK_1.2.0-FFD700?style=for-the-badge&labelColor=0A0A0F" alt="Download Komik 1.2.0" /></a>
+&nbsp;
+<a href="https://github.com/mohitbansal25082006/KomiK/releases/latest/download/komik-downloader-1.0.0.zip"><img src="https://img.shields.io/badge/🧩_EXTENSION-DOWNLOADER_1.0.0-FF1F6D?style=for-the-badge&labelColor=0A0A0F" alt="Download KomiK Downloader 1.0.0" /></a>
 &nbsp;
 <a href="https://komik-website-taupe.vercel.app/"><img src="https://img.shields.io/badge/🌐_WEBSITE-OPEN-00C2FF?style=for-the-badge&labelColor=0A0A0F" alt="Open the Komik website" /></a>
 

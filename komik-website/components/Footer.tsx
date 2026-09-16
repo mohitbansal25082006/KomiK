@@ -1,18 +1,22 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Download, Github, Heart } from "lucide-react";
-import { APP_CONFIG } from "@/lib/config";
+import { useRef } from "react";
+import { motion, useInView } from "framer-motion";
+import { Download, Github, Heart, Puzzle, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { APP_CONFIG, EXTENSION_CONFIG } from "@/lib/config";
 import KomikLogo from "@/components/KomikLogo";
 import { Byte } from "@/components/comic/art";
 
 export default function Footer() {
+  const byteRef = useRef<HTMLDivElement>(null);
+  const byteVisible = useInView(byteRef, { margin: "100px 0px" });
   return (
     <footer className="relative overflow-hidden bg-ink pb-10 pt-16">
       <div className="bg-halftone pointer-events-none absolute inset-0 opacity-20" />
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center text-center">
-          <motion.div animate={{ y: [0, -10, 0], rotate: [-4, 4, -4] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} aria-hidden>
+          <motion.div ref={byteRef} animate={byteVisible ? { y: [0, -10, 0], rotate: [-4, 4, -4] } : undefined} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} aria-hidden>
             <svg viewBox="-60 -70 120 110" className="h-24 w-24">
               <Byte x={0} y={0} mood="wink" />
             </svg>
@@ -30,7 +34,9 @@ export default function Footer() {
               <KomikLogo size={28} />
             </div>
             <div>
-              <div className="font-bangers text-2xl leading-none tracking-wider text-newsprint">KOMIK {APP_CONFIG.version}</div>
+              <div className="font-bangers text-2xl leading-none tracking-wider text-newsprint">
+                KOMIK {APP_CONFIG.version} <span className="text-cyan">+ Downloader {EXTENSION_CONFIG.version}</span>
+              </div>
               <p className="max-w-md text-xs font-medium text-muted">{APP_CONFIG.oneLiner}</p>
             </div>
           </div>
@@ -41,9 +47,15 @@ export default function Footer() {
             <a href={APP_CONFIG.repoUrl} target="_blank" rel="noopener noreferrer" className="btn-comic-secondary inline-flex items-center gap-1.5 px-3 py-2">
               <Github className="h-3.5 w-3.5" /> GitHub
             </a>
+            <Link href="/#extension" className="btn-comic-secondary inline-flex items-center gap-1.5 px-3 py-2">
+              <Puzzle className="h-3.5 w-3.5" /> Extension
+            </Link>
             <a href={APP_CONFIG.releasesUrl} target="_blank" rel="noopener noreferrer" className="btn-comic-secondary inline-flex items-center gap-1.5 px-3 py-2">
               Releases
             </a>
+            <Link href="/privacy" className="btn-comic-secondary inline-flex items-center gap-1.5 px-3 py-2">
+              <ShieldCheck className="h-3.5 w-3.5" /> Privacy
+            </Link>
           </div>
         </div>
 

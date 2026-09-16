@@ -56,7 +56,7 @@ export default function ManifestoSection() {
           <div className="relative bg-paper-grain px-5 pb-12 pt-14 text-black shadow-[10px_10px_0_#000] sm:px-10 lg:px-16 [clip-path:polygon(0_2%,4%_0,9%_1.5%,15%_0,22%_1.8%,30%_0.2%,38%_1.6%,47%_0,55%_1.4%,63%_0.1%,72%_1.7%,80%_0.3%,88%_1.5%,95%_0,100%_1.2%,100%_98%,96%_100%,90%_98.4%,83%_100%,76%_98.2%,68%_99.8%,60%_98.3%,52%_100%,44%_98.6%,36%_99.9%,28%_98.2%,20%_100%,12%_98.5%,5%_100%,0_98.4%)]">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b-[3px] border-black pb-3 font-mono text-[11px] font-black uppercase tracking-wider">
               <span>The Daily Panel · Editorial</span>
-              <span className="hidden sm:inline">Vol. 1 · No. 1.1.0</span>
+              <span className="hidden sm:inline">Vol. 1 · No. 1.2.0</span>
               <span className="caption-box-magenta px-2 py-0.5 text-[10px]">From the drafting table</span>
             </div>
 

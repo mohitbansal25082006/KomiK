@@ -8,6 +8,9 @@ import { ComicPage } from "@/components/comic/pages";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { PRESETS, cssFilter } from "@/components/reader/readerModel";
 
+/** The sticky navbar: 64px tall plus its 3px ink border. */
+const NAV_HEIGHT = 67;
+
 /** True while the demo is on (or near) the screen, so offscreen loops stop working. */
 function useActive<T extends Element>() {
   const ref = useRef<T>(null);
@@ -375,18 +378,32 @@ export default function ReadingEngine() {
       const mm = gsap.matchMedia();
       mm.add("(min-width: 1024px) and (prefers-reduced-motion: no-preference)", () => {
         const track = trackRef.current!;
-        const distance = () => track.scrollWidth - window.innerWidth + 48;
+        // clientWidth leaves out the scrollbar, so the strip ends exactly at the visible edge.
+        const distance = () => Math.max(0, track.scrollWidth - document.documentElement.clientWidth);
+        // The strip pins just below the sticky navbar, never underneath it.
+        const top = () => `top ${NAV_HEIGHT}px`;
+        // After the last panel arrives the section stays pinned a little longer, so the smoothed scroll
+        // settles and the ending is fully seen before the page moves on.
+        const hold = () => Math.round(window.innerHeight * 0.3);
+
+        ScrollTrigger.create({
+          trigger: pinRef.current,
+          start: top,
+          end: () => `+=${distance() + hold()}`,
+          pin: true,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+        });
         const tween = gsap.to(track, {
           x: () => -distance(),
           ease: "none",
+          force3D: true,
           scrollTrigger: {
             trigger: pinRef.current,
-            start: "top top",
+            start: top,
             end: () => `+=${distance()}`,
-            pin: true,
             scrub: 0.45,
             invalidateOnRefresh: true,
-            anticipatePin: 1,
             onUpdate: (self) => {
               if (barRef.current) barRef.current.style.transform = `scaleX(${self.progress})`;
             },
@@ -401,6 +418,7 @@ export default function ReadingEngine() {
               rotate: 0,
               y: 0,
               ease: "none",
+              force3D: true,
               scrollTrigger: { trigger: el, containerAnimation: tween, start: "left right", end: "center center", scrub: true },
             },
           );
@@ -425,13 +443,13 @@ export default function ReadingEngine() {
         />
       </div>
 
-      <div ref={pinRef} className="relative overflow-hidden lg:flex lg:h-screen lg:flex-col lg:justify-center">
-        <div ref={trackRef} className="flex flex-col gap-8 px-4 pb-20 pt-8 sm:px-6 lg:w-max lg:flex-row lg:gap-10 lg:px-[max(2rem,calc((100vw-80rem)/2+2rem))] lg:pb-12">
+      <div ref={pinRef} className="relative overflow-hidden lg:flex lg:h-[calc(100vh-67px)] lg:flex-col lg:justify-center">
+        <div ref={trackRef} className="flex flex-col gap-8 px-4 pb-20 pt-8 sm:px-6 lg:w-max lg:flex-row lg:gap-10 lg:will-change-transform lg:pl-[max(2rem,calc((100vw-80rem)/2+2rem))] lg:pr-10 lg:py-8">
           {PANELS.map((p, i) => (
             <article
               key={p.no}
               data-strip-panel
-              className="relative flex flex-col border-[3px] border-black bg-panel shadow-[8px_8px_0_#000] lg:h-[min(640px,78vh)] lg:w-[min(880px,78vw)] lg:flex-row"
+              className="relative flex flex-col border-[3px] border-black bg-panel shadow-[8px_8px_0_#000] lg:h-[min(640px,calc(100vh-67px-6rem))] lg:w-[min(880px,78vw)] lg:flex-row"
             >
               <div className={`${p.tone} relative flex flex-col justify-between border-b-[3px] border-black p-5 text-black sm:p-7 lg:w-[42%] lg:border-b-0 lg:border-r-[3px]`}>
                 <div className="bg-halftone-paper pointer-events-none absolute inset-0 opacity-50" />
@@ -463,7 +481,7 @@ export default function ReadingEngine() {
           ))}
           <div className="hidden w-[min(420px,40vw)] shrink-0 flex-col items-start justify-center lg:flex">
             <div className="text-comic-outline font-bangers text-7xl leading-none text-amber">To be continued…</div>
-            <p className="mt-3 max-w-xs text-newsprint/75">…in Issue 1.1: series, stats, duplicates, OCR and backups. Keep scrolling!</p>
+            <p className="mt-3 max-w-xs text-newsprint/75">…in Issue 1.2: comics that arrive with every tag, shelves that fill themselves and a smoother reader. Keep scrolling!</p>
             <Cpu className="mt-4 h-10 w-10 text-cyan" />
           </div>
         </div>

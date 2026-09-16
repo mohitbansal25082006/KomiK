@@ -246,7 +246,7 @@ export function OcrOverlay({ page, onClose }: { page: number; onClose: () => voi
     }
   };
   return (
-    <div className="w-[min(92%,380px)] rounded-xl border border-[var(--r-border)] bg-[var(--r-flyout)] p-3 shadow-2xl backdrop-blur-xl">
+    <div className="w-[min(92%,380px)] rounded-xl border border-[var(--r-border)] bg-[var(--r-flyout)] p-3 shadow-2xl">
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2 text-[12px] font-semibold text-[var(--r-text)]">
           <ScanText className="h-3.5 w-3.5 text-[var(--r-accent-ink)]" /> Detected dialogue · page {page}

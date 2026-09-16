@@ -694,7 +694,7 @@ export default function ReaderMockup() {
       </div>
 
       {/* ---------------- Toolbar ---------------- */}
-      <div className="relative border-b border-[var(--r-border)] bg-[var(--r-chrome)] backdrop-blur-xl">
+      <div className="relative border-b border-[var(--r-border)] bg-[var(--r-chrome)]">
         {compact ? (
           <div className="flex h-12 items-center gap-1 px-2">
             <div className="flex min-w-0 flex-1 items-center gap-2 pl-1">
@@ -903,8 +903,8 @@ export default function ReaderMockup() {
                 transition={{ type: "spring", stiffness: 420, damping: 36 }}
                 className={
                   compact
-                    ? "absolute inset-x-0 bottom-0 z-40 max-h-[82%] overflow-auto rounded-t-2xl border-t border-[var(--r-border)] bg-[var(--r-flyout)] p-4 pb-5 shadow-2xl backdrop-blur-xl"
-                    : `absolute right-3 z-40 w-[320px] overflow-auto rounded-xl border border-[var(--r-border)] bg-[var(--r-flyout)] p-4 shadow-2xl backdrop-blur-xl ${fullscreen ? "top-[96px] max-h-[calc(100%-170px)]" : "top-3 max-h-[calc(100%-24px)]"}`
+                    ? "absolute inset-x-0 bottom-0 z-40 max-h-[82%] overflow-auto rounded-t-2xl border-t border-[var(--r-border)] bg-[var(--r-flyout)] p-4 pb-5 shadow-2xl"
+                    : `absolute right-3 z-40 w-[320px] overflow-auto rounded-xl border border-[var(--r-border)] bg-[var(--r-flyout)] p-4 shadow-2xl ${fullscreen ? "top-[96px] max-h-[calc(100%-170px)]" : "top-3 max-h-[calc(100%-24px)]"}`
                 }
               >
                 {compact && <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--r-border)]" />}
@@ -990,7 +990,7 @@ export default function ReaderMockup() {
               exit={{ opacity: 0, y: 12 }}
               className={`pointer-events-none absolute inset-x-0 z-50 flex justify-center px-4 ${fullscreen ? "bottom-16" : "bottom-4"}`}
             >
-              <div className="flex items-center gap-2 rounded-full border border-[var(--r-border)] bg-[var(--r-flyout)] px-3.5 py-1.5 text-[12px] font-medium shadow-2xl backdrop-blur-xl">
+              <div className="flex items-center gap-2 rounded-full border border-[var(--r-border)] bg-[var(--r-flyout)] px-3.5 py-1.5 text-[12px] font-medium shadow-2xl">
                 <span className="h-2 w-2 rounded-full bg-amber" />
                 {toast.msg}
               </div>
@@ -1001,7 +1001,7 @@ export default function ReaderMockup() {
 
       {/* ---------------- Scrubber ---------------- */}
       <div
-        className={`border-t border-[var(--r-border)] bg-[var(--r-chrome)] backdrop-blur-xl ${
+        className={`border-t border-[var(--r-border)] bg-[var(--r-chrome)] ${
           fullscreen
             ? `absolute inset-x-0 bottom-0 z-[35] transition-transform duration-300 ease-out will-change-transform ${chromeShown ? "translate-y-0" : "pointer-events-none translate-y-full"}`
             : "relative z-30 shrink-0"
@@ -1127,7 +1127,7 @@ function Scrubber({
               className="pointer-events-none absolute bottom-9 z-50 -translate-x-1/2"
               style={{ left: clamp(hover.x, 50, (trackRef.current?.clientWidth ?? 200) - 50) }}
             >
-              <div className="rounded-lg border border-[var(--r-border)] bg-[var(--r-flyout)] p-1.5 shadow-2xl backdrop-blur-xl">
+              <div className="rounded-lg border border-[var(--r-border)] bg-[var(--r-flyout)] p-1.5 shadow-2xl">
                 <div className="h-[120px] w-[80px] overflow-hidden rounded-sm bg-white">
                   <ComicPage n={hover.p} />
                 </div>

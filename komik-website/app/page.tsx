@@ -4,6 +4,8 @@ import StatsStrip from "@/components/StatsStrip";
 import FormatShowcase from "@/components/FormatShowcase";
 import ReadingEngine from "@/components/ReadingEngine";
 import NewInV11 from "@/components/NewInV11";
+import NewInV12 from "@/components/NewInV12";
+import ExtensionSection from "@/components/extension/ExtensionSection";
 import ManifestoSection from "@/components/ManifestoSection";
 import KeyboardSection from "@/components/KeyboardSection";
 import DownloadSection from "@/components/DownloadSection";
@@ -22,8 +24,10 @@ export default function HomePage() {
         <main className="flex-1">
           <Hero />
           <StatsStrip />
+          <ExtensionSection />
           <FormatShowcase />
           <ReadingEngine />
+          <NewInV12 />
           <NewInV11 />
           <ManifestoSection />
           <KeyboardSection />
