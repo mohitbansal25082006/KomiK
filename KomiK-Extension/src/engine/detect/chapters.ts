@@ -1,10 +1,21 @@
 // Finds chapter / episode / issue lists on series pages, and the site's own comic file downloads.
 import type { ChapterRef, FileLink } from "@/shared/types";
+import { findDate, stripDates } from "@/shared/dates";
 import { absoluteUrl, cleanText, COMIC_FILE_EXTENSIONS, extOf, uniqueBy } from "@/shared/util";
 
 const CHAPTER_TEXT = /(?:\b(?:chapter|chap|ch|episode|ep|issue|part|capitulo|capítulo|chapitre|kapitel|глава|bab)\.?\s*#?\s*(\d+(?:\.\d+)?))|(?:第\s*(\d+)\s*[話话章回])|(?:#\s*(\d+(?:\.\d+)?)\b)/i;
 const CHAPTER_URL = /(?:chapter|chap|ch|episode|ep|issue|capitulo|chapitre)[-_/.]?(\d+(?:[-_.]\d+)?)(?:[/?#.-]|$)/i;
 const VOLUME_TEXT = /\b(?:vol(?:ume)?|v)\.?\s*(\d+)\b/i;
+
+/** Text of an element with a space between child elements, so "Chapter 1" and a date never glue together. */
+function spacedText(el: Element): string {
+  const parts: string[] = [];
+  el.childNodes.forEach((node) => {
+    const text = node.nodeType === 3 ? node.textContent : (node as Element).textContent;
+    if (text && text.trim()) parts.push(text.trim());
+  });
+  return cleanText(parts.join(" ") || el.textContent);
+}
 
 function numberFrom(text: string, url: string): number | null {
   const t = CHAPTER_TEXT.exec(text);
@@ -17,13 +28,21 @@ function numberFrom(text: string, url: string): number | null {
 export function chapterFromLink(a: Element, base: string): ChapterRef | null {
   const url = absoluteUrl(a.getAttribute("href"), base);
   if (!url || url.startsWith("data:")) return null;
-  const title = cleanText(a.getAttribute("title") || a.textContent);
+  const raw = cleanText(a.getAttribute("title") || "") || spacedText(a);
+  const title = stripDates(raw);
   const number = numberFrom(title, url);
   if (number === null || !Number.isFinite(number)) return null;
   const vol = VOLUME_TEXT.exec(title);
   const row = a.closest("li, tr, .chapter, [class*=chapter], [class*=episode]");
   const dateText = row ? cleanText(row.querySelector("time, .date, [class*=date], [class*=time]")?.textContent ?? "") : "";
-  return { url, title: title.slice(0, 140) || `Chapter ${number}`, number, volume: vol ? Number.parseInt(vol[1], 10) : null, date: dateText || undefined };
+  const dateInText = findDate(raw);
+  return {
+    url,
+    title: title.slice(0, 140) || `Chapter ${number}`,
+    number,
+    volume: vol ? Number.parseInt(vol[1], 10) : null,
+    date: dateText || dateInText || undefined
+  };
 }
 
 /** Groups chapter-like links by their list container and keeps the biggest consistent list. */

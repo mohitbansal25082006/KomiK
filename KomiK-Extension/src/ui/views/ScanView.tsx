@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { applySeriesMemory, rememberSeries } from "@/shared/enrich";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { applySeriesMemory, finalizeMeta, rememberSeries } from "@/shared/enrich";
 import { send } from "@/shared/messages";
 import type { ComicMeta, DetectResult, FileLink, OutputFormat, Settings } from "@/shared/types";
 import { Burst, Stamp } from "../components/Brand";
@@ -38,6 +38,8 @@ export function ScanView({ tab, settings, compact = false, onOpenQueue }: { tab:
   const [busy, setBusy] = useState(false);
 
   useEffect(() => setFormat(settings.defaultFormat), [settings.defaultFormat]);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
 
   const scan = useCallback(
     async (deep = false, force = false) => {
@@ -55,8 +57,11 @@ export function ScanView({ tab, settings, compact = false, onOpenQueue }: { tab:
         sfx.bonk();
         return;
       }
-      const remembered = settings.rememberSeriesEdits ? await applySeriesMemory(res.meta) : res.meta;
-      setResult(res);
+      // Show exactly what will be saved: cleaned tags and credits, then the user's remembered series edits.
+      const current = settingsRef.current;
+      const cleaned = finalizeMeta(res.meta, current);
+      const remembered = current.rememberSeriesEdits ? await applySeriesMemory(cleaned) : cleaned;
+      setResult({ ...res, meta: cleaned });
       setMeta(remembered);
       setExcluded(new Set());
       setCoverIndex(0);
@@ -66,7 +71,7 @@ export function ScanView({ tab, settings, compact = false, onOpenQueue }: { tab:
       setStatus("ready");
       if (res.pages.length || res.chapters.length || res.files.length) sfx.pop();
     },
-    [tab?.id, tab?.url, settings.rememberSeriesEdits]
+    [tab?.id, tab?.url]
   );
 
   useEffect(() => {
@@ -181,7 +186,7 @@ export function ScanView({ tab, settings, compact = false, onOpenQueue }: { tab:
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {stamp && <Stamp text={stamp} onDone={() => setStamp(null)} />}
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-3">
+      <div className="scroll-area min-h-0 flex-1 px-3 pb-3 pt-3">
         {/* Hero */}
         <motion.div initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 380, damping: 26 }} className="panel relative overflow-hidden">
           <div className="absolute inset-0 bg-halftone" />

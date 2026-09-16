@@ -1,6 +1,9 @@
 // A TypeScript port of the number-reading rules in Komik's Helpers/ComicIdentityParser.cs, so the names
 // the extension writes are read back by the app exactly as intended (series + volume + chapter/issue).
 
+import { stripDates } from "./dates";
+import { cleanText } from "./util";
+
 export type NumberKind = "chapter" | "issue" | "episode" | "volume" | "none";
 
 export interface ParsedIdentity {
@@ -86,9 +89,9 @@ export function parseIdentity(raw: string): ParsedIdentity {
   };
 }
 
-/** Removes reader-site noise: "Read …", "… Online", "… Manga Free", "| SiteName". */
+/** Removes release dates and reader-site noise: "Read …", "… Online", "… Manga Free", "| SiteName". */
 export function cleanTitleNoise(raw: string, siteName = ""): string {
-  let t = (raw ?? "").replace(/[\u200B-\u200D\uFEFF]/g, "").replace(/\s+/g, " ").trim();
+  let t = stripDates(cleanText(raw));
   if (siteName) {
     const escaped = siteName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     t = t.replace(new RegExp(`\\s*[-–—|:•·»]\\s*${escaped}\\s*$`, "i"), "").replace(new RegExp(`^${escaped}\\s*[-–—|:•·»]\\s*`, "i"), "");

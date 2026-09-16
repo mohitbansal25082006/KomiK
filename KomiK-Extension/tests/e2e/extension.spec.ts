@@ -1,10 +1,10 @@
 // End-to-end: loads the built extension into Chromium, scans local fixture comic pages and checks the
 // real files written to the Downloads folder (name, folder, pages and ComicInfo.xml).
 import { chromium, expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createServer as createNetServer } from "node:net";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { unzipSync, strFromU8 } from "fflate";
 import { startFixtureServer } from "./fixture-server.mjs";
@@ -40,15 +40,9 @@ function walk(dir: string): string[] {
   });
 }
 
-/** Opens an extension page as a browser-initiated tab (web pages may not navigate to extension URLs). */
 async function extPage(path = "options.html"): Promise<Page> {
-  const url = `chrome-extension://${extensionId}/${path}`;
-  const cdp = await browser.newBrowserCDPSession();
-  const waiter = context.waitForEvent("page", { predicate: (p) => p.url().startsWith(url.split("#")[0].split("?")[0]), timeout: 20_000 });
-  await cdp.send("Target.createTarget", { url });
-  const page = await waiter;
-  await page.waitForLoadState("load");
-  await cdp.detach();
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${extensionId}/${path}`);
   return page;
 }
 
@@ -60,7 +54,7 @@ async function message<T>(ext: Page, type: string, payload: unknown): Promise<T>
   return ext.evaluate(({ type, payload }) => chrome.runtime.sendMessage({ komik: true, type, payload, target: "background" }), { type, payload }) as Promise<T>;
 }
 
-async function waitForJobs(ext: Page, ids: string[], timeout = 90_000) {
+async function waitForJobs(ext: Page, ids: string[], timeout = 40_000) {
   const started = Date.now();
   for (;;) {
     const snap = await message<{ jobs: Array<{ id: string; status: string; error?: string; savedPath?: string }> }>(ext, "jobs-snapshot", {});
@@ -68,8 +62,11 @@ async function waitForJobs(ext: Page, ids: string[], timeout = 90_000) {
     const failed = mine.find((j) => j.status === "error");
     if (failed) throw new Error(`Job failed: ${failed.error}`);
     if (mine.length === ids.length && mine.every((j) => j.status === "done")) return mine;
-    if (Date.now() - started > timeout) throw new Error(`Timed out: ${JSON.stringify(mine.map((j) => [j.status, j.error]))}`);
-    await new Promise((r) => setTimeout(r, 400));
+    if (Date.now() - started > timeout) {
+      const downloads = await ext.evaluate(async () => (await chrome.downloads.search({})).map((d) => [d.state, d.error, d.filename, d.url.slice(0, 50)]));
+      throw new Error(`Timed out: ${JSON.stringify(mine.map((j) => [j.status, j.error]))}; downloads: ${JSON.stringify(downloads)}`);
+    }
+    await new Promise((r) => setTimeout(r, 1000));
   }
 }
 
@@ -83,7 +80,7 @@ test.beforeAll(async () => {
   mkdirSync(join(TMP, "profile", "Default"), { recursive: true });
   mkdirSync(DOWNLOADS, { recursive: true });
   mkdirSync(SHOTS, { recursive: true });
-  writeFileSync(join(TMP, "profile", "Default", "Preferences"), JSON.stringify({ download: { default_directory: DOWNLOADS, prompt_for_download: false, directory_upgrade: true }, savefile: { default_directory: DOWNLOADS } }));
+  writeFileSync(join(TMP, "profile", "Default", "Preferences"), JSON.stringify({ download: { default_directory: DOWNLOADS, prompt_for_download: false } }));
 
   const fixture = await startFixtureServer();
   origin = fixture.origin;
@@ -97,9 +94,6 @@ test.beforeAll(async () => {
     `--load-extension=${DIST}`,
     "--headless=new",
     "--no-first-run",
-    "--no-default-browser-check",
-    "--disable-features=DownloadBubble,DownloadBubbleV2",
-    "--window-size=1280,900",
     "about:blank"
   ], { stdio: "ignore" });
 
@@ -114,18 +108,29 @@ test.beforeAll(async () => {
   context = browser.contexts()[0];
   // Let Chromium save downloads itself (Playwright otherwise renames or denies them).
   const session = await browser.newBrowserCDPSession();
+  // Keep this session attached: Chromium resets the download behaviour when it detaches.
   await session.send("Browser.setDownloadBehavior", { behavior: "default" });
-  await session.detach();
-  // Chromium ships hidden component extensions too; ours is the one running background.js.
-  const ours = (url: string) => url.startsWith("chrome-extension://") && url.endsWith("/background.js");
-  let worker = context.serviceWorkers().find((w) => ours(w.url()));
-  worker ??= await context.waitForEvent("serviceworker", { predicate: (w) => ours(w.url()), timeout: 20_000 });
-  extensionId = new URL(worker.url()).host;
+  // Chromium runs hidden component extensions with a background.js too: find ours by its manifest name.
+  for (let i = 0; i < 80 && !extensionId; i++) {
+    for (const worker of context.serviceWorkers()) {
+      if (!worker.url().startsWith("chrome-extension://")) continue;
+      const name = await worker.evaluate(() => chrome.runtime.getManifest().name).catch(() => "");
+      if (name === "KomiK Downloader") extensionId = new URL(worker.url()).host;
+    }
+    if (!extensionId) await new Promise((r) => setTimeout(r, 250));
+  }
+  expect(extensionId, "KomiK Downloader service worker did not start").not.toBe("");
+  // Give the freshly installed extension a moment to finish onInstalled (settings, menus, welcome tab).
+  await new Promise((r) => setTimeout(r, 1500));
 });
 
 test.afterAll(async () => {
+  // Kill the whole Chromium process tree first (closing the browser orphans its GPU/renderer processes).
+  if (chrome?.pid) spawnSync("taskkill", ["/PID", String(chrome.pid), "/T", "/F"], { stdio: "ignore" });
+  // Fallback: anything still running with this run's profile (Chromium can re-parent helper processes).
+  const profileTag = basename(TMP);
+  spawnSync("powershell", ["-NoProfile", "-Command", `Get-CimInstance Win32_Process -Filter "Name='chrome.exe'" | Where-Object { $_.CommandLine -like "*${profileTag}*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`], { stdio: "ignore" });
   await browser?.close().catch(() => undefined);
-  chrome?.kill();
   closeServer?.();
   await new Promise((r) => setTimeout(r, 500));
   try {
@@ -236,6 +241,73 @@ test("hotlink-protected images download with the reader page as Referer", async 
   await ext.close();
 });
 
+test("gallery of previews: every page saved at full size, with the reader page as fallback", async () => {
+  const url = `${origin}/g/9912/`;
+  const comic = await context.newPage();
+  await comic.goto(url);
+  const ext = await extPage();
+  const tabId = await tabIdFor(ext, url);
+
+  const result = await message<{ pages: Array<{ url: string; candidates?: string[]; pageUrl?: string }>; meta: Record<string, unknown>; adapter: string; confidence: string }>(ext, "scan-tab", { tabId, force: true });
+  expect(result.pages).toHaveLength(9);
+  expect(result.confidence).toBe("high");
+  // The small preview is never the first choice, and each page keeps its own reader page.
+  expect(result.pages[0].candidates?.[0]).toContain("/images/9912/1.jpg");
+  expect(result.pages[0].pageUrl).toBe(`${origin}/g/9912/1/`);
+
+  // The page grid shows the site's own previews, so it fills in immediately.
+  const popup = await extPage(`popup.html?tabId=${tabId}`);
+  await popup.setViewportSize({ width: 430, height: 600 });
+  await expect(popup.locator('img[src*="/thumbs/9912/"]').first()).toBeVisible({ timeout: 20_000 });
+  expect(await popup.locator('img[src*="/thumbs/9912/"]').count()).toBeGreaterThanOrEqual(8);
+  await popup.waitForTimeout(600);
+  await popup.screenshot({ path: join(SHOTS, "popup-gallery.png") });
+  await popup.close();
+
+  const meta = { ...result.meta, title: "Night Market Stories", series: "Night Market Stories" };
+  const { ids } = await message<{ ids: string[] }>(ext, "queue-jobs", { jobs: [{ meta, format: "cbz", pages: result.pages, sourceUrl: url, tabId }] });
+  await waitForJobs(ext, ids);
+
+  const file = join(DOWNLOADS, "KomiK", "Night Market Stories", "Night Market Stories.cbz");
+  expect(existsSync(file), `found ${walk(DOWNLOADS).join(", ")}`).toBe(true);
+  const { names, xml } = readCbz(file);
+  expect(names.filter((n) => n.endsWith(".png"))).toHaveLength(9);
+  // Every page is the 1200px scan, including page 5, whose full image only its reader page knows about.
+  const widths = Array.from(xml.matchAll(/ImageWidth="(\d+)"/g)).map((m) => Number(m[1]));
+  expect(widths).toHaveLength(9);
+  expect(widths.filter((w) => w === 1200)).toHaveLength(9);
+  await comic.close();
+  await ext.close();
+});
+
+test("gallery whose full-size pages can't be guessed: the pattern is learned from one page", async () => {
+  const url = `${origin}/g/7745/`;
+  const comic = await context.newPage();
+  await comic.goto(url);
+  const ext = await extPage();
+  const tabId = await tabIdFor(ext, url);
+
+  const result = await message<{ pages: Array<{ url: string }>; meta: Record<string, unknown> }>(ext, "scan-tab", { tabId, force: true });
+  expect(result.pages).toHaveLength(9);
+
+  const meta = { ...result.meta, title: "Lantern Hours", series: "Lantern Hours" };
+  const { ids } = await message<{ ids: string[] }>(ext, "queue-jobs", { jobs: [{ meta, format: "cbz", pages: result.pages, sourceUrl: url, tabId }] });
+  await waitForJobs(ext, ids);
+
+  const file = join(DOWNLOADS, "KomiK", "Lantern Hours", "Lantern Hours.cbz");
+  expect(existsSync(file), `found ${walk(DOWNLOADS).join(", ")}`).toBe(true);
+  const { names, xml } = readCbz(file);
+  expect(names.filter((n) => n.endsWith(".png"))).toHaveLength(9);
+  const widths = Array.from(xml.matchAll(/ImageWidth="(\d+)"/g)).map((m) => Number(m[1]));
+  expect(widths.filter((w) => w === 1400)).toHaveLength(9);
+
+  // The naming was learned from one page instead of opening all nine.
+  const stats = await comic.evaluate(async (base) => (await fetch(`${base}/__stats`)).json(), origin);
+  expect((stats as { hiddenReaderPages: number }).hiddenReaderPages).toBeLessThanOrEqual(2);
+  await comic.close();
+  await ext.close();
+});
+
 test("site CBZ link: saved through KomiK with fresh ComicInfo.xml", async () => {
   const url = `${origin}/files`;
   const comic = await context.newPage();
@@ -288,7 +360,7 @@ test("options and history pages render", async () => {
   const panel = await extPage("sidepanel.html");
   await panel.setViewportSize({ width: 400, height: 820 });
   await panel.getByRole("tab", { name: /History/ }).click();
-  await expect(panel.getByText("Starlight Courier Ch. 15")).toBeVisible();
+  await expect(panel.getByText("Starlight Courier Ch. 15").first()).toBeVisible();
   await panel.waitForTimeout(500);
   await panel.screenshot({ path: join(SHOTS, "sidepanel-history.png") });
 });

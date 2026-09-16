@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { scanDocument } from "@/engine/scan";
 import { fillSequenceGaps } from "@/engine/detect/cluster";
 import { findFileLinks, findPagination } from "@/engine/detect/chapters";
+import { mainImageOf } from "@/engine/detect/gallery";
+import { applyPreviewRule, derivePreviewRule, fullSizeCandidates, looksLikePreview } from "@/engine/detect/quality";
+import { parseIdentity } from "@/shared/identity";
 
 function doc(html: string): Document {
   return new DOMParser().parseFromString(html, "text/html");
@@ -128,6 +131,12 @@ describe("metadata scraping", () => {
     expect(r.meta.coverUrl).toBe("https://panelpress.example/covers/io7.jpg");
   });
 
+  it("reads every link after an inline label, not just the first", () => {
+    const r = scan(`<h1>Starlight Courier Chapter 2</h1><div class="info"><p><b>Genres:</b> <a href="/genre/action">Action</a>, <a href="/genre/sci-fi">Sci-fi</a>, <a href="/genre/drama">Drama</a></p><p><strong>Artist:</strong> Rio Pen</p></div>${pageImgs(3)}`);
+    expect(r.meta.genres).toEqual(["Action", "Sci-fi", "Drama"]);
+    expect(r.meta.artists).toEqual(["Rio Pen"]);
+  });
+
   it("marks manga for right-to-left reading and webtoons as long strip", () => {
     const manga = scan(`<h1>Night Market Chapter 3</h1><dl><dt>Genres</dt><dd><a href="/genre/seinen">Seinen</a><a href="/genre/manga">Manga</a></dd></dl>${pageImgs(3)}`);
     expect(manga.meta.manga).toBe("YesAndRightToLeft");
@@ -157,5 +166,88 @@ describe("chapters, files and pagination", () => {
   it("finds one-image-per-page reader pagination", () => {
     const d = doc(`<select id="page-select">${Array.from({ length: 6 }, (_, i) => `<option value="/read/io/7/${i + 1}">${i + 1}</option>`).join("")}</select><img src="https://cdn.example/io/7/1.jpg">`);
     expect(findPagination(d, "https://reader.example/read/io/7/1", "https://reader.example/read/io/7/1")).toHaveLength(6);
+  });
+
+  it("reads a chapter number without swallowing the release date next to it", () => {
+    // "Chapter 1" and "12/04/2025" read together used to become chapter 112.
+    const list = Array.from({ length: 4 }, (_, i) => `<li class="chapter"><a href="/night-market/chapter-${i + 1}"><span class="name">Chapter ${i + 1}</span><span class="date">12/04/2025</span></a></li>`).join("");
+    const r = scan(`<h1>Night Market</h1><ul class="chapter-list">${list}</ul>`, "https://manga.example/night-market");
+    expect(r.chapters.map((c) => c.number)).toEqual([1, 2, 3, 4]);
+    expect(r.chapters[0].title).toBe("Chapter 1");
+    expect(r.chapters[0].date).toBe("12/04/2025");
+  });
+
+  it("keeps dates out of titles and chapter numbers", () => {
+    expect(parseIdentity("Night Market Chapter 7 12/04/2025")).toMatchObject({ series: "Night Market", number: 7 });
+    expect(parseIdentity("2025-04-12 Night Market Ch. 8")).toMatchObject({ series: "Night Market", number: 8 });
+    expect(parseIdentity("Night Market Ch. 9 - posted 3 days ago")).toMatchObject({ number: 9 });
+  });
+});
+
+describe("manga galleries and page quality", () => {
+  const gallery = (count: number, opts: { thumbs?: boolean } = {}) =>
+    `<h1>[Ada Ink] Night Market Stories (Winter Event) [English]</h1>
+     <div class="tags"><a href="/tag/romance">Romance</a><a href="/tag/school-life">School life</a></div>
+     <div class="thumbs">${Array.from({ length: count }, (_, i) =>
+       `<a href="/g/9912/${i + 1}/">${opts.thumbs === false ? "" : `<img src="https://t.example/galleries/9912/${i + 1}t.jpg" width="200" height="290">`}</a>`
+     ).join("")}</div>`;
+
+  it("turns a thumbnail grid into full-size pages with a reader-page fallback", () => {
+    const r = scan(gallery(9), "https://reader.example/g/9912/");
+    expect(r.pages).toHaveLength(9);
+    expect(r.confidence).toBe("high");
+    expect(r.adapter).toBe("Gallery (full size)");
+    // The full-size guess is tried first, and the small preview stays as the last resort.
+    expect(r.pages[0].candidates?.[0]).not.toContain("1t.jpg");
+    expect(r.pages[0].candidates).toContain("https://t.example/galleries/9912/1t.jpg");
+    expect(r.pages[0].pageUrl).toBe("https://reader.example/g/9912/1/");
+    expect(r.pages[8].pageUrl).toBe("https://reader.example/g/9912/9/");
+    // The grid shows the preview the site already loaded, never the unverified full-size guess.
+    expect(r.pages[0].thumbUrl).toBe("https://t.example/galleries/9912/1t.jpg");
+  });
+
+  it("still lists every page when the grid has no previews", () => {
+    const r = scan(gallery(6, { thumbs: false }), "https://reader.example/g/9912/");
+    expect(r.pages).toHaveLength(6);
+    expect(r.pages.map((p) => p.pageUrl)).toEqual(Array.from({ length: 6 }, (_, i) => `https://reader.example/g/9912/${i + 1}/`));
+  });
+
+  it("reads the gallery's own title, tags and artist", () => {
+    const r = scan(gallery(5), "https://reader.example/g/9912/");
+    expect(r.meta.title).toContain("Night Market Stories");
+    expect(r.meta.tags).toEqual(expect.arrayContaining(["Romance", "School life"]));
+  });
+
+  it("guesses full-size URLs from previews, best first", () => {
+    expect(looksLikePreview("https://t2.example/galleries/9912/7t.jpg")).toBe(true);
+    expect(looksLikePreview("https://i.example/galleries/9912/7.jpg")).toBe(false);
+
+    const bySuffix = fullSizeCandidates("https://t2.example/galleries/9912/7t.jpg");
+    expect(bySuffix[bySuffix.length - 1]).toBe("https://t2.example/galleries/9912/7t.jpg");
+    expect(bySuffix).toContain("https://t2.example/galleries/9912/7.jpg");
+    expect(bySuffix).toContain("https://i2.example/galleries/9912/7t.jpg");
+
+    // Previews served from a thumbnail host: the same page on the full-size host is the first guess.
+    expect(fullSizeCandidates("https://t3.example/galleries/123/7t.webp")[0]).toBe("https://i3.example/galleries/123/7.webp");
+    expect(fullSizeCandidates("https://cdn.example/thumbs/ch3/005.jpg")[0]).toBe("https://cdn.example/images/ch3/005.jpg");
+    expect(fullSizeCandidates("https://cdn.example/p/12.jpg?w=200&q=60")[0]).toBe("https://cdn.example/p/12.jpg");
+    expect(fullSizeCandidates("https://cdn.example/p/12_thumb.webp")).toContain("https://cdn.example/p/12.jpg");
+  });
+
+  it("learns how a site names full-size pages from one page that worked", () => {
+    // Nothing about "/pages-full/…/1.webp" is guessable from "/thumbs/…/1t.jpg": it has to be learned.
+    const rule = derivePreviewRule("https://t1.example/thumbs/7745/1t.jpg", "https://i1.example/pages-full/7745/1.webp");
+    expect(rule).toMatchObject({ fromHost: "t1.example", toHost: "i1.example", suffix: "t", fromExt: "jpg", toExt: "webp" });
+    expect(applyPreviewRule(rule!, "https://t1.example/thumbs/7745/9t.jpg")).toBe("https://i1.example/pages-full/7745/9.webp");
+    // A preview from somewhere else is left alone.
+    expect(applyPreviewRule(rule!, "https://other.example/thumbs/7745/9t.jpg")).toBeNull();
+    // A cover that isn't a numbered page must not become a rule.
+    expect(derivePreviewRule("https://t1.example/thumbs/7745/cover.jpg", "https://i1.example/pages/7745/1.jpg")).toBeNull();
+  });
+
+  it("finds the page image on a single-page reader", () => {
+    const d = doc(`<nav><img src="https://t.example/logo.png" width="120" height="40"></nav>
+      <section id="image-container"><a href="/g/9912/2/"><img src="https://i.example/galleries/9912/1.jpg" width="1600" height="2300"></a></section>`);
+    expect(mainImageOf(d, "https://reader.example/g/9912/1/")).toBe("https://i.example/galleries/9912/1.jpg");
   });
 });

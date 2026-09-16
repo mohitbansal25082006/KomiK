@@ -53,7 +53,7 @@ export function HistoryView({ items, onChanged }: { items: HistoryEntry[]; onCha
         )}
       </div>
       <div className="px-3 pt-2 text-[11.5px] font-semibold text-muted">{items.length} comics · {formatBytes(totalBytes)} downloaded</div>
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+      <div className="scroll-area min-h-0 flex-1 space-y-2 p-3">
         <AnimatePresence initial={false}>
           {filtered.map((h, i) => (
             <motion.div

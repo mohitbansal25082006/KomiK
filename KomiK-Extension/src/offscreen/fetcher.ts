@@ -1,5 +1,7 @@
 // Downloads one page image: referer rules, retries with backoff, rate-limit handling, in-page fallback
 // for hotlink-protected hosts, type sniffing and conversion of formats Komik can't open.
+import { mainImageOf } from "@/engine/detect/gallery";
+import { fullSizeCandidates, looksLikePreview } from "@/engine/detect/quality";
 import { looksLikeText, sniffImage } from "@/shared/imageinfo";
 import { send } from "@/shared/messages";
 import type { Settings } from "@/shared/types";
@@ -95,13 +97,89 @@ export async function convertImage(data: Uint8Array | ArrayBuffer, targetMime: "
   }
 }
 
-export async function fetchPage(url: string, referer: string | undefined, ctx: FetchContext): Promise<FetchedImage> {
+/** Everything known about one page: its image, full-size guesses and its own reader page. */
+export interface PageSource {
+  url: string;
+  referer?: string;
+  candidates?: string[];
+  pageUrl?: string;
+  width?: number;
+}
+
+/** A page this wide is already the full-size scan, so no further candidate is tried. */
+const GOOD_WIDTH = 800;
+
+/**
+ * Downloads one page at the best quality available: each full-size guess in turn, then the page's own
+ * reader page, and finally the preview itself, so a page is never lost just because a guess was wrong.
+ */
+export async function fetchPage(page: PageSource, ctx: FetchContext): Promise<FetchedImage> {
+  const attempts = (page.candidates?.length ? page.candidates : page.url ? [page.url] : []).slice(0, 8);
+  let best: FetchedImage | null = null;
+  let lastError: unknown = null;
+
+  for (const [index, candidate] of attempts.entries()) {
+    if (ctx.signal.aborted) throw new DOMException("Aborted", "AbortError");
+    try {
+      // A guess that doesn't exist must fail fast; only the last resort gets the full retry treatment.
+      const image = await fetchOne(candidate, page.referer, ctx, { quick: index < attempts.length - 1 });
+      const width = image.width ?? 0;
+      if (!best || width > (best.width ?? 0)) best = image;
+      // Good enough, or as good as the preview can get: stop here.
+      if (width >= GOOD_WIDTH || (page.width && width > page.width * 1.2)) return best;
+    } catch (err) {
+      lastError = err;
+      if (err instanceof DOMException && err.name === "AbortError") throw err;
+    }
+  }
+
+  // No guess worked (or none were big): open this page's own reader page and take the image from it.
+  if ((!best || (best.width ?? 0) < GOOD_WIDTH) && page.pageUrl) {
+    try {
+      const fromReader = await fetchFromReaderPage(page.pageUrl, ctx);
+      if (fromReader && (!best || (fromReader.width ?? 0) > (best.width ?? 0))) best = fromReader;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  if (best) return best;
+  throw lastError instanceof Error ? lastError : new Error("Download failed");
+}
+
+/** Opens a page's own reader page and returns the URL of the image it shows. */
+export async function readerPageImage(pageUrl: string, ctx: FetchContext): Promise<string | null> {
+  const res = await fetch(pageUrl, { credentials: "include", signal: ctx.signal });
+  if (!res.ok) throw new HttpError(res.status, 0);
+  const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+  return mainImageOf(doc, res.url || pageUrl);
+}
+
+/** Reads a reader page and downloads the single page image it shows. */
+async function fetchFromReaderPage(pageUrl: string, ctx: FetchContext): Promise<FetchedImage | null> {
+  const imageUrl = await readerPageImage(pageUrl, ctx);
+  if (!imageUrl) return null;
+  const candidates = looksLikePreview(imageUrl) ? fullSizeCandidates(imageUrl) : [imageUrl];
+  const shortlist = candidates.slice(0, 3);
+  for (const [index, candidate] of shortlist.entries()) {
+    try {
+      return await fetchOne(candidate, pageUrl, ctx, { quick: index < shortlist.length - 1 });
+    } catch {
+      /* try the next shape of the URL */
+    }
+  }
+  return null;
+}
+
+/** `quick` is for checking a guessed URL: one try, no in-page fallback, no waiting around. */
+async function fetchOne(url: string, referer: string | undefined, ctx: FetchContext, opts: { quick?: boolean } = {}): Promise<FetchedImage> {
   const host = hostOf(url) || "data";
   await ensureReferer(url, referer);
   let lastError: unknown = null;
   let triedInPage = false;
+  const retries = opts.quick ? 0 : ctx.settings.retries;
 
-  for (let attempt = 0; attempt <= ctx.settings.retries; attempt++) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
     if (ctx.signal.aborted) throw new DOMException("Aborted", "AbortError");
     const release = await ctx.limiter.acquire(host, ctx.signal);
     let result: { bytes: Uint8Array; mime: string } | null = null;
@@ -124,7 +202,7 @@ export async function fetchPage(url: string, referer: string | undefined, ctx: F
 
     // Hotlink-protected or cookie-bound images: let the reader tab fetch them as the page would.
     const blocked = !result && (lastError instanceof HttpError ? [401, 403, 404, 410].includes(lastError.status) : true);
-    if (!result && blocked && ctx.tabId !== undefined && !triedInPage && !(lastError instanceof DOMException && lastError.name === "AbortError")) {
+    if (!result && blocked && !opts.quick && ctx.tabId !== undefined && !triedInPage && !(lastError instanceof DOMException && lastError.name === "AbortError")) {
       triedInPage = true;
       const res = await send("off-page-fetch", { tabId: ctx.tabId, url }).catch(() => ({ error: "tab closed" }) as { error: string });
       if ("base64" in res && res.base64) {
@@ -138,7 +216,7 @@ export async function fetchPage(url: string, referer: string | undefined, ctx: F
     if (result) return finalize(result.bytes, ctx.settings);
     if (ctx.signal.aborted) throw new DOMException("Aborted", "AbortError");
     if (lastError instanceof HttpError && [400, 401, 403, 404, 410].includes(lastError.status) && attempt >= 1) break;
-    if (attempt < ctx.settings.retries) await sleep(400 * 2 ** attempt + Math.random() * 300, ctx.signal);
+    if (attempt < retries) await sleep(400 * 2 ** attempt + Math.random() * 300, ctx.signal);
   }
   throw lastError instanceof Error ? lastError : new Error("Download failed");
 }

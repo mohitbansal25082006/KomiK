@@ -5,7 +5,9 @@ import { cleanText, hostOf, uniqueBy } from "@/shared/util";
 import { runAdapters } from "./adapters";
 import { findChapters, findFileLinks, findPagination } from "./detect/chapters";
 import { clusterPages, fillSequenceGaps } from "./detect/cluster";
+import { findGallery } from "./detect/gallery";
 import { harvest } from "./detect/harvest";
+import { fullSizeCandidates, looksLikePreview } from "./detect/quality";
 import { scrapeMetadata } from "./metadata/scrape";
 
 export interface ScanOptions {
@@ -28,15 +30,32 @@ export function scanDocument(doc: Document, options: ScanOptions): DetectResult 
   // An adapter that only found the chapter list still names the layout; pages then come from the scanner.
   let adapterName = adapter?.pages.length || adapter?.chapters.length ? adapter.name : "Universal scanner";
 
+  // Galleries list every page as a small preview linking to its own reader page. That list is exact,
+  // so it beats a cluster of thumbnails, and each page keeps full-size guesses plus its reader page.
+  const gallery = findGallery(doc, url);
+
   if (adapter && adapter.pages.length >= 1) {
     pages = adapter.pages;
     confidence = adapter.pages.length >= 2 ? "high" : "medium";
+  } else if (gallery && gallery.pages.length >= 3 && gallery.pages.length >= (cluster?.candidates.length ?? 0)) {
+    pages = gallery.pages;
+    confidence = gallery.pages.length >= 5 ? "high" : "medium";
+    adapterName = gallery.fromPreviews ? "Gallery (full size)" : "Gallery";
   } else if (cluster) {
     const urls = fillSequenceGaps(cluster.candidates.map((c) => c.url));
     const byUrl = new Map(cluster.candidates.map((c) => [c.url, c]));
     pages = urls.map((u) => {
       const c = byUrl.get(u);
-      return { url: u, width: c?.width || undefined, height: c?.height || undefined, referer: url, source: c ? (c.source === "background" ? "background" : c.source) : "sequence" };
+      return {
+        url: u,
+        width: c?.width || undefined,
+        height: c?.height || undefined,
+        referer: url,
+        source: c ? (c.source === "background" ? "background" : c.source) : "sequence",
+        // Readers that serve resized copies ("?w=800", "/thumbs/") still have the full page nearby.
+        candidates: looksLikePreview(u) ? fullSizeCandidates(u) : undefined,
+        thumbUrl: looksLikePreview(u) ? u : undefined
+      };
     });
     confidence = cluster.confidence;
   }
@@ -51,7 +70,8 @@ export function scanDocument(doc: Document, options: ScanOptions): DetectResult 
       pages = [...pages, ...extra.map((n) => ({ url: n.url, referer: url, source: "network" as const }))];
     }
   }
-  pages = uniqueBy(pages, (p) => p.url);
+  // Gallery pages without a preview have no image URL yet, only their reader page.
+  pages = uniqueBy(pages, (p) => p.url || p.pageUrl || "");
 
   const chapters = adapter?.chapters.length ? adapter.chapters : findChapters(doc, url, url);
   const files = findFileLinks(doc, url);

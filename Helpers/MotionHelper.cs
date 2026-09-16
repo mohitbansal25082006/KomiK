@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using System.Threading.Tasks;
 using Microsoft.UI.Composition;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Hosting;
@@ -413,6 +414,96 @@ public static class MotionHelper
 
         visual.StartAnimation("Opacity", fade);
         visual.StartAnimation("Translation", slide);
+    }
+
+    #endregion
+
+    #region Reading mode swap
+
+    /// <summary>
+    /// Fades an element out, applies a change that rebuilds what it shows (page by page ↔ webtoon), then
+    /// floats the new layout back in, so the reader never cuts hard between reading modes.
+    /// </summary>
+    public static async Task SwapContentAsync(FrameworkElement? element, Func<Task> change)
+    {
+        if (element == null || !AnimationsEnabled)
+        {
+            await change();
+            return;
+        }
+
+        ElementCompositionPreview.SetIsTranslationEnabled(element, true);
+        var visual = ElementCompositionPreview.GetElementVisual(element);
+        var compositor = visual.Compositor;
+        CenterVisual(element, visual);
+
+        var easeOut = compositor.CreateCubicBezierEasingFunction(new Vector2(0.4f, 0f), new Vector2(0.2f, 1f));
+        var easeIn = compositor.CreateCubicBezierEasingFunction(new Vector2(0.22f, 1f), new Vector2(0.36f, 1f));
+
+        try
+        {
+            // Out: dim and settle back a touch, so the swap itself is never seen.
+            await AnimateSwapAsync(compositor, visual, 0f, 0.985f, -10f, 150, easeOut);
+            await change();
+            await WaitForLayoutAsync(element);
+
+            // In: rise from just below, back to full size.
+            CenterVisual(element, visual);
+            visual.Opacity = 0f;
+            visual.Scale = new Vector3(0.985f, 0.985f, 1f);
+            visual.Properties.InsertVector3("Translation", new Vector3(0f, 16f, 0f));
+            await AnimateSwapAsync(compositor, visual, 1f, 1f, 0f, 320, easeIn);
+        }
+        finally
+        {
+            // Never leave the reader invisible if an animation is cut short.
+            visual.Opacity = 1f;
+            visual.Scale = Vector3.One;
+            visual.Properties.InsertVector3("Translation", Vector3.Zero);
+        }
+    }
+
+    private static Task AnimateSwapAsync(Compositor compositor, Visual visual, float opacity, float scale, float translateY, int durationMs, CompositionEasingFunction easing)
+    {
+        var duration = TimeSpan.FromMilliseconds(durationMs);
+
+        var fade = compositor.CreateScalarKeyFrameAnimation();
+        fade.InsertKeyFrame(1f, opacity, easing);
+        fade.Duration = duration;
+
+        var scaleAnim = compositor.CreateVector3KeyFrameAnimation();
+        scaleAnim.InsertKeyFrame(1f, new Vector3(scale, scale, 1f), easing);
+        scaleAnim.Duration = duration;
+
+        var slide = compositor.CreateVector3KeyFrameAnimation();
+        slide.InsertKeyFrame(1f, new Vector3(0f, translateY, 0f), easing);
+        slide.Duration = duration;
+
+        var batch = compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
+        var completed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        batch.Completed += (_, _) => completed.TrySetResult(true);
+
+        visual.StartAnimation("Opacity", fade);
+        visual.StartAnimation("Scale", scaleAnim);
+        visual.StartAnimation("Translation", slide);
+        batch.End();
+
+        // A stalled batch (minimised window, suspended compositor) must not freeze the reader.
+        return Task.WhenAny(completed.Task, Task.Delay(durationMs + 400));
+    }
+
+    /// <summary>Waits for the element to lay out its new content, with a short fallback.</summary>
+    private static Task WaitForLayoutAsync(FrameworkElement element)
+    {
+        var laidOut = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnLayoutUpdated(object? sender, object e)
+        {
+            element.LayoutUpdated -= OnLayoutUpdated;
+            laidOut.TrySetResult(true);
+        }
+        element.LayoutUpdated += OnLayoutUpdated;
+        element.UpdateLayout();
+        return Task.WhenAny(laidOut.Task, Task.Delay(220));
     }
 
     #endregion

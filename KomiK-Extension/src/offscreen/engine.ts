@@ -6,7 +6,8 @@ import { broadcast, listen, send, type JobAction } from "@/shared/messages";
 import { pageFileName, planSave } from "@/shared/naming";
 import type { DetectResult, Job, JobsSnapshot, Settings } from "@/shared/types";
 import { uid } from "@/shared/util";
-import { fetchPage } from "./fetcher";
+import { applyPreviewRule, derivePreviewRule } from "@/engine/detect/quality";
+import { fetchPage, readerPageImage } from "./fetcher";
 import { ConnectionLimiter, SpeedMeter } from "./limiter";
 import { buildPdf, buildZip, comicInfoFor, coverThumbnail, repackArchive, retagPdf, type PackPage } from "./pack";
 import { saveFile, saveFolder } from "./save";
@@ -163,8 +164,39 @@ async function resolveChapter(job: Job, s: Settings, signal: AbortSignal) {
   if (!job.meta.number && result.meta.number) job.meta.number = result.meta.number;
 }
 
+/**
+ * Galleries show previews and keep the full-size pages elsewhere. Rather than guessing for every page,
+ * open the first page's own reader page once, learn how this site names its full-size images, and apply
+ * that to the rest. Guesses stay as a fallback, so nothing is lost when a site doesn't follow a pattern.
+ */
+async function learnFullSizeUrls(job: Job, s: Settings, meter: SpeedMeter, signal: AbortSignal) {
+  const previews = job.pages.filter((p) => !p.done && p.thumbUrl && p.pageUrl);
+  if (previews.length < 2) return;
+
+  const ctx = { settings: s, limiter: limiter!, meter, tabId: job.tabId, signal, onBytes: (n: number) => globalMeter.add(n) };
+  const first = previews[0];
+  const fullUrl = await readerPageImage(first.pageUrl!, ctx).catch(() => null);
+  if (!fullUrl) return;
+
+  const rule = derivePreviewRule(first.thumbUrl!, fullUrl);
+  if (!rule) {
+    // The first page is still worth keeping, even if the naming can't be generalised.
+    first.candidates = [fullUrl, ...(first.candidates ?? []).filter((c) => c !== fullUrl)];
+    first.url = fullUrl;
+    return;
+  }
+
+  for (const page of previews) {
+    const applied = applyPreviewRule(rule, page.thumbUrl!);
+    if (!applied) continue;
+    page.candidates = [applied, ...(page.candidates ?? []).filter((c) => c !== applied)];
+    page.url = applied;
+  }
+}
+
 async function runPagesJob(job: Job, s: Settings, meter: SpeedMeter, signal: AbortSignal) {
   await resolveChapter(job, s, signal);
+  await learnFullSizeUrls(job, s, meter, signal).catch(() => undefined);
   job.status = "downloading";
   job.warnings = job.warnings.filter((w) => !w.startsWith("Converted"));
   touch(job, true);
@@ -181,7 +213,7 @@ async function runPagesJob(job: Job, s: Settings, meter: SpeedMeter, signal: Abo
   await Promise.all(
     todo.map(async (page) => {
       try {
-        const img = await fetchPage(page.url, page.referer ?? job.sourceUrl, {
+        const img = await fetchPage({ ...page, referer: page.referer ?? job.sourceUrl }, {
           settings: s,
           limiter: limiter!,
           meter,

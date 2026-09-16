@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.System;
@@ -10,6 +11,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
+using Komik.Helpers;
 using Komik.Models;
 using Komik.ViewModels;
 
@@ -126,14 +128,42 @@ public sealed partial class MainPage : Page
 
     private void SpreadToggle_Click(object sender, RoutedEventArgs e)
     {
-        ViewModel.ToggleViewModeCommand.Execute(null);
-        SyncReaderToggles();
+        _ = SwitchReadingModeAsync(ViewModel.ToggleViewModeAsync);
     }
 
     private void WebtoonToggle_Click(object sender, RoutedEventArgs e)
     {
-        ViewModel.ToggleWebtoonModeCommand.Execute(null);
-        SyncReaderToggles();
+        _ = SwitchReadingModeAsync(ViewModel.ToggleWebtoonModeAsync);
+    }
+
+    private bool _isSwitchingReadingMode;
+
+    /// <summary>
+    /// Changes the reading mode behind a fade, so page-by-page, two-page spreads and webtoon flow into each
+    /// other instead of snapping. Repeat presses while one is running are ignored.
+    /// </summary>
+    private async Task SwitchReadingModeAsync(Func<Task> change)
+    {
+        if (_isSwitchingReadingMode)
+        {
+            SyncReaderToggles();
+            return;
+        }
+        _isSwitchingReadingMode = true;
+        try
+        {
+            await MotionHelper.SwapContentAsync(PageDisplayContainer, change);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainPage] Reading mode switch failed: {ex.Message}");
+        }
+        finally
+        {
+            _isSwitchingReadingMode = false;
+            SyncReaderToggles();
+            UpdateLayoutForFitMode();
+        }
     }
 
     /// <summary>Toggle buttons flip themselves on click; put them back in step with the real reader state.</summary>
@@ -1126,7 +1156,7 @@ public sealed partial class MainPage : Page
                 }
                 else
                 {
-                    _ = ViewModel.ToggleViewModeAsync();
+                    _ = SwitchReadingModeAsync(ViewModel.ToggleViewModeAsync);
                     e.Handled = true;
                 }
                 break;
@@ -1174,7 +1204,7 @@ public sealed partial class MainPage : Page
             case VirtualKey.V:
                 if (!isCtrl)
                 {
-                    _ = ViewModel.ToggleWebtoonModeAsync();
+                    _ = SwitchReadingModeAsync(ViewModel.ToggleWebtoonModeAsync);
                     e.Handled = true;
                 }
                 break;

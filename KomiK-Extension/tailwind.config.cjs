@@ -1,6 +1,8 @@
 /** KomiK Downloader design tokens: the same CMYK ink palette, lettering and hard shadows as the Komik website. */
 module.exports = {
   content: ["./src/pages/**/*.html", "./src/ui/**/*.{ts,tsx}", "./src/pages/**/*.{ts,tsx}"],
+  // Button tones are picked at runtime (btn-${tone}), so Tailwind must keep them.
+  safelist: ["btn-yellow", "btn-cyan", "btn-magenta", "btn-ink"],
   darkMode: ["class", "html.dark"],
   theme: {
     extend: {

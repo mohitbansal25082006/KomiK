@@ -234,6 +234,18 @@ body {
     margin-bottom: 4px;
   }
 
+  /* Scrolling lists and grids: no scroll chaining to the page behind, eased jumps, steady width. */
+  .scroll-area {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+    scrollbar-gutter: stable;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .scroll-area { scroll-behavior: auto; }
+  }
+  html.reduce-motion .scroll-area { scroll-behavior: auto; }
+
   /* ── Ink progress bar ── */
   .ink-track {
     position: relative;

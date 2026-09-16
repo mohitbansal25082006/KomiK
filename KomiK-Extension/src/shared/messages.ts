@@ -36,6 +36,8 @@ export interface MessageMap {
   "page-hint": { req: { count: number; files: number; url: string; title: string }; res: { ok: boolean } };
   "picker-finished": { req: { pages: PageRef[]; url: string }; res: { ok: boolean } };
   "floating-click": { req: { url: string }; res: { ok: boolean; opened: "panel" | "popup" | "none" } };
+  /** Loads a preview the browser refuses to show on an extension page (hotlink or cross-origin rules). */
+  "fetch-image": { req: { url: string; referer?: string }; res: { base64?: string; mime?: string; error?: string } };
 
   // offscreen → background
   "off-ensure-referer": { req: { url: string; referer: string }; res: { ok: boolean } };

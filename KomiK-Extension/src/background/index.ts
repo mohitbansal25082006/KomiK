@@ -4,7 +4,7 @@ import { getJobs } from "@/shared/db";
 import { listen, sendToTab } from "@/shared/messages";
 import { loadSettings, saveSettings } from "@/shared/settings";
 import type { DetectResult, JobsSnapshot } from "@/shared/types";
-import { COMIC_FILE_EXTENSIONS, emptyMeta, extOf, hostOf } from "@/shared/util";
+import { arrayBufferToBase64, COMIC_FILE_EXTENSIONS, emptyMeta, extOf, hostOf } from "@/shared/util";
 import { startDownload, startDownloadRouting, waitForDownload } from "./downloads";
 import { queueChapters, queueJobs, quickDownload } from "./jobs";
 import { startNetworkObserver } from "./network";
@@ -197,6 +197,20 @@ listen("background", {
       } catch {
         return { ok: false, opened: "none" as const };
       }
+    }
+  },
+
+  "fetch-image": async ({ url, referer }) => {
+    try {
+      if (referer) await ensureReferer(url, referer).catch(() => undefined);
+      const res = await fetch(url, { credentials: "include", signal: AbortSignal.timeout(20_000) });
+      if (!res.ok) return { error: `HTTP ${res.status}` };
+      const buffer = await res.arrayBuffer();
+      // Previews only: a full-size page is never worth inlining into the UI.
+      if (buffer.byteLength > 8_000_000) return { error: "Too large to preview" };
+      return { base64: arrayBufferToBase64(buffer), mime: res.headers.get("content-type") || "image/jpeg" };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) };
     }
   },
 

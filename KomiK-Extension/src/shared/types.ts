@@ -40,9 +40,15 @@ export interface PageRef {
   width?: number;
   height?: number;
   /** Where the page was found: an adapter, the DOM, a script, network traffic or the user's picker. */
-  source: "adapter" | "img" | "background" | "link" | "script" | "network" | "picker" | "sequence" | "pagination";
+  source: "adapter" | "img" | "background" | "link" | "script" | "network" | "picker" | "sequence" | "pagination" | "gallery";
   /** Page that referenced it: sent as Referer for hotlink-protected hosts. */
   referer?: string;
+  /** Full-size guesses for a preview image, best first; the downloader keeps the first that works. */
+  candidates?: string[];
+  /** The small preview the site showed: used for the page grid, never for the saved file. */
+  thumbUrl?: string;
+  /** Reader page for this single page, opened when no image URL works. */
+  pageUrl?: string;
 }
 
 export interface ChapterRef {

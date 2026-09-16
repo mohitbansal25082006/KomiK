@@ -116,10 +116,14 @@ function readLabelledFields(root: ParentNode): Map<Field, LabelValue> {
     }
     const field = labelField(own) ?? (el.children.length === 0 ? labelField(whole) : null);
     if (!field) return;
-    // Label element followed by its value (sibling, or the parent's remaining content).
+    // An inline label ("<p><b>Genres:</b> <a>Action</a>, <a>Drama</a></p>") owns the rest of its line;
+    // a block label (heading, div) is followed by its value in the next element.
+    const parent = el.parentElement;
+    const inlineLabel = /^(B|STRONG|SPAN|LABEL|EM|I)$/.test(el.tagName) && parent && cleanText(parent.textContent).length > whole.length;
     const sibling = el.nextElementSibling;
-    if (sibling && cleanText(sibling.textContent)) set(field, valueOf(sibling));
-    else if (el.parentElement) set(field, valueOf(el.parentElement, whole));
+    if (inlineLabel) set(field, valueOf(parent, whole));
+    else if (sibling && cleanText(sibling.textContent)) set(field, valueOf(sibling));
+    else if (parent) set(field, valueOf(parent, whole));
   });
   return found;
 }

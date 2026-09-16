@@ -36,14 +36,17 @@ export function PagesGrid({ pages, excluded, coverIndex, onToggle, onCover, onSe
           const cover = i === coverIndex;
           return (
             <motion.div
-              key={page.url}
-              initial={{ opacity: 0, scale: 0.85, rotate: i % 2 ? 2 : -2 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              transition={{ delay: Math.min(i, 24) * 0.018, type: "spring", stiffness: 420, damping: 24 }}
+              key={page.pageUrl ?? page.url ?? i}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              // Only the first row animates in: a long grid stays smooth while it scrolls.
+              transition={{ delay: Math.min(i, columns) * 0.02, duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              style={{ contentVisibility: "auto", containIntrinsicSize: "220px" }}
               className={`group relative aspect-[2/3] overflow-hidden rounded-[4px] border-[2.5px] border-gutter bg-panel-card shadow-comic-xs ${off ? "opacity-35 grayscale" : ""}`}
             >
               <button className="absolute inset-0 z-[1]" title={off ? "Include this page" : "Skip this page"} onClick={() => onToggle(i)} aria-pressed={!off} />
-              <RemoteImage src={page.url} referer={page.referer} className="h-full w-full object-cover object-top" fallback={<Icon name="pages" className="text-muted" />} />
+              {/* The site's own preview loads at once; the full-size page is only fetched when downloading. */}
+              <RemoteImage src={page.thumbUrl || page.url} referer={page.referer} className="h-full w-full object-cover object-top" fallback={<Icon name="pages" className="text-muted" />} />
               <span className="absolute bottom-0 left-0 z-[2] rounded-tr-[4px] border-r-2 border-t-2 border-gutter bg-yellow px-1.5 font-bangers text-[12px] leading-[16px] text-gutter">{i + 1}</span>
               {off && <span className="absolute inset-0 z-[2] grid place-items-center"><Icon name="x" size={34} stroke={4} className="text-magenta drop-shadow-[2px_2px_0_#000]" /></span>}
               <button
@@ -110,7 +113,7 @@ export function ChapterList({ chapters, selected, onChange }: { chapters: Chapte
         <input className="field !w-[58px] text-center" inputMode="decimal" placeholder="To" value={to} onChange={(e) => setTo(e.target.value)} />
         <Button size="sm" tone="cyan" onClick={applyRange}>Range</Button>
       </div>
-      <div className="max-h-[300px] space-y-1 overflow-y-auto pr-1">
+      <div className="scroll-area max-h-[300px] space-y-1 pr-1">
         {list.map((c) => {
           const on = selected.has(c.url);
           return (

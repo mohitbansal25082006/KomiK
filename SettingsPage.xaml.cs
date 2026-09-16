@@ -2,6 +2,7 @@ using System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
+using Komik.Helpers;
 using Komik.Models;
 using Komik.ViewModels;
 
@@ -125,22 +126,21 @@ public sealed partial class SettingsPage : Page
     {
         if (sender is Button { Tag: WatchedFolder folder })
         {
-            var dialog = new ContentDialog
-            {
-                Title = "Remove Library Folder?",
-                Content = new TextBlock
-                {
-                    Text = $"Are you sure you want to remove this folder from your library?\n\n{folder.Path}\n\nComics located in this folder will no longer appear in your library. Your actual comic files on your hard drive will NOT be deleted.",
-                    TextWrapping = TextWrapping.Wrap
-                },
-                PrimaryButtonText = "Remove Folder",
-                CloseButtonText = "Cancel",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = this.XamlRoot
-            };
+            string name = System.IO.Path.GetFileName(folder.Path.TrimEnd('\\', '/'));
+            var dialog = ComicDialogXaml.Create(XamlRoot,
+                ComicDialogXaml.Header("REMOVE", "#FF1F6D", "#FFFFFF", string.IsNullOrEmpty(name) ? "Remove this folder?" : name, "Stop watching this folder"),
+                ComicDialogXaml.Load($@"
+<StackPanel {{NS}} Spacing=""12"">
+  {PathPanel(folder.Path)}
+  <TextBlock Text=""Comics inside it leave your library, along with their place in the list."" TextWrapping=""Wrap"" FontSize=""13"" />
+  {KeepSafeNote("Nothing is deleted from your disk. The comic files stay exactly where they are.")}
+</StackPanel>"),
+                480);
+            dialog.PrimaryButtonText = "Remove Folder";
+            dialog.CloseButtonText = "Keep It";
+            dialog.DefaultButton = ContentDialogButton.Close;
 
-            var result = await dialog.ShowAsync();
-            if (result == ContentDialogResult.Primary)
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
             {
                 await ViewModel.RemoveFolderAsync(folder);
             }
@@ -149,22 +149,19 @@ public sealed partial class SettingsPage : Page
 
     private async void CacheAllCoversButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new ContentDialog
-        {
-            Title = "Cache All Comic Covers?",
-            Content = new TextBlock
-            {
-                Text = "Are you sure you want to generate and cache cover thumbnails for all comics in your library?\n\nThis will scan your library and pre-render cover images so your comics display instantaneously during browsing and scrolling.",
-                TextWrapping = TextWrapping.Wrap
-            },
-            PrimaryButtonText = "Cache All Covers",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = this.XamlRoot
-        };
+        var dialog = ComicDialogXaml.Create(XamlRoot,
+            ComicDialogXaml.Header("COVERS", "#00C2FF", "#0B0B12", "Cache every cover?", "One pass over your whole library"),
+            ComicDialogXaml.Load($@"
+<StackPanel {{NS}} Spacing=""12"">
+  <TextBlock Text=""Komik opens each comic once and saves its cover, so the library grid and series screens scroll without a flicker."" TextWrapping=""Wrap"" FontSize=""13"" />
+  {KeepSafeNote("Big libraries take a few minutes. You can keep reading while it works.")}
+</StackPanel>"),
+            480);
+        dialog.PrimaryButtonText = "Cache All Covers";
+        dialog.CloseButtonText = "Not Now";
+        dialog.DefaultButton = ContentDialogButton.Primary;
 
-        var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Primary)
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
         {
             await ViewModel.CacheAllCoversAsync();
         }
@@ -172,24 +169,38 @@ public sealed partial class SettingsPage : Page
 
     private async void ClearCacheButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new ContentDialog
-        {
-            Title = "Clear Cover Thumbnail Cache?",
-            Content = new TextBlock
-            {
-                Text = "Are you sure you want to clear the cover thumbnail cache?\n\nThis will remove all cached cover images from disk to free up storage space. Your actual comic files, reading progress, tags, and bookmarks will NOT be affected.",
-                TextWrapping = TextWrapping.Wrap
-            },
-            PrimaryButtonText = "Clear Cache",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Close,
-            XamlRoot = this.XamlRoot
-        };
+        var dialog = ComicDialogXaml.Create(XamlRoot,
+            ComicDialogXaml.Header("CLEAR", "#FF9F1C", "#0B0B12", "Clear the cover cache?", ViewModel.ThumbnailCacheSizeText),
+            ComicDialogXaml.Load($@"
+<StackPanel {{NS}} Spacing=""12"">
+  <TextBlock Text=""Every saved cover thumbnail is deleted to free up space. Covers come back on their own as you browse, so the library looks plain for a moment."" TextWrapping=""Wrap"" FontSize=""13"" />
+  {KeepSafeNote("Your comics, reading progress, tags and bookmarks are not touched.")}
+</StackPanel>"),
+            480);
+        dialog.PrimaryButtonText = "Clear Cache";
+        dialog.CloseButtonText = "Keep Covers";
+        dialog.DefaultButton = ContentDialogButton.Close;
 
-        var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Primary)
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
         {
             await ViewModel.ClearThumbnailCacheAsync();
         }
     }
+
+    /// <summary>A sunken panel showing a folder path, like the file details in the comic dialogs.</summary>
+    private static string PathPanel(string path) => $@"
+<Grid ColumnSpacing=""10"" Padding=""10"" CornerRadius=""10"" Background=""{{ThemeResource KomikPanelSunkenBrush}}"" BorderBrush=""{{ThemeResource KomikInkStrokeBrush}}"" BorderThickness=""1.5,1.5,3,3"">
+  <Grid.ColumnDefinitions><ColumnDefinition Width=""Auto"" /><ColumnDefinition Width=""*"" /></Grid.ColumnDefinitions>
+  <FontIcon Glyph=""&#xE8B7;"" FontSize=""18"" VerticalAlignment=""Center"" Foreground=""{{ThemeResource KomikCyanBrush}}"" />
+  <TextBlock Grid.Column=""1"" Text=""{ComicDialogXaml.E(path)}"" FontSize=""12"" FontFamily=""Consolas"" TextWrapping=""Wrap"" VerticalAlignment=""Center"" />
+</Grid>";
+
+    /// <summary>The reassuring line each of these dialogs ends with.</summary>
+    private static string KeepSafeNote(string text) => $@"
+<Border Background=""{{ThemeResource KomikPanelRaisedBrush}}"" BorderBrush=""{{ThemeResource KomikInkStrokeBrush}}"" BorderThickness=""1.5"" CornerRadius=""10"" Padding=""10,8"">
+  <StackPanel Orientation=""Horizontal"" Spacing=""8"">
+    <FontIcon Glyph=""&#xE946;"" FontSize=""15"" Foreground=""{{ThemeResource KomikSubtleTextBrush}}"" VerticalAlignment=""Top"" />
+    <TextBlock Text=""{ComicDialogXaml.E(text)}"" FontSize=""12"" TextWrapping=""Wrap"" Foreground=""{{ThemeResource KomikSubtleTextBrush}}"" />
+  </StackPanel>
+</Border>";
 }

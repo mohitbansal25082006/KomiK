@@ -61,7 +61,46 @@ const series = () => page(
    <div class="author-content"><a href="/a/mo">Mo Lee</a></div>
    <div class="genres-content"><a href="/genre/drama">Drama</a><a href="/genre/manhwa">Manhwa</a></div>
    <div class="summary__content"><p>Lanterns over a quiet harbor.</p></div>
-   <ul class="main version-chap">${[3, 2, 1].map((n) => `<li class="wp-manga-chapter"><a href="/paper-moon/chapter-${n}/">Chapter ${n}</a><span class="chapter-release-date">Day ${n}</span></li>`).join("")}</ul>`
+   <ul class="main version-chap">${[3, 2, 1].map((n) => `<li class="wp-manga-chapter"><a href="/paper-moon/chapter-${n}/">Chapter ${n}<span class="chapter-release-date">1${n}/04/2025</span></a></li>`).join("")}</ul>`
+);
+
+// A gallery: every page shown as a small preview linking to its own reader page. Page 5's full-size image
+// is somewhere the naming rules can't guess, so it has to come from that page's reader page.
+const GALLERY_PAGES = 9;
+const ODD_PAGE = 5;
+
+const gallery = () => page(
+  "[Ada Ink] Night Market Stories (Winter Event) [English] - Fixture Comics",
+  `<h1>[Ada Ink] Night Market Stories (Winter Event) [English]</h1>
+   <div class="info"><p><b>Artist:</b> <a href="/artist/ada">Ada Ink</a></p>
+   <p><b>Tags:</b> <a href="/tag/romance">Romance</a>, <a href="/tag/slice-of-life">Slice of life</a></p>
+   <p><b>Released:</b> 12/04/2025</p><p><b>Pages:</b> ${GALLERY_PAGES}</p></div>
+   <div class="thumb-container">${Array.from({ length: GALLERY_PAGES }, (_, i) =>
+     `<a class="gallerythumb" href="/g/9912/${i + 1}/"><img src="/thumbs/9912/${i + 1}t.jpg" width="200" height="290"></a>`
+   ).join("")}</div>`
+);
+
+const galleryPage = (n) => page(
+  `Night Market Stories - page ${n}`,
+  `<section id="image-container"><a href="/g/9912/${n + 1}/"><img src="${n === ODD_PAGE ? "/alt/9912/five-full.jpg" : `/images/9912/${n}.jpg`}" width="1200" height="1700"></a></section>`
+);
+
+// A second gallery whose full-size pages live somewhere no naming rule could guess: the only way to
+// find them is to open one page and learn the pattern from it.
+const HIDDEN_ID = 7745;
+const HIDDEN_PAGES = 9;
+
+const hiddenGallery = () => page(
+  "[Rio Pen] Lantern Hours [English] - Fixture Comics",
+  `<h1>[Rio Pen] Lantern Hours [English]</h1>
+   <div class="thumb-container">${Array.from({ length: HIDDEN_PAGES }, (_, i) =>
+     `<a class="gallerythumb" href="/g/${HIDDEN_ID}/${i + 1}/"><img src="/thumbs/${HIDDEN_ID}/${i + 1}t.jpg" width="200" height="290"></a>`
+   ).join("")}</div>`
+);
+
+const hiddenGalleryPage = (n) => page(
+  `Lantern Hours - page ${n}`,
+  `<section id="image-container"><img src="/pages-full/${HIDDEN_ID}/${n}.webp" width="1400" height="2000"></section>`
 );
 
 const seriesChapter = (n) => page(
@@ -85,6 +124,8 @@ function sampleCbz() {
 
 export function startFixtureServer() {
   return new Promise((resolve) => {
+    // Lets a test check how many single-page reader pages were opened.
+    const hits = { hiddenReaderPages: 0 };
     const server = createServer((req, res) => {
       const url = new URL(req.url, "http://localhost");
       const base = `http://${req.headers.host}`;
@@ -98,6 +139,29 @@ export function startFixtureServer() {
       const ch = /^\/paper-moon\/chapter-(\d+)\/$/.exec(p);
       if (ch) return send(200, "text/html", seriesChapter(Number(ch[1])));
       if (p === "/hotlink/iron-orchard-7") return send(200, "text/html", hotlink(base));
+      if (p === "/g/9912/" || p === "/g/9912") return send(200, "text/html", gallery());
+      const galleryReader = /^\/g\/9912\/(\d+)\/$/.exec(p);
+      if (galleryReader) return send(200, "text/html", galleryPage(Number(galleryReader[1])));
+      const thumb = /^\/thumbs\/9912\/(\d+)t\.jpg$/.exec(p);
+      if (thumb) return send(200, "image/png", makePng(200, 290, Number(thumb[1])));
+      const full = /^\/images\/9912\/(\d+)\.jpg$/.exec(p);
+      if (full) {
+        // The odd page out is only reachable through its reader page.
+        if (Number(full[1]) === ODD_PAGE) return send(404, "text/html", "<!doctype html><h1>Not found</h1>");
+        return send(200, "image/png", makePng(1200, 1700, Number(full[1])));
+      }
+      if (p === "/alt/9912/five-full.jpg") return send(200, "image/png", makePng(1200, 1700, ODD_PAGE));
+      if (p === "/__stats") return send(200, "application/json", JSON.stringify(hits));
+      if (p === `/g/${HIDDEN_ID}/` || p === `/g/${HIDDEN_ID}`) return send(200, "text/html", hiddenGallery());
+      const hiddenReader = new RegExp(`^/g/${HIDDEN_ID}/(\\d+)/$`).exec(p);
+      if (hiddenReader) {
+        hits.hiddenReaderPages++;
+        return send(200, "text/html", hiddenGalleryPage(Number(hiddenReader[1])));
+      }
+      const hiddenThumb = new RegExp(`^/thumbs/${HIDDEN_ID}/(\\d+)t\\.jpg$`).exec(p);
+      if (hiddenThumb) return send(200, "image/png", makePng(200, 290, Number(hiddenThumb[1])));
+      const hiddenFull = new RegExp(`^/pages-full/${HIDDEN_ID}/(\\d+)\\.webp$`).exec(p);
+      if (hiddenFull) return send(200, "image/png", makePng(1400, 2000, Number(hiddenFull[1])));
       if (p === "/files") return send(200, "text/html", files());
       if (p === "/files/night-market-v01.cbz") {
         res.writeHead(200, { "content-type": "application/octet-stream", "content-disposition": 'attachment; filename="night-market-v01.cbz"' });

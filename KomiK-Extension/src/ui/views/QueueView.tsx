@@ -170,7 +170,7 @@ export function QueueView({ snapshot, onScan }: { snapshot: JobsSnapshot; onScan
           </div>
         </div>
       </div>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+      <div className="scroll-area min-h-0 flex-1 space-y-3 p-3">
         {finished > 0 && (
           <div className="flex justify-end">
             <Button size="sm" icon="check" onClick={() => send("clear-finished", {})}>Clear finished ({finished})</Button>

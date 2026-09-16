@@ -34,7 +34,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showBadge: true,
 
   catchComicDownloads: true,
-  embedIntoCaughtDownloads: false,
+  embedIntoCaughtDownloads: true,
 
   theme: "system",
   sounds: true,
